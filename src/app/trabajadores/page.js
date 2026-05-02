@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import { getNombreCompleto } from '@/lib/utils/trabajador';
 
 export default function TrabajadoresPage() {
   const router = useRouter();
@@ -53,7 +54,7 @@ export default function TrabajadoresPage() {
 
   // Filtrado
   const trabajadoresFiltrados = trabajadores.filter((t) => {
-    const nombreCompleto = `${t.nombres} ${t.primer_apellido} ${t.segundo_apellido || ''}`.toLowerCase();
+    const nombreCompleto = getNombreCompleto(t).toLowerCase();
     const coincideBusqueda =
       nombreCompleto.includes(busqueda.toLowerCase()) ||
       t.cedula?.includes(busqueda);
@@ -203,7 +204,7 @@ export default function TrabajadoresPage() {
                 >
                   <td style={tdStyle}>{t.cedula}</td>
                   <td style={{ ...tdStyle, fontWeight: '600' }}>
-                    {t.primer_apellido} {t.segundo_apellido} {t.nombres}
+                    {getNombreCompleto(t)}
                   </td>
                   <td style={tdStyle}>{t.cargo?.nombre || '—'}</td>
                   <td style={tdStyle}>{t.departamento_area?.nombre || '—'}</td>

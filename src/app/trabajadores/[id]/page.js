@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { getNombreCompleto } from '@/lib/utils/trabajador';
 import TabDocumentos from './components/TabDocumentos';
 
 export default function DetalleTrabajadorPage() {
@@ -35,7 +36,11 @@ export default function DetalleTrabajadorPage() {
       setLoading(true);
       const { data, error } = await supabase
         .from('trabajadores')
-        .select('*')
+        .select(`
+          *,
+          cargo:cargos(id, nombre),
+          departamento_area:departamentos(id, nombre)
+        `)
         .eq('id', trabajadorId)
         .single();
 
@@ -194,7 +199,9 @@ export default function DetalleTrabajadorPage() {
   const estadoStyle = getEstadoColor(trabajador.estado);
   const edad = calcularEdad(trabajador.fecha_nacimiento);
   const antiguedad = calcularAntiguedad(trabajador.fecha_ingreso);
-  const nombreCompleto = `${trabajador.nombres} ${trabajador.apellidos}`;
+  const nombreCompleto = getNombreCompleto(trabajador);
+  const cargoNombre = trabajador.cargo?.nombre || trabajador.cargo_legacy || null;
+  const deptoNombre = trabajador.departamento_area?.nombre || trabajador.departamento_legacy || null;
 
   return (
     <div style={{ padding: '30px', color: '#F5F5F5' }}>
@@ -227,8 +234,8 @@ export default function DetalleTrabajadorPage() {
               {nombreCompleto}
             </h1>
             <p style={{ color: '#BDBDBD', fontSize: '16px' }}>
-              {trabajador.cargo || 'Sin cargo asignado'}
-              {trabajador.departamento && ` · ${trabajador.departamento}`}
+              {cargoNombre || 'Sin cargo asignado'}
+              {deptoNombre && ` · ${deptoNombre}`}
             </p>
           </div>
 
@@ -244,7 +251,7 @@ export default function DetalleTrabajadorPage() {
                 textTransform: 'uppercase',
               }}
             >
-              {trabajador.estado}
+              {trabajador.estado || (trabajador.activo ? 'activo' : 'inactivo')}
             </span>
 
             <Link
@@ -335,6 +342,7 @@ export default function DetalleTrabajadorPage() {
             trabajador={trabajador}
             edad={edad}
             formatearFecha={formatearFecha}
+            nombreCompleto={nombreCompleto}
           />
         )}
 
@@ -344,6 +352,8 @@ export default function DetalleTrabajadorPage() {
             antiguedad={antiguedad}
             formatearFecha={formatearFecha}
             formatearMoneda={formatearMoneda}
+            cargoNombre={cargoNombre}
+            deptoNombre={deptoNombre}
           />
         )}
 
@@ -544,7 +554,7 @@ export default function DetalleTrabajadorPage() {
 // =====================================
 // TAB: Información Personal
 // =====================================
-function TabInformacion({ trabajador, edad, formatearFecha }) {
+function TabInformacion({ trabajador, edad, formatearFecha, nombreCompleto }) {
   return (
     <div>
       <h2 style={{ fontSize: '18px', marginBottom: '20px', color: '#FFC107' }}>
@@ -559,10 +569,7 @@ function TabInformacion({ trabajador, edad, formatearFecha }) {
         }}
       >
         <Campo label="Cédula" valor={trabajador.cedula} />
-        <Campo
-          label="Nombre Completo"
-          valor={`${trabajador.nombres} ${trabajador.apellidos}`}
-        />
+        <Campo label="Nombre Completo" valor={nombreCompleto} />
         <Campo
           label="Fecha de Nacimiento"
           valor={
@@ -632,7 +639,7 @@ function TabInformacion({ trabajador, edad, formatearFecha }) {
 // =====================================
 // TAB: Información Laboral
 // =====================================
-function TabLaboral({ trabajador, antiguedad, formatearFecha, formatearMoneda }) {
+function TabLaboral({ trabajador, antiguedad, formatearFecha, formatearMoneda, cargoNombre, deptoNombre }) {
   return (
     <div>
       <h2 style={{ fontSize: '18px', marginBottom: '20px', color: '#FFC107' }}>
@@ -646,8 +653,8 @@ function TabLaboral({ trabajador, antiguedad, formatearFecha, formatearMoneda })
           gap: '20px',
         }}
       >
-        <Campo label="Cargo" valor={trabajador.cargo} />
-        <Campo label="Departamento" valor={trabajador.departamento} />
+        <Campo label="Cargo" valor={cargoNombre} />
+        <Campo label="Departamento" valor={deptoNombre} />
         <Campo label="Tipo de Contrato" valor={trabajador.tipo_contrato} />
         <Campo
           label="Fecha de Ingreso"
