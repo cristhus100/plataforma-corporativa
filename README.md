@@ -1,36 +1,117 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 🏗️ Plataforma Corporativa - Serviequipos Mantenimiento Ltda
 
-## Getting Started
+Sistema integral de gestión empresarial desarrollado para **Serviequipos Mantenimiento Ltda** (NIT 832005736-3), ubicado en La Calera, Cundinamarca.
 
-First, run the development server:
+## 🎯 Descripción
+
+Plataforma web corporativa que centraliza la gestión de:
+- 👷 **Trabajadores**: Hojas de vida, documentos y seguridad social
+- 🚜 **Maquinaria**: Inventario, mantenimiento y operadores
+- 📋 **Cotizaciones**: Propuestas comerciales
+- 🔔 **Alertas**: Notificaciones de vencimientos
+- 📊 **Dashboard**: Indicadores clave de gestión
+
+## 🚀 Stack Tecnológico
+
+- **Framework**: Next.js 16.2.4
+- **UI**: React 19 + Tailwind CSS + shadcn/ui
+- **Backend**: Supabase (PostgreSQL + Storage)
+- **Iconos**: Lucide React
+- **Deploy**: Vercel
+
+## 🎨 Identidad Visual
+
+- **Amarillo Corporativo**: `#FFC107`
+- **Negro Profesional**: `#1A1A1A`
+- **Grises**: `#212121` a `#F5F5F5`
+
+## 📦 Instalación Local
 
 ```bash
+# Clonar repositorio
+git clone https://github.com/tu-usuario/plataforma-corporativa.git
+cd plataforma-corporativa
+
+# Instalar dependencias
+npm install
+
+# Configurar variables de entorno
+cp .env.example .env.local
+# Editar .env.local con tus credenciales de Supabase
+
+# Ejecutar en desarrollo
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🔐 Variables de Entorno
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+Crear archivo `.env.local` con:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+NEXT_PUBLIC_SUPABASE_URL=tu_url_supabase
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
+```
 
-## Learn More
+## 📂 Estructura del Proyecto
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/                    # Rutas Next.js (App Router)
+│   ├── dashboard/         # Panel principal
+│   ├── trabajadores/      # Módulo de trabajadores
+│   ├── maquinaria/        # Módulo de maquinaria
+│   ├── cotizaciones/      # Módulo de cotizaciones
+│   └── alertas/           # Módulo de alertas
+├── components/            # Componentes reutilizables
+│   ├── ui/               # shadcn/ui components
+│   └── layout/           # Sidebar, Header, etc.
+└── lib/                  # Utilidades
+    └── supabase/         # Cliente Supabase
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## ✨ Funcionalidades Implementadas
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### ✅ Módulo Trabajadores
+- CRUD completo con validaciones
+- Gestión de documentos (PDF, imágenes)
+- Soft Delete y Hard Delete
+- Historial de cambios
+- Alertas de vencimientos
 
-## Deploy on Vercel
+### ✅ Módulo Maquinaria
+- Inventario completo
+- 5 tabs de detalle (Info, Documentos, Fotos, Operador, Historial)
+- Estados: operativa, mantenimiento, reparación, fuera de servicio
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### ✅ Sistema de Alertas
+- Vencimientos de documentos
+- Notificaciones visuales
+- Resumen ejecutivo
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### ✅ Dashboard
+- Indicadores en tiempo real
+- Resumen de trabajadores y maquinaria
+- Estado de cotizaciones
+
+## 🗺️ Roadmap
+
+- [ ] Autenticación con Supabase Auth
+- [ ] Roles y permisos (Admin, Gerente, Operador)
+- [ ] Reportes PDF automatizados
+- [ ] Módulo de clientes
+- [ ] Gráficos avanzados con Recharts
+- [ ] Notificaciones por email
+
+## 👨‍💻 Desarrollador
+
+**Cristhian Camilo Avellaneda Clavijo**
+
+## 📄 Licencia
+
+Proyecto privado © 2025 Serviequipos Mantenimiento Ltda. Todos los derechos reservados.
+
+---
+
+⚡ **Desarrollado con Next.js + Supabase**
+

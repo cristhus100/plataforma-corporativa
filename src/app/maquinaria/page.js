@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import StatsCard from '@/components/ui/StatsCard';
+import { ESTADOS_MAQUINARIA } from '@/lib/utils/maquinaria';
 import {
   Truck,
   CheckCircle2,
@@ -15,15 +16,6 @@ import {
   Pencil,
   ImageOff,
 } from 'lucide-react';
-
-const ESTADOS = ['Operativa', 'En Mantenimiento', 'Fuera de Servicio', 'Inactiva'];
-
-const ESTADO_STYLES = {
-  Operativa: 'bg-green-100 text-green-800 border-green-200',
-  'En Mantenimiento': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  'Fuera de Servicio': 'bg-red-100 text-red-800 border-red-200',
-  Inactiva: 'bg-gray-100 text-gray-700 border-gray-200',
-};
 
 export default function MaquinariaPage() {
   const supabase = createClient();
@@ -98,13 +90,17 @@ export default function MaquinariaPage() {
     });
   }, [maquinaria, search, filtroEstado, filtroTipo]);
 
-  // Resumen
+  // Resumen (usando valores reales de DB en minúsculas)
   const resumen = useMemo(() => {
     return {
       total: maquinaria.length,
-      operativa: maquinaria.filter((m) => m.estado === 'Operativa').length,
-      mantenimiento: maquinaria.filter((m) => m.estado === 'En Mantenimiento').length,
-      fueraServicio: maquinaria.filter((m) => m.estado === 'Fuera de Servicio').length,
+      operativa: maquinaria.filter((m) => m.estado === 'operativa').length,
+      mantenimiento: maquinaria.filter(
+        (m) => m.estado === 'en_mantenimiento' || m.estado === 'en_reparacion'
+      ).length,
+      fueraServicio: maquinaria.filter(
+        (m) => m.estado === 'fuera_servicio' || m.estado === 'dada_de_baja'
+      ).length,
     };
   }, [maquinaria]);
 
@@ -112,6 +108,26 @@ export default function MaquinariaPage() {
     setSearch('');
     setFiltroEstado('');
     setFiltroTipo('');
+  }
+
+  // Helper para renderizar el badge de estado
+  function renderEstadoBadge(estado) {
+    const config = ESTADOS_MAQUINARIA[estado];
+    if (!config) {
+      return (
+        <span className="inline-flex rounded-full border border-gray-200 bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+          Sin estado
+        </span>
+      );
+    }
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${config.badge}`}
+      >
+        <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
+        {config.label}
+      </span>
+    );
   }
 
   return (
@@ -186,9 +202,9 @@ export default function MaquinariaPage() {
               className="w-full rounded-lg border border-gray-300 bg-white py-2 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Todos los estados</option>
-              {ESTADOS.map((e) => (
-                <option key={e} value={e}>
-                  {e}
+              {Object.entries(ESTADOS_MAQUINARIA).map(([key, config]) => (
+                <option key={key} value={key}>
+                  {config.label}
                 </option>
               ))}
             </select>
@@ -289,24 +305,36 @@ export default function MaquinariaPage() {
                 {maquinariaFiltrada.map((m) => (
                   <tr key={m.id} className="hover:bg-gray-50 transition">
                     <td className="px-4 py-3">
-                      {m.foto_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={m.foto_url}
-                          alt={m.nombre}
-                          className="h-12 w-12 rounded-lg object-cover border border-gray-200"
-                        />
-                      ) : (
-                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 border border-gray-200">
-                          <ImageOff className="h-5 w-5 text-gray-400" />
-                        </div>
-                      )}
+                      <Link href={`/maquinaria/${m.id}`}>
+                        {m.foto_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={m.foto_url}
+                            alt={m.nombre}
+                            className="h-12 w-12 rounded-lg object-cover border border-gray-200 hover:ring-2 hover:ring-blue-400 transition"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 border border-gray-200 hover:ring-2 hover:ring-blue-400 transition">
+                            <ImageOff className="h-5 w-5 text-gray-400" />
+                          </div>
+                        )}
+                      </Link>
                     </td>
                     <td className="px-4 py-3 text-sm font-mono font-semibold text-gray-900">
-                      {m.codigo_interno || '—'}
+                      <Link
+                        href={`/maquinaria/${m.id}`}
+                        className="hover:text-blue-600 transition"
+                      >
+                        {m.codigo_interno || '—'}
+                      </Link>
                     </td>
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                      {m.nombre || '—'}
+                      <Link
+                        href={`/maquinaria/${m.id}`}
+                        className="hover:text-blue-600 transition"
+                      >
+                        {m.nombre || '—'}
+                      </Link>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700">
                       {m.tipos_maquinaria?.nombre || '—'}
@@ -317,16 +345,7 @@ export default function MaquinariaPage() {
                     <td className="px-4 py-3 text-sm font-mono text-gray-700">
                       {m.placa || '—'}
                     </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-                          ESTADO_STYLES[m.estado] ||
-                          'bg-gray-100 text-gray-700 border-gray-200'
-                        }`}
-                      >
-                        {m.estado || 'Sin estado'}
-                      </span>
-                    </td>
+                    <td className="px-4 py-3">{renderEstadoBadge(m.estado)}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex items-center gap-1">
                         <Link

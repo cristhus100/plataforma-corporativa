@@ -1,102 +1,170 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { 
-  LayoutDashboard, 
-  Users, 
-  UserCircle, 
-  Package, 
+import Link from 'next/link';
+import Image from 'next/image';
+import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase/client';
+import {
+  LayoutDashboard,
+  Users,
+  Wrench,
   FileText,
-  Building2,
-  Truck,
-  Bell
-} from 'lucide-react'
+  Bell,
+  FileSpreadsheet,
+  Package,
+  Megaphone,
+} from 'lucide-react';
 
 const menuItems = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Trabajadores', href: '/trabajadores', icon: Users },
-  { name: 'Maquinaria', href: '/maquinaria', icon: Truck },
-  { name: 'Alertas', href: '/alertas', icon: Bell, showBadge: true },
-  { name: 'Clientes', href: '/clientes', icon: UserCircle },
-  { name: 'Productos', href: '/productos', icon: Package },
-  { name: 'Cotizaciones', href: '/cotizaciones', icon: FileText },
-]
+  { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { label: 'Trabajadores', href: '/trabajadores', icon: Users },
+  { label: 'Maquinaria', href: '/maquinaria', icon: Wrench },
+  { label: 'Documentos', href: '/documentos', icon: FileText },
+  { label: 'Alertas', href: '/alertas', icon: Bell, showBadge: true },
+  { label: 'Cotizaciones', href: '/cotizaciones', icon: FileSpreadsheet },
+  { label: 'Productos', href: '/productos', icon: Package },
+  { label: 'Anuncios', href: '/anuncios', icon: Megaphone },
+];
 
 export default function Sidebar() {
-  const pathname = usePathname()
-  const [alertasCount, setAlertasCount] = useState(0)
+  const pathname = usePathname();
+  const [alertCount, setAlertCount] = useState(0);
 
   useEffect(() => {
-    async function fetchAlertas() {
-      try {
-        const { count, error } = await supabase
-          .from('vw_alertas_documentos')
-          .select('*', { count: 'exact', head: true })
-          .in('estado_alerta', ['VENCIDO', 'CRITICO'])
+    fetchAlertCount();
+    const interval = setInterval(fetchAlertCount, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
-        if (!error && count !== null) {
-          setAlertasCount(count)
-        }
-      } catch (err) {
-        console.error('Error cargando alertas:', err)
-      }
-    }
+  const fetchAlertCount = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('documentos')
+      .select('id, fecha_vencimiento');
 
-    fetchAlertas()
-    const interval = setInterval(fetchAlertas, 5 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [])
+    if (error) throw error;
+
+    const hoy = new Date();
+    const count = (data || []).filter((doc) => {
+      if (!doc.fecha_vencimiento) return false;
+      const venc = new Date(doc.fecha_vencimiento);
+      const dias = Math.ceil((venc - hoy) / (1000 * 60 * 60 * 24));
+      return dias <= 7;
+    }).length;
+
+    setAlertCount(count);
+  } catch (err) {
+    console.error('Error fetching alert count:', err);
+  }
+};
+
+
+  const isActive = (href) => {
+    if (href === '/') return pathname === '/';
+    return pathname.startsWith(href);
+  };
 
   return (
-    <aside className="w-64 bg-slate-900 text-white flex flex-col flex-shrink-0 h-screen sticky top-0">
-      {/* Header del Sidebar */}
-      <div className="flex items-center gap-2 p-4 pb-4 border-b border-slate-700 flex-shrink-0">
-        <Building2 className="w-8 h-8 text-blue-400" />
-        <div>
-          <h1 className="font-bold text-lg">Mi Empresa</h1>
-          <p className="text-xs text-slate-400">Plataforma Corporativa</p>
+    <aside
+      className="fixed left-0 top-0 h-screen w-64 flex flex-col z-50 border-r"
+      style={{
+        backgroundColor: '#1A1A1A',
+        borderColor: '#2D2D2D',
+      }}
+    >
+      {/* Logo y nombre */}
+      <div
+        className="px-6 py-6 border-b"
+        style={{ borderColor: '#2D2D2D' }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-white flex-shrink-0 shadow-lg">
+            <Image
+              src="/logo-serviequipos.jpg"
+              alt="Serviequipos"
+              fill
+              sizes="48px"
+              className="object-contain p-1"
+              priority
+            />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-white font-bold text-base leading-tight">
+              Serviequipos
+            </span>
+            <span className="text-xs font-medium" style={{ color: '#FFC107' }}>
+              Mantenimiento Ltda.
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Navegación con scroll si hace falta */}
-      <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-        {menuItems.map((item) => {
-          const Icon = item.icon
-          const isActive = pathname === item.href || 
-                          (item.href !== '/' && pathname.startsWith(item.href))
-          
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive 
-                  ? 'bg-blue-600 text-white' 
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Icon className="w-5 h-5" />
-                <span className="font-medium">{item.name}</span>
-              </div>
-              
-              {item.showBadge && alertasCount > 0 && (
-                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
-                  {alertasCount > 99 ? '99+' : alertasCount}
-                </span>
-              )}
-            </Link>
-          )
-        })}
+      {/* Menú */}
+      <nav className="flex-1 px-3 py-4 overflow-y-auto">
+        <ul className="space-y-1">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.href);
+
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className="group flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
+                  style={{
+                    backgroundColor: active ? '#FFC107' : 'transparent',
+                    color: active ? '#1A1A1A' : '#D1D5DB',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active) {
+                      e.currentTarget.style.backgroundColor = '#2D2D2D';
+                      e.currentTarget.style.color = '#FFFFFF';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = '#D1D5DB';
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    <span>{item.label}</span>
+                  </div>
+
+                  {item.showBadge && alertCount > 0 && (
+                    <span
+                      className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full"
+                      style={{
+                        backgroundColor: active ? '#1A1A1A' : '#EF4444',
+                        color: active ? '#FFC107' : '#FFFFFF',
+                      }}
+                    >
+                      {alertCount > 99 ? '99+' : alertCount}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       </nav>
 
-      {/* Footer del Sidebar */}
-      <div className="p-4 text-xs text-slate-500 text-center border-t border-slate-700 flex-shrink-0">
-        v1.0.0 - 2025
+      {/* Footer */}
+      <div
+        className="px-6 py-4 border-t"
+        style={{ borderColor: '#2D2D2D' }}
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+          <span className="text-xs text-gray-400">Sistema activo</span>
+        </div>
+        <p className="text-[10px] text-gray-500 mt-1">
+          NIT 832.005.736-3
+        </p>
       </div>
     </aside>
-  )
+  );
 }

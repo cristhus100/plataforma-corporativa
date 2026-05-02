@@ -5,14 +5,13 @@ import Header from './Header';
 
 export default function MainLayout({ children }) {
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* Sidebar */}
+    <div style={{ minHeight: '100vh', backgroundColor: '#F5F5F5' }}>
       <Sidebar />
-
-      {/* Contenido principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      
+      {/* Contenido principal con margen izquierdo para el sidebar */}
+      <div style={{ marginLeft: '256px', minHeight: '100vh' }}>
         <Header />
-        <main className="flex-1 overflow-y-auto">
+        <main style={{ padding: '2rem' }}>
           {children}
         </main>
       </div>
