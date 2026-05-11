@@ -6,21 +6,21 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import Campo from '@/components/ui/Campo';
 
 export default function EditarTrabajadorPage() {
   const router = useRouter();
   const params = useParams();
-  const trabajadorId = params.id;
   const supabase = createClient();
+  const trabajadorId = params.id;
 
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
   const [datosOriginales, setDatosOriginales] = useState(null);
+  const [cargos, setCargos] = useState([]);
+  const [departamentos, setDepartamentos] = useState([]);
 
   const [formData, setFormData] = useState({
-    // Identificación
     cedula: '',
     tipo_documento: 'CC',
     nombre: '',
@@ -29,8 +29,7 @@ export default function EditarTrabajadorPage() {
     fecha_nacimiento: '',
     genero: '',
     estado_civil: '',
-    
-    // Contacto
+
     email: '',
     telefono: '',
     telefono_emergencia: '',
@@ -38,46 +37,79 @@ export default function EditarTrabajadorPage() {
     direccion: '',
     ciudad: '',
     departamento_residencia: '',
-    
-    // Información laboral
-    cargo: '',
-    departamento: '',
+
+    cargo_id: '',
+    departamento_id: '',
     fecha_ingreso: '',
     tipo_contrato: '',
     salario: '',
     estado: 'activo',
-    
-    // Seguridad social
+
     eps: '',
     arl: '',
     afp: '',
     caja_compensacion: '',
-    
-    // Información bancaria
+
     banco: '',
     tipo_cuenta: '',
     numero_cuenta: '',
-    
-    // Adicional
+
     nivel_educativo: '',
     profesion: '',
     rh: '',
     observaciones: '',
   });
 
-  // Cargar datos del trabajador
   useEffect(() => {
-    async function cargarTrabajador() {
+    async function cargarDatos() {
       try {
+        const [cargosRes, deptRes] = await Promise.all([
+          supabase.from('cargos').select('id, nombre').order('nombre'),
+          supabase.from('departamentos').select('id, nombre').order('nombre'),
+        ]);
+
+        setCargos(cargosRes.data || []);
+        setDepartamentos(deptRes.data || []);
+
         const { data, error } = await supabase
           .from('trabajadores')
-          .select('*')
+          .select('*, cargo:cargos(id, nombre), departamento_area:departamentos(id, nombre)')
           .eq('id', trabajadorId)
           .single();
 
         if (error) throw error;
 
         if (data) {
+          // Determinar cargo_id: primero el FK, si no, buscar por nombre en catálogo
+          let cargoId = data.cargo_id || '';
+          if (!cargoId && data.cargo) {
+            const match = (cargosRes.data || []).find(
+              (c) => c.nombre.toLowerCase() === data.cargo.toLowerCase()
+            );
+            if (match) cargoId = match.id;
+          }
+          if (!cargoId && data.cargo_legacy) {
+            const match = (cargosRes.data || []).find(
+              (c) => c.nombre.toLowerCase() === data.cargo_legacy.toLowerCase()
+            );
+            if (match) cargoId = match.id;
+          }
+
+          // Determinar departamento_id
+          let deptoId = data.departamento_id || '';
+          if (!deptoId && data.departamento) {
+            const match = (deptRes.data || []).find(
+              (d) => d.nombre.toLowerCase() === data.departamento.toLowerCase()
+            );
+            if (match) deptoId = match.id;
+          }
+          if (!deptoId && data.departamento_legacy) {
+            const match = (deptRes.data || []).find(
+              (d) => d.nombre.toLowerCase() === data.departamento_legacy.toLowerCase()
+            );
+            if (match) deptoId = match.id;
+          }
+
           const datosFormulario = {
             cedula: data.cedula || '',
             tipo_documento: data.tipo_documento || 'CC',
@@ -94,8 +126,8 @@ export default function EditarTrabajadorPage() {
             direccion: data.direccion || '',
             ciudad: data.ciudad || '',
             departamento_residencia: data.departamento_residencia || '',
-            cargo: data.cargo || '',
-            departamento: data.departamento || '',
+            cargo_id: cargoId,
+            departamento_id: deptoId,
             fecha_ingreso: data.fecha_ingreso || '',
             tipo_contrato: data.tipo_contrato || '',
             salario: data.salario || '',
@@ -112,7 +144,7 @@ export default function EditarTrabajadorPage() {
             rh: data.rh || '',
             observaciones: data.observaciones || '',
           };
-          
+
           setFormData(datosFormulario);
           setDatosOriginales(datosFormulario);
         }
@@ -125,48 +157,41 @@ export default function EditarTrabajadorPage() {
     }
 
     if (trabajadorId) {
-      cargarTrabajador();
+      cargarDatos();
     }
   }, [trabajadorId]);
 
-  // 🔥 NUEVA FUNCIÓN: Limpia los datos antes de enviar a Supabase
-  // Convierte strings vacíos a null para campos DATE y NUMERIC
   function limpiarDatos(data) {
     const camposFecha = ['fecha_nacimiento', 'fecha_ingreso'];
-    const camposNumericos = ['salario'];
+    const camposNumericos = ['salario', 'cargo_id', 'departamento_id'];
 
     const limpio = {};
 
     for (const key in data) {
       const valor = data[key];
 
-      // Strings vacíos o undefined → null
       if (valor === '' || valor === undefined || valor === null) {
         limpio[key] = null;
         continue;
       }
 
-      // Campos numéricos: convertir a número o null
       if (camposNumericos.includes(key)) {
-        const num = parseFloat(valor);
+        const num = parseInt(valor, 10);
         limpio[key] = isNaN(num) ? null : num;
         continue;
       }
 
-      // Campos de fecha: validar que tenga formato válido
       if (camposFecha.includes(key)) {
         limpio[key] = valor && valor.trim() !== '' ? valor : null;
         continue;
       }
 
-      // Resto de campos: dejar tal cual (con trim para strings)
       limpio[key] = typeof valor === 'string' ? valor.trim() : valor;
     }
 
     return limpio;
   }
 
-  // Detectar cambios para el historial
   function detectarCambios() {
     const cambios = [];
     const etiquetas = {
@@ -185,8 +210,8 @@ export default function EditarTrabajadorPage() {
       direccion: 'Dirección',
       ciudad: 'Ciudad',
       departamento_residencia: 'Departamento de Residencia',
-      cargo: 'Cargo',
-      departamento: 'Departamento',
+      cargo_id: 'Cargo',
+      departamento_id: 'Departamento',
       fecha_ingreso: 'Fecha de Ingreso',
       tipo_contrato: 'Tipo de Contrato',
       salario: 'Salario',
@@ -205,11 +230,31 @@ export default function EditarTrabajadorPage() {
     };
 
     Object.keys(formData).forEach((campo) => {
-      if (datosOriginales && formData[campo] !== datosOriginales[campo]) {
+      if (datosOriginales && String(formData[campo]) !== String(datosOriginales[campo])) {
+        const valorAnterior = datosOriginales[campo];
+        const valorNuevo = formData[campo];
+
+        // Mostrar nombre legible para cambios de cargo/departamento
+        let displayAnterior = valorAnterior || '(vacío)';
+        let displayNuevo = valorNuevo || '(vacío)';
+
+        if (campo === 'cargo_id') {
+          const cAnterior = cargos.find((c) => String(c.id) === String(valorAnterior));
+          const cNuevo = cargos.find((c) => String(c.id) === String(valorNuevo));
+          if (cAnterior) displayAnterior = cAnterior.nombre;
+          if (cNuevo) displayNuevo = cNuevo.nombre;
+        }
+        if (campo === 'departamento_id') {
+          const dAnterior = departamentos.find((d) => String(d.id) === String(valorAnterior));
+          const dNuevo = departamentos.find((d) => String(d.id) === String(valorNuevo));
+          if (dAnterior) displayAnterior = dAnterior.nombre;
+          if (dNuevo) displayNuevo = dNuevo.nombre;
+        }
+
         cambios.push({
           campo: etiquetas[campo] || campo,
-          valor_anterior: datosOriginales[campo] || '(vacío)',
-          valor_nuevo: formData[campo] || '(vacío)',
+          valor_anterior: displayAnterior,
+          valor_nuevo: displayNuevo,
         });
       }
     });
@@ -217,7 +262,6 @@ export default function EditarTrabajadorPage() {
     return cambios;
   }
 
-  // Guardar cambios
   async function handleSubmit(e) {
     e.preventDefault();
     setGuardando(true);
@@ -225,11 +269,14 @@ export default function EditarTrabajadorPage() {
 
     try {
       const cambios = detectarCambios();
-
-      // 🔥 LIMPIAR DATOS antes de enviar (convierte "" a null)
       const datosActualizar = limpiarDatos(formData);
 
-      // Actualizar trabajador
+      // Guardar también el nombre legible como fallback
+      const cargoSel = cargos.find((c) => String(c.id) === String(formData.cargo_id));
+      const deptoSel = departamentos.find((d) => String(d.id) === String(formData.departamento_id));
+      if (cargoSel) datosActualizar.cargo_legacy = cargoSel.nombre;
+      if (deptoSel) datosActualizar.departamento_legacy = deptoSel.nombre;
+
       const { error: errorUpdate } = await supabase
         .from('trabajadores')
         .update(datosActualizar)
@@ -237,7 +284,6 @@ export default function EditarTrabajadorPage() {
 
       if (errorUpdate) throw errorUpdate;
 
-      // Registrar en historial si hubo cambios
       if (cambios.length > 0) {
         const descripcion = cambios
           .map((c) => `${c.campo}: "${c.valor_anterior}" → "${c.valor_nuevo}"`)
@@ -259,564 +305,455 @@ export default function EditarTrabajadorPage() {
     }
   }
 
+  const handleChange = (field) => (e) => {
+    setFormData({ ...formData, [field]: e.target.value });
+  };
+
   if (cargando) {
     return (
-      <div className="min-h-screen bg-[#1A1A1A] flex items-center justify-center">
-        <div className="text-[#FFC107] text-lg">Cargando información...</div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando información...</p>
+        </div>
       </div>
     );
   }
 
+  const inputClass = "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 text-sm";
+  const selectClass = "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 text-sm bg-white";
+
   return (
-    <div className="min-h-screen bg-[#1A1A1A] p-6">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
+    <div className="max-w-5xl mx-auto">
+      <div className="mb-6">
+        <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+          <Link href="/trabajadores" className="hover:text-gray-900">
+            Trabajadores
+          </Link>
+          <span>/</span>
+          <Link href={`/trabajadores/${trabajadorId}`} className="hover:text-gray-900">
+            Detalle
+          </Link>
+          <span>/</span>
+          <span className="text-gray-900">Editar</span>
+        </div>
+        <h1 className="text-3xl font-bold text-gray-900">Editar Trabajador</h1>
+        <p className="text-gray-600 mt-1">
+          Actualiza la información del empleado
+        </p>
+      </div>
+
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800 font-medium">{error}</p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* IDENTIFICACIÓN */}
+        <Section title="Identificación">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Tipo de Documento" required>
+              <select
+                value={formData.tipo_documento}
+                onChange={handleChange('tipo_documento')}
+                className={selectClass}
+                required
+              >
+                <option value="CC">Cédula de Ciudadanía</option>
+                <option value="CE">Cédula de Extranjería</option>
+                <option value="PA">Pasaporte</option>
+                <option value="TI">Tarjeta de Identidad</option>
+              </select>
+            </Field>
+            <Field label="Número de Documento" required>
+              <input
+                type="text"
+                value={formData.cedula}
+                onChange={handleChange('cedula')}
+                className={inputClass}
+                required
+              />
+            </Field>
+            <Field label="Nombre" required>
+              <input
+                type="text"
+                value={formData.nombre}
+                onChange={handleChange('nombre')}
+                className={inputClass}
+                required
+              />
+            </Field>
+            <Field label="Primer Apellido" required>
+              <input
+                type="text"
+                value={formData.primer_apellido}
+                onChange={handleChange('primer_apellido')}
+                className={inputClass}
+                required
+              />
+            </Field>
+            <Field label="Segundo Apellido">
+              <input
+                type="text"
+                value={formData.segundo_apellido}
+                onChange={handleChange('segundo_apellido')}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Fecha de Nacimiento">
+              <input
+                type="date"
+                value={formData.fecha_nacimiento}
+                onChange={handleChange('fecha_nacimiento')}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Género">
+              <select
+                value={formData.genero}
+                onChange={handleChange('genero')}
+                className={selectClass}
+              >
+                <option value="">Seleccionar...</option>
+                <option value="masculino">Masculino</option>
+                <option value="femenino">Femenino</option>
+                <option value="otro">Otro</option>
+              </select>
+            </Field>
+            <Field label="Estado Civil">
+              <select
+                value={formData.estado_civil}
+                onChange={handleChange('estado_civil')}
+                className={selectClass}
+              >
+                <option value="">Seleccionar...</option>
+                <option value="soltero">Soltero(a)</option>
+                <option value="casado">Casado(a)</option>
+                <option value="union_libre">Unión Libre</option>
+                <option value="divorciado">Divorciado(a)</option>
+                <option value="viudo">Viudo(a)</option>
+              </select>
+            </Field>
+            <Field label="Tipo de Sangre (RH)">
+              <select
+                value={formData.rh}
+                onChange={handleChange('rh')}
+                className={selectClass}
+              >
+                <option value="">Seleccionar...</option>
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+              </select>
+            </Field>
+          </div>
+        </Section>
+
+        {/* CONTACTO */}
+        <Section title="Información de Contacto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Email">
+              <input
+                type="email"
+                value={formData.email}
+                onChange={handleChange('email')}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Teléfono">
+              <input
+                type="tel"
+                value={formData.telefono}
+                onChange={handleChange('telefono')}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Contacto de Emergencia">
+              <input
+                type="text"
+                value={formData.contacto_emergencia}
+                onChange={handleChange('contacto_emergencia')}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Teléfono de Emergencia">
+              <input
+                type="tel"
+                value={formData.telefono_emergencia}
+                onChange={handleChange('telefono_emergencia')}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Dirección">
+              <input
+                type="text"
+                value={formData.direccion}
+                onChange={handleChange('direccion')}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Ciudad">
+              <input
+                type="text"
+                value={formData.ciudad}
+                onChange={handleChange('ciudad')}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Departamento (Geográfico)">
+              <input
+                type="text"
+                value={formData.departamento_residencia}
+                onChange={handleChange('departamento_residencia')}
+                className={inputClass}
+              />
+            </Field>
+          </div>
+        </Section>
+
+        {/* INFORMACIÓN LABORAL */}
+        <Section title="Información Laboral">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Cargo" required>
+              <select
+                value={formData.cargo_id}
+                onChange={handleChange('cargo_id')}
+                className={selectClass}
+                required
+              >
+                <option value="">Seleccionar cargo...</option>
+                {cargos.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nombre}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Departamento" required>
+              <select
+                value={formData.departamento_id}
+                onChange={handleChange('departamento_id')}
+                className={selectClass}
+                required
+              >
+                <option value="">Seleccionar...</option>
+                {departamentos.map((d) => (
+                  <option key={d.id} value={d.id}>{d.nombre}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Fecha de Ingreso" required>
+              <input
+                type="date"
+                value={formData.fecha_ingreso}
+                onChange={handleChange('fecha_ingreso')}
+                className={inputClass}
+                required
+              />
+            </Field>
+            <Field label="Tipo de Contrato">
+              <select
+                value={formData.tipo_contrato}
+                onChange={handleChange('tipo_contrato')}
+                className={selectClass}
+              >
+                <option value="">Seleccionar...</option>
+                <option value="indefinido">Término Indefinido</option>
+                <option value="fijo">Término Fijo</option>
+                <option value="obra_labor">Obra o Labor</option>
+                <option value="prestacion_servicios">Prestación de Servicios</option>
+                <option value="aprendizaje">Aprendizaje SENA</option>
+              </select>
+            </Field>
+            <Field label="Salario (COP)">
+              <input
+                type="number"
+                value={formData.salario}
+                onChange={handleChange('salario')}
+                className={inputClass}
+                placeholder="Ej: 2500000"
+              />
+            </Field>
+            <Field label="Estado" required>
+              <select
+                value={formData.estado}
+                onChange={handleChange('estado')}
+                className={selectClass}
+                required
+              >
+                <option value="activo">Activo</option>
+                <option value="inactivo">Inactivo</option>
+                <option value="vacaciones">En Vacaciones</option>
+                <option value="incapacidad">En Incapacidad</option>
+                <option value="retirado">Retirado</option>
+              </select>
+            </Field>
+          </div>
+        </Section>
+
+        {/* SEGURIDAD SOCIAL */}
+        <Section title="Seguridad Social">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="EPS">
+              <input
+                type="text"
+                value={formData.eps}
+                onChange={handleChange('eps')}
+                className={inputClass}
+                placeholder="Ej: Sura, Sanitas, Compensar"
+              />
+            </Field>
+            <Field label="ARL">
+              <input
+                type="text"
+                value={formData.arl}
+                onChange={handleChange('arl')}
+                className={inputClass}
+                placeholder="Ej: Sura, Positiva, Colmena"
+              />
+            </Field>
+            <Field label="Fondo de Pensiones (AFP)">
+              <input
+                type="text"
+                value={formData.afp}
+                onChange={handleChange('afp')}
+                className={inputClass}
+                placeholder="Ej: Porvenir, Protección, Colpensiones"
+              />
+            </Field>
+            <Field label="Caja de Compensación">
+              <input
+                type="text"
+                value={formData.caja_compensacion}
+                onChange={handleChange('caja_compensacion')}
+                className={inputClass}
+                placeholder="Ej: Compensar, Cafam, Colsubsidio"
+              />
+            </Field>
+          </div>
+        </Section>
+
+        {/* INFORMACIÓN BANCARIA */}
+        <Section title="Información Bancaria">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Field label="Banco">
+              <input
+                type="text"
+                value={formData.banco}
+                onChange={handleChange('banco')}
+                className={inputClass}
+                placeholder="Ej: Bancolombia, Davivienda"
+              />
+            </Field>
+            <Field label="Tipo de Cuenta">
+              <select
+                value={formData.tipo_cuenta}
+                onChange={handleChange('tipo_cuenta')}
+                className={selectClass}
+              >
+                <option value="">Seleccionar...</option>
+                <option value="ahorros">Ahorros</option>
+                <option value="corriente">Corriente</option>
+              </select>
+            </Field>
+            <Field label="Número de Cuenta">
+              <input
+                type="text"
+                value={formData.numero_cuenta}
+                onChange={handleChange('numero_cuenta')}
+                className={inputClass}
+              />
+            </Field>
+          </div>
+        </Section>
+
+        {/* INFORMACIÓN ADICIONAL */}
+        <Section title="Información Adicional">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Nivel Educativo">
+              <select
+                value={formData.nivel_educativo}
+                onChange={handleChange('nivel_educativo')}
+                className={selectClass}
+              >
+                <option value="">Seleccionar...</option>
+                <option value="primaria">Primaria</option>
+                <option value="bachiller">Bachiller</option>
+                <option value="tecnico">Técnico</option>
+                <option value="tecnologo">Tecnólogo</option>
+                <option value="profesional">Profesional</option>
+                <option value="especializacion">Especialización</option>
+                <option value="maestria">Maestría</option>
+                <option value="doctorado">Doctorado</option>
+              </select>
+            </Field>
+            <Field label="Profesión">
+              <input
+                type="text"
+                value={formData.profesion}
+                onChange={handleChange('profesion')}
+                className={inputClass}
+                placeholder="Ej: Ingeniero Mecánico"
+              />
+            </Field>
+            <div className="md:col-span-2">
+              <Field label="Observaciones">
+                <textarea
+                  value={formData.observaciones}
+                  onChange={handleChange('observaciones')}
+                  rows={4}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 text-sm resize-none"
+                  placeholder="Notas adicionales sobre el trabajador..."
+                />
+              </Field>
+            </div>
+          </div>
+        </Section>
+
+        {/* BOTONES */}
+        <div className="flex justify-end gap-4 pt-4">
           <Link
             href={`/trabajadores/${trabajadorId}`}
-            className="text-gray-400 hover:text-[#FFC107] text-sm mb-2 inline-block"
+            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm font-medium"
           >
-            ← Volver al detalle
+            Cancelar
           </Link>
-          <h1 className="text-3xl font-bold text-white">Editar Trabajador</h1>
-          <p className="text-gray-400 mt-1">
-            Actualiza la información del empleado
-          </p>
+          <button
+            type="submit"
+            disabled={guardando}
+            className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {guardando ? 'Guardando...' : 'Guardar Cambios'}
+          </button>
         </div>
+      </form>
+    </div>
+  );
+}
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-300">
-            {error}
-          </div>
-        )}
+// Componentes auxiliares
+function Section({ title, children }) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-200">
+        {title}
+      </h2>
+      {children}
+    </div>
+  );
+}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* SECCIÓN: IDENTIFICACIÓN */}
-          <section className="bg-[#212121] border border-gray-800 rounded-xl p-6">
-            <h2 className="text-xl font-semibold text-[#FFC107] mb-4">
-              📋 Identificación
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Campo label="Tipo de Documento" required>
-                <select
-                  value={formData.tipo_documento}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tipo_documento: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                  required
-                >
-                  <option value="CC">Cédula de Ciudadanía</option>
-                  <option value="CE">Cédula de Extranjería</option>
-                  <option value="PA">Pasaporte</option>
-                  <option value="TI">Tarjeta de Identidad</option>
-                </select>
-              </Campo>
-
-              <Campo label="Número de Documento" required>
-                <input
-                  type="text"
-                  value={formData.cedula}
-                  onChange={(e) =>
-                    setFormData({ ...formData, cedula: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                  required
-                />
-              </Campo>
-
-              <Campo label="Nombre" required>
-                <input
-                  type="text"
-                  value={formData.nombre}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nombre: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                  required
-                />
-              </Campo>
-
-              <Campo label="Primer Apellido" required>
-                <input
-                  type="text"
-                  value={formData.primer_apellido}
-                  onChange={(e) =>
-                    setFormData({ ...formData, primer_apellido: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                  required
-                />
-              </Campo>
-
-              <Campo label="Segundo Apellido">
-                <input
-                  type="text"
-                  value={formData.segundo_apellido}
-                  onChange={(e) =>
-                    setFormData({ ...formData, segundo_apellido: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                />
-              </Campo>
-
-              <Campo label="Fecha de Nacimiento">
-                <input
-                  type="date"
-                  value={formData.fecha_nacimiento}
-                  onChange={(e) =>
-                    setFormData({ ...formData, fecha_nacimiento: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                />
-              </Campo>
-
-              <Campo label="Género">
-                <select
-                  value={formData.genero}
-                  onChange={(e) =>
-                    setFormData({ ...formData, genero: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                >
-                  <option value="">Seleccionar...</option>
-                  <option value="masculino">Masculino</option>
-                  <option value="femenino">Femenino</option>
-                  <option value="otro">Otro</option>
-                </select>
-              </Campo>
-
-              <Campo label="Estado Civil">
-                <select
-                  value={formData.estado_civil}
-                  onChange={(e) =>
-                    setFormData({ ...formData, estado_civil: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                >
-                  <option value="">Seleccionar...</option>
-                  <option value="soltero">Soltero(a)</option>
-                  <option value="casado">Casado(a)</option>
-                  <option value="union_libre">Unión Libre</option>
-                  <option value="divorciado">Divorciado(a)</option>
-                  <option value="viudo">Viudo(a)</option>
-                </select>
-              </Campo>
-
-              <Campo label="Tipo de Sangre (RH)">
-                <select
-                  value={formData.rh}
-                  onChange={(e) =>
-                    setFormData({ ...formData, rh: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                >
-                  <option value="">Seleccionar...</option>
-                  <option value="O+">O+</option>
-                  <option value="O-">O-</option>
-                  <option value="A+">A+</option>
-                  <option value="A-">A-</option>
-                  <option value="B+">B+</option>
-                  <option value="B-">B-</option>
-                  <option value="AB+">AB+</option>
-                  <option value="AB-">AB-</option>
-                </select>
-              </Campo>
-            </div>
-          </section>
-
-          {/* SECCIÓN: CONTACTO */}
-          <section className="bg-[#212121] border border-gray-800 rounded-xl p-6">
-            <h2 className="text-xl font-semibold text-[#FFC107] mb-4">
-              📞 Información de Contacto
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Campo label="Email">
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                />
-              </Campo>
-
-              <Campo label="Teléfono">
-                <input
-                  type="tel"
-                  value={formData.telefono}
-                  onChange={(e) =>
-                    setFormData({ ...formData, telefono: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                />
-              </Campo>
-
-              <Campo label="Contacto de Emergencia">
-                <input
-                  type="text"
-                  value={formData.contacto_emergencia}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      contacto_emergencia: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                />
-              </Campo>
-
-              <Campo label="Teléfono de Emergencia">
-                <input
-                  type="tel"
-                  value={formData.telefono_emergencia}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      telefono_emergencia: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                />
-              </Campo>
-
-              <Campo label="Dirección">
-                <input
-                  type="text"
-                  value={formData.direccion}
-                  onChange={(e) =>
-                    setFormData({ ...formData, direccion: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                />
-              </Campo>
-
-              <Campo label="Ciudad">
-                <input
-                  type="text"
-                  value={formData.ciudad}
-                  onChange={(e) =>
-                    setFormData({ ...formData, ciudad: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                />
-              </Campo>
-
-              <Campo label="Departamento">
-                <input
-                  type="text"
-                  value={formData.departamento_residencia}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      departamento_residencia: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                />
-              </Campo>
-            </div>
-          </section>
-
-          {/* SECCIÓN: INFORMACIÓN LABORAL */}
-          <section className="bg-[#212121] border border-gray-800 rounded-xl p-6">
-            <h2 className="text-xl font-semibold text-[#FFC107] mb-4">
-              💼 Información Laboral
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Campo label="Cargo" required>
-                <select
-                  value={formData.cargo}
-                  onChange={(e) =>
-                    setFormData({ ...formData, cargo: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                  required
-                >
-                  <option value="">Seleccionar cargo...</option>
-                  <option value="Mecánico Industrial">Mecánico Industrial</option>
-                  <option value="Soldador">Soldador</option>
-                  <option value="Técnico Hidráulico">Técnico Hidráulico</option>
-                  <option value="Técnico Eléctrico">Técnico Eléctrico</option>
-                  <option value="Técnico Neumático">Técnico Neumático</option>
-                  <option value="Operador de Maquinaria">Operador de Maquinaria</option>
-                  <option value="Supervisor de Mantenimiento">Supervisor de Mantenimiento</option>
-                  <option value="Supervisor HSE">Supervisor HSE</option>
-                  <option value="Ingeniero Mecánico">Ingeniero Mecánico</option>
-                  <option value="Ingeniero Industrial">Ingeniero Industrial</option>
-                  <option value="Auxiliar de Mantenimiento">Auxiliar de Mantenimiento</option>
-                  <option value="Coordinador de Operaciones">Coordinador de Operaciones</option>
-                  <option value="Jefe de Taller">Jefe de Taller</option>
-                  <option value="Asistente Administrativo">Asistente Administrativo</option>
-                  <option value="Contador">Contador</option>
-                  <option value="Gerente">Gerente</option>
-                </select>
-              </Campo>
-
-              <Campo label="Departamento" required>
-                <select
-                  value={formData.departamento}
-                  onChange={(e) =>
-                    setFormData({ ...formData, departamento: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                  required
-                >
-                  <option value="">Seleccionar...</option>
-                  <option value="Mantenimiento">Mantenimiento</option>
-                  <option value="Operaciones">Operaciones</option>
-                  <option value="Taller">Taller</option>
-                  <option value="HSE">HSE (Seguridad y Salud)</option>
-                  <option value="Administración">Administración</option>
-                  <option value="Comercial">Comercial</option>
-                  <option value="Contabilidad">Contabilidad</option>
-                  <option value="Gerencia">Gerencia</option>
-                </select>
-              </Campo>
-
-              <Campo label="Fecha de Ingreso" required>
-                <input
-                  type="date"
-                  value={formData.fecha_ingreso}
-                  onChange={(e) =>
-                    setFormData({ ...formData, fecha_ingreso: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                  required
-                />
-              </Campo>
-
-              <Campo label="Tipo de Contrato">
-                <select
-                  value={formData.tipo_contrato}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tipo_contrato: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                >
-                  <option value="">Seleccionar...</option>
-                  <option value="indefinido">Término Indefinido</option>
-                  <option value="fijo">Término Fijo</option>
-                  <option value="obra_labor">Obra o Labor</option>
-                  <option value="prestacion_servicios">Prestación de Servicios</option>
-                  <option value="aprendizaje">Aprendizaje SENA</option>
-                </select>
-              </Campo>
-
-              <Campo label="Salario (COP)">
-                <input
-                  type="number"
-                  value={formData.salario}
-                  onChange={(e) =>
-                    setFormData({ ...formData, salario: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                  placeholder="Ej: 2500000"
-                />
-              </Campo>
-
-              <Campo label="Estado" required>
-                <select
-                  value={formData.estado}
-                  onChange={(e) =>
-                    setFormData({ ...formData, estado: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                  required
-                >
-                  <option value="activo">Activo</option>
-                  <option value="inactivo">Inactivo</option>
-                  <option value="vacaciones">En Vacaciones</option>
-                  <option value="incapacidad">En Incapacidad</option>
-                  <option value="retirado">Retirado</option>
-                </select>
-              </Campo>
-            </div>
-          </section>
-
-          {/* SECCIÓN: SEGURIDAD SOCIAL */}
-          <section className="bg-[#212121] border border-gray-800 rounded-xl p-6">
-            <h2 className="text-xl font-semibold text-[#FFC107] mb-4">
-              🏥 Seguridad Social
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Campo label="EPS">
-                <input
-                  type="text"
-                  value={formData.eps}
-                  onChange={(e) =>
-                    setFormData({ ...formData, eps: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                  placeholder="Ej: Sura, Sanitas, Compensar"
-                />
-              </Campo>
-
-              <Campo label="ARL">
-                <input
-                  type="text"
-                  value={formData.arl}
-                  onChange={(e) =>
-                    setFormData({ ...formData, arl: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                  placeholder="Ej: Sura, Positiva, Colmena"
-                />
-              </Campo>
-
-              <Campo label="Fondo de Pensiones (AFP)">
-                <input
-                  type="text"
-                  value={formData.afp}
-                  onChange={(e) =>
-                    setFormData({ ...formData, afp: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                  placeholder="Ej: Porvenir, Protección, Colpensiones"
-                />
-              </Campo>
-
-              <Campo label="Caja de Compensación">
-                <input
-                  type="text"
-                  value={formData.caja_compensacion}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      caja_compensacion: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                  placeholder="Ej: Compensar, Cafam, Colsubsidio"
-                />
-              </Campo>
-            </div>
-          </section>
-
-          {/* SECCIÓN: INFORMACIÓN BANCARIA */}
-          <section className="bg-[#212121] border border-gray-800 rounded-xl p-6">
-            <h2 className="text-xl font-semibold text-[#FFC107] mb-4">
-              🏦 Información Bancaria
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Campo label="Banco">
-                <input
-                  type="text"
-                  value={formData.banco}
-                  onChange={(e) =>
-                    setFormData({ ...formData, banco: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                  placeholder="Ej: Bancolombia, Davivienda"
-                />
-              </Campo>
-
-              <Campo label="Tipo de Cuenta">
-                <select
-                  value={formData.tipo_cuenta}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tipo_cuenta: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                >
-                  <option value="">Seleccionar...</option>
-                  <option value="ahorros">Ahorros</option>
-                  <option value="corriente">Corriente</option>
-                </select>
-              </Campo>
-
-              <Campo label="Número de Cuenta">
-                <input
-                  type="text"
-                  value={formData.numero_cuenta}
-                  onChange={(e) =>
-                    setFormData({ ...formData, numero_cuenta: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                />
-              </Campo>
-            </div>
-          </section>
-
-          {/* SECCIÓN: INFORMACIÓN ADICIONAL */}
-          <section className="bg-[#212121] border border-gray-800 rounded-xl p-6">
-            <h2 className="text-xl font-semibold text-[#FFC107] mb-4">
-              📚 Información Adicional
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Campo label="Nivel Educativo">
-                <select
-                  value={formData.nivel_educativo}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      nivel_educativo: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                >
-                  <option value="">Seleccionar...</option>
-                  <option value="primaria">Primaria</option>
-                  <option value="bachiller">Bachiller</option>
-                  <option value="tecnico">Técnico</option>
-                  <option value="tecnologo">Tecnólogo</option>
-                  <option value="profesional">Profesional</option>
-                  <option value="especializacion">Especialización</option>
-                  <option value="maestria">Maestría</option>
-                  <option value="doctorado">Doctorado</option>
-                </select>
-              </Campo>
-
-              <Campo label="Profesión">
-                <input
-                  type="text"
-                  value={formData.profesion}
-                  onChange={(e) =>
-                    setFormData({ ...formData, profesion: e.target.value })
-                  }
-                  className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none"
-                  placeholder="Ej: Ingeniero Mecánico"
-                />
-              </Campo>
-
-              <div className="md:col-span-2">
-                <Campo label="Observaciones">
-                  <textarea
-                    value={formData.observaciones}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        observaciones: e.target.value,
-                      })
-                    }
-                    rows={4}
-                    className="w-full px-4 py-2 bg-[#1A1A1A] border border-gray-700 rounded-lg text-white focus:border-[#FFC107] focus:outline-none resize-none"
-                    placeholder="Notas adicionales sobre el trabajador..."
-                  />
-                </Campo>
-              </div>
-            </div>
-          </section>
-
-          {/* BOTONES */}
-          <div className="flex justify-end gap-4 pt-4">
-            <Link
-              href={`/trabajadores/${trabajadorId}`}
-              className="px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition"
-            >
-              Cancelar
-            </Link>
-            <button
-              type="submit"
-              disabled={guardando}
-              className="px-6 py-2 bg-[#FFC107] text-[#1A1A1A] font-semibold rounded-lg hover:bg-[#FFD54F] transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {guardando ? 'Guardando...' : '💾 Guardar Cambios'}
-            </button>
-          </div>
-        </form>
-      </div>
+function Field({ label, children, required }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      {children}
     </div>
   );
 }

@@ -9,10 +9,9 @@ import {
   LayoutDashboard,
   Users,
   Wrench,
-  FileText,
   Bell,
-  FileSpreadsheet,
-  Package,
+  MapPin,
+  CalendarDays,
   Megaphone,
 } from 'lucide-react';
 
@@ -20,14 +19,13 @@ const menuItems = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Trabajadores', href: '/trabajadores', icon: Users },
   { label: 'Maquinaria', href: '/maquinaria', icon: Wrench },
-  { label: 'Documentos', href: '/documentos', icon: FileText },
+  { label: 'Ubicación', href: '/ubicacion', icon: MapPin },
+  { label: 'Calendario', href: '/calendario', icon: CalendarDays },
   { label: 'Alertas', href: '/alertas', icon: Bell, showBadge: true },
-  { label: 'Cotizaciones', href: '/cotizaciones', icon: FileSpreadsheet },
-  { label: 'Productos', href: '/productos', icon: Package },
   { label: 'Anuncios', href: '/anuncios', icon: Megaphone },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen }) {
   const pathname = usePathname();
   const [alertCount, setAlertCount] = useState(0);
 
@@ -38,26 +36,22 @@ export default function Sidebar() {
   }, []);
 
   const fetchAlertCount = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('documentos')
-      .select('id, fecha_vencimiento');
+    try {
+      const { data, error } = await supabase
+        .from('vw_alertas_documentos')
+        .select('estado_alerta');
 
-    if (error) throw error;
+      if (error) throw error;
 
-    const hoy = new Date();
-    const count = (data || []).filter((doc) => {
-      if (!doc.fecha_vencimiento) return false;
-      const venc = new Date(doc.fecha_vencimiento);
-      const dias = Math.ceil((venc - hoy) / (1000 * 60 * 60 * 24));
-      return dias <= 7;
-    }).length;
+      const count = (data || []).filter(
+        (a) => a.estado_alerta && a.estado_alerta !== 'VIGENTE'
+      ).length;
 
-    setAlertCount(count);
-  } catch (err) {
-    console.error('Error fetching alert count:', err);
-  }
-};
+      setAlertCount(count);
+    } catch (err) {
+      console.error('Error fetching alert count:', err);
+    }
+  };
 
 
   const isActive = (href) => {
@@ -71,6 +65,9 @@ export default function Sidebar() {
       style={{
         backgroundColor: '#1A1A1A',
         borderColor: '#2D2D2D',
+        transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.3s ease',
+        visibility: isOpen ? 'visible' : 'hidden',
       }}
     >
       {/* Logo y nombre */}

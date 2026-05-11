@@ -17,6 +17,7 @@ import {
   Eye,
   Pencil,
   ImageOff,
+  FileDown,
 } from 'lucide-react';
 
 export default function MaquinariaPage() {
@@ -106,6 +107,35 @@ export default function MaquinariaPage() {
     };
   }, [maquinaria]);
 
+  async function exportarPDF() {
+    if (typeof window === 'undefined') return
+    const { default: jsPDF } = await import('jspdf')
+    const { default: autoTable } = await import('jspdf-autotable')
+
+    const doc = new jsPDF({ orientation: 'landscape' })
+    doc.setFontSize(16)
+    doc.text('Maquinaria - Serviequipos', 14, 15)
+    doc.setFontSize(10)
+    doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')}`, 14, 22)
+
+    autoTable(doc, {
+      startY: 28,
+      head: [['Código', 'Nombre', 'Tipo', 'Marca / Modelo', 'Placa', 'Estado']],
+      body: maquinariaFiltrada.map((m) => [
+        m.codigo_interno || '',
+        m.nombre || '',
+        m.tipos_maquinaria?.nombre || '',
+        [m.marca, m.modelo].filter(Boolean).join(' / '),
+        m.placa || '',
+        ESTADOS_MAQUINARIA[m.estado]?.label || m.estado || '',
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [26, 26, 26] },
+    })
+
+    doc.save(`maquinaria_${new Date().toISOString().split('T')[0]}.pdf`)
+  }
+
   function limpiarFiltros() {
     setSearch('');
     setFiltroEstado('');
@@ -142,13 +172,24 @@ export default function MaquinariaPage() {
             Gestión de equipos y maquinaria pesada
           </p>
         </div>
-        <Link
-          href="/maquinaria/nuevo"
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition"
-        >
-          <Plus className="h-4 w-4" />
-          Nueva Maquinaria
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportarPDF}
+            disabled={maquinariaFiltrada.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Exportar a PDF"
+          >
+            <FileDown className="h-4 w-4" />
+            <span className="hidden sm:inline">Exportar PDF</span>
+          </button>
+          <Link
+            href="/maquinaria/nuevo"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition"
+          >
+            <Plus className="h-4 w-4" />
+            Nueva Maquinaria
+          </Link>
+        </div>
       </div>
 
       {/* Tarjetas de resumen */}

@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import { Upload, FileText, Download, Trash2, Calendar, AlertTriangle, X, Plus } from 'lucide-react';
 
 export default function TabDocumentos({ trabajadorId }) {
+  const supabase = createClient();
   const [documentos, setDocumentos] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,22 +30,15 @@ export default function TabDocumentos({ trabajadorId }) {
     try {
       setLoading(true);
 
-      // Cargar tipos de documento (sin filtro activo por si la columna falla)
       const { data: tipos, error: tiposError } = await supabase
         .from('tipos_documentos_trabajador')
         .select('id, nombre, requiere_vencimiento, obligatorio')
         .eq('activo', true)
         .order('nombre');
 
-      if (tiposError) {
-        console.error('❌ Error cargando tipos:', tiposError);
-        throw tiposError;
-      }
-
-      console.log('✅ Tipos de documento cargados:', tipos?.length || 0);
+      if (tiposError) throw tiposError;
       setTiposDocumento(tipos || []);
 
-      // Cargar documentos del trabajador con JOIN
       const { data: docs, error: docsError } = await supabase
         .from('documentos_trabajadores')
         .select(`
@@ -58,16 +52,10 @@ export default function TabDocumentos({ trabajadorId }) {
         .eq('trabajador_id', trabajadorId)
         .order('created_at', { ascending: false });
 
-      if (docsError) {
-        console.error('❌ Error cargando documentos:', docsError);
-        throw docsError;
-      }
-
-      console.log('✅ Documentos cargados:', docs?.length || 0);
+      if (docsError) throw docsError;
       setDocumentos(docs || []);
     } catch (error) {
-      console.error('Error:', error);
-      alert('Error al cargar documentos: ' + error.message);
+      console.error('Error cargando documentos:', error);
     } finally {
       setLoading(false);
     }
@@ -95,7 +83,6 @@ export default function TabDocumentos({ trabajadorId }) {
     let filePath = null;
 
     try {
-      // 1. Subir archivo a Storage
       const fileExt = formData.archivo.name.split('.').pop();
       const fileName = `${trabajadorId}/${Date.now()}.${fileExt}`;
       filePath = fileName;
@@ -106,7 +93,6 @@ export default function TabDocumentos({ trabajadorId }) {
 
       if (uploadError) throw uploadError;
 
-      // 2. Insertar registro en BD
       const { error: dbError } = await supabase
         .from('documentos_trabajadores')
         .insert([{
@@ -120,12 +106,11 @@ export default function TabDocumentos({ trabajadorId }) {
         }]);
 
       if (dbError) {
-        // Rollback: eliminar archivo si falla la BD
         await supabase.storage.from('documentos-trabajadores').remove([fileName]);
         throw dbError;
       }
 
-      alert('✅ Documento subido correctamente');
+      alert('Documento subido correctamente');
       setShowModal(false);
       setFormData({
         tipo_documento_id: '',
@@ -161,14 +146,12 @@ export default function TabDocumentos({ trabajadorId }) {
     if (!confirm('¿Eliminar este documento?')) return;
 
     try {
-      // Eliminar archivo de storage
       if (doc.archivo_url) {
         await supabase.storage
           .from('documentos-trabajadores')
           .remove([doc.archivo_url]);
       }
 
-      // Eliminar registro de BD
       const { error } = await supabase
         .from('documentos_trabajadores')
         .delete()
@@ -176,7 +159,6 @@ export default function TabDocumentos({ trabajadorId }) {
 
       if (error) throw error;
 
-      alert('✅ Documento eliminado');
       cargarDatos();
     } catch (error) {
       alert('Error al eliminar: ' + error.message);
@@ -197,7 +179,7 @@ export default function TabDocumentos({ trabajadorId }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
       </div>
     );
   }
@@ -207,27 +189,27 @@ export default function TabDocumentos({ trabajadorId }) {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold text-white">Documentos del Trabajador</h3>
-          <p className="text-sm text-gray-400">{documentos.length} documento(s) registrado(s)</p>
+          <h3 className="text-lg font-semibold text-gray-900">Documentos del Trabajador</h3>
+          <p className="text-sm text-gray-500">{documentos.length} documento(s) registrado(s)</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-yellow-400 text-black rounded-lg font-medium hover:bg-yellow-500 transition"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
         >
-          <Plus size={18} />
+          <Plus size={16} />
           Subir Documento
         </button>
       </div>
 
       {/* Lista de documentos */}
       {documentos.length === 0 ? (
-        <div className="text-center py-12 bg-gray-800 rounded-lg border border-gray-700">
-          <FileText className="mx-auto text-gray-600 mb-3" size={48} />
-          <p className="text-gray-400">No hay documentos registrados</p>
-          <p className="text-sm text-gray-500 mt-1">Sube el primer documento usando el botón superior</p>
+        <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+          <FileText className="mx-auto text-gray-300 mb-3" size={48} />
+          <p className="text-gray-500 font-medium">No hay documentos registrados</p>
+          <p className="text-sm text-gray-400 mt-1">Sube el primer documento usando el botón superior</p>
         </div>
       ) : (
-        <div className="grid gap-3">
+        <div className="space-y-3">
           {documentos.map((doc) => {
             const estadoVenc = calcularEstadoVencimiento(doc.fecha_vencimiento);
             const tipoNombre = doc.tipos_documentos_trabajador?.nombre || 'Sin tipo';
@@ -235,19 +217,19 @@ export default function TabDocumentos({ trabajadorId }) {
             return (
               <div
                 key={doc.id}
-                className="bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-yellow-400/50 transition"
+                className="bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3 flex-1">
-                    <div className="bg-yellow-400/10 p-2 rounded-lg">
-                      <FileText className="text-yellow-400" size={20} />
+                    <div className="bg-blue-50 p-2 rounded-lg">
+                      <FileText className="text-blue-600" size={20} />
                     </div>
                     <div className="flex-1">
-                      <h4 className="text-white font-medium">{tipoNombre}</h4>
+                      <h4 className="text-gray-900 font-medium">{tipoNombre}</h4>
                       {doc.numero_documento && (
-                        <p className="text-sm text-gray-400 mt-1">N°: {doc.numero_documento}</p>
+                        <p className="text-sm text-gray-500 mt-1">N°: {doc.numero_documento}</p>
                       )}
-                      <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-400">
+                      <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
                         {doc.fecha_emision && (
                           <span className="flex items-center gap-1">
                             <Calendar size={12} />
@@ -265,10 +247,10 @@ export default function TabDocumentos({ trabajadorId }) {
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium mt-2 ${
                             estadoVenc.color === 'red'
-                              ? 'bg-red-500/20 text-red-400'
+                              ? 'bg-red-50 text-red-700 border border-red-200'
                               : estadoVenc.color === 'yellow'
-                              ? 'bg-yellow-500/20 text-yellow-400'
-                              : 'bg-green-500/20 text-green-400'
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : 'bg-green-50 text-green-700 border border-green-200'
                           }`}
                         >
                           {estadoVenc.color !== 'green' && <AlertTriangle size={12} />}
@@ -276,21 +258,21 @@ export default function TabDocumentos({ trabajadorId }) {
                         </span>
                       )}
                       {doc.observaciones && (
-                        <p className="text-xs text-gray-500 mt-2 italic">{doc.observaciones}</p>
+                        <p className="text-xs text-gray-400 mt-2 italic">{doc.observaciones}</p>
                       )}
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleDescargar(doc.archivo_url)}
-                      className="p-2 bg-gray-700 text-yellow-400 rounded-lg hover:bg-gray-600 transition"
+                      className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition"
                       title="Descargar"
                     >
                       <Download size={16} />
                     </button>
                     <button
                       onClick={() => handleEliminar(doc)}
-                      className="p-2 bg-gray-700 text-red-400 rounded-lg hover:bg-gray-600 transition"
+                      className="p-2 bg-gray-100 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 transition"
                       title="Eliminar"
                     >
                       <Trash2 size={16} />
@@ -305,27 +287,27 @@ export default function TabDocumentos({ trabajadorId }) {
 
       {/* Modal Subir Documento */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 border border-gray-700 rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-gray-700">
-              <h3 className="text-lg font-semibold text-white">Subir Documento</h3>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-gray-200 rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Subir Documento</h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-white"
+                className="text-gray-400 hover:text-gray-600"
               >
                 <X size={20} />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Tipo de Documento *
                 </label>
                 <select
                   required
                   value={formData.tipo_documento_id}
                   onChange={(e) => setFormData({ ...formData, tipo_documento_id: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-400"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Seleccione un tipo</option>
                   {tiposDocumento.map((tipo) => (
@@ -337,57 +319,57 @@ export default function TabDocumentos({ trabajadorId }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Número de Documento
                 </label>
                 <input
                   type="text"
                   value={formData.numero_documento}
                   onChange={(e) => setFormData({ ...formData, numero_documento: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-400"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Opcional"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Fecha Emisión
                   </label>
                   <input
                     type="date"
                     value={formData.fecha_emision}
                     onChange={(e) => setFormData({ ...formData, fecha_emision: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-400"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Fecha Vencimiento
                   </label>
                   <input
                     type="date"
                     value={formData.fecha_vencimiento}
                     onChange={(e) => setFormData({ ...formData, fecha_vencimiento: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-400"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Observaciones
                 </label>
                 <textarea
                   value={formData.observaciones}
                   onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
                   rows="2"
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-400"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Archivo * (máx. 10MB)
                 </label>
                 <input
@@ -395,7 +377,7 @@ export default function TabDocumentos({ trabajadorId }) {
                   required
                   onChange={handleFileChange}
                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-yellow-400 file:text-black file:font-medium"
+                  className="w-full text-sm text-gray-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white file:text-sm file:font-medium file:cursor-pointer hover:file:bg-blue-700"
                 />
               </div>
 
@@ -403,7 +385,7 @@ export default function TabDocumentos({ trabajadorId }) {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm font-medium"
                   disabled={uploading}
                 >
                   Cancelar
@@ -411,11 +393,11 @@ export default function TabDocumentos({ trabajadorId }) {
                 <button
                   type="submit"
                   disabled={uploading}
-                  className="flex-1 px-4 py-2 bg-yellow-400 text-black rounded-lg font-medium hover:bg-yellow-500 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {uploading ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       Subiendo...
                     </>
                   ) : (

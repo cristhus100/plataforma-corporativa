@@ -1,17 +1,25 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import { getNombreCompleto } from '@/lib/utils/trabajador';
 import TabDocumentos from './components/TabDocumentos';
+
+const TABS = [
+  { id: 'informacion', label: 'Información Personal' },
+  { id: 'laboral', label: 'Información Laboral' },
+  { id: 'documentos', label: 'Documentos' },
+  { id: 'historial', label: 'Historial' },
+];
 
 export default function DetalleTrabajadorPage() {
   const params = useParams();
   const router = useRouter();
+  const supabase = createClient();
   const trabajadorId = params.id;
 
   const [trabajador, setTrabajador] = useState(null);
@@ -19,7 +27,7 @@ export default function DetalleTrabajadorPage() {
   const [error, setError] = useState(null);
   const [tabActivo, setTabActivo] = useState('informacion');
 
-  // 🆕 Estados para eliminación
+  // Estados para eliminación
   const [mostrarModal, setMostrarModal] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const [errorEliminar, setErrorEliminar] = useState(null);
@@ -54,13 +62,11 @@ export default function DetalleTrabajadorPage() {
     }
   };
 
-  // 🆕 Función para eliminar trabajador permanentemente
   const handleEliminar = async () => {
     setEliminando(true);
     setErrorEliminar(null);
 
     try {
-      // 1. Eliminar archivos del Storage (documentos)
       const { data: archivos } = await supabase.storage
         .from('documentos-trabajadores')
         .list(trabajadorId);
@@ -74,19 +80,16 @@ export default function DetalleTrabajadorPage() {
           .remove(rutasArchivos);
       }
 
-      // 2. Eliminar registros del historial
       await supabase
         .from('historial_trabajadores')
         .delete()
         .eq('trabajador_id', trabajadorId);
 
-      // 3. Eliminar registros de documentos (tabla)
       await supabase
         .from('documentos_trabajadores')
         .delete()
         .eq('trabajador_id', trabajadorId);
 
-      // 4. Eliminar el trabajador
       const { error: errorDelete } = await supabase
         .from('trabajadores')
         .delete()
@@ -94,7 +97,6 @@ export default function DetalleTrabajadorPage() {
 
       if (errorDelete) throw errorDelete;
 
-      // 5. Redirigir a la lista
       router.push('/trabajadores');
       router.refresh();
     } catch (err) {
@@ -145,58 +147,45 @@ export default function DetalleTrabajadorPage() {
     return { años, meses };
   };
 
-  const getEstadoColor = (estado) => {
-    const colores = {
-      activo: { bg: '#1B5E20', color: '#A5D6A7' },
-      inactivo: { bg: '#424242', color: '#BDBDBD' },
-      vacaciones: { bg: '#1565C0', color: '#90CAF9' },
-      incapacidad: { bg: '#E65100', color: '#FFCC80' },
-      retirado: { bg: '#B71C1C', color: '#EF9A9A' },
+  const getEstadoBadge = (estado) => {
+    const config = {
+      activo: { badge: 'border-green-200 bg-green-50 text-green-700', dot: 'bg-green-500', label: 'Activo' },
+      inactivo: { badge: 'border-gray-200 bg-gray-100 text-gray-700', dot: 'bg-gray-400', label: 'Inactivo' },
+      vacaciones: { badge: 'border-blue-200 bg-blue-50 text-blue-700', dot: 'bg-blue-500', label: 'Vacaciones' },
+      incapacidad: { badge: 'border-orange-200 bg-orange-50 text-orange-700', dot: 'bg-orange-500', label: 'Incapacidad' },
+      retirado: { badge: 'border-red-200 bg-red-50 text-red-700', dot: 'bg-red-500', label: 'Retirado' },
     };
-    return colores[estado] || { bg: '#424242', color: '#BDBDBD' };
+    return config[estado] || config.inactivo;
   };
 
   if (loading) {
     return (
-      <div style={{ padding: '40px', color: '#F5F5F5', textAlign: 'center' }}>
-        <p>Cargando información del trabajador...</p>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando información...</p>
+        </div>
       </div>
     );
   }
 
   if (error || !trabajador) {
     return (
-      <div style={{ padding: '40px', color: '#F5F5F5' }}>
-        <div
-          style={{
-            backgroundColor: '#B71C1C',
-            padding: '20px',
-            borderRadius: '8px',
-            marginBottom: '20px',
-          }}
-        >
-          <h2 style={{ marginBottom: '10px' }}>Error al cargar el trabajador</h2>
-          <p>{error || 'No se encontró el trabajador solicitado'}</p>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Trabajador no encontrado</p>
+          <Link
+            href="/trabajadores"
+            className="text-gray-900 underline hover:text-gray-700"
+          >
+            Volver al listado
+          </Link>
         </div>
-        <Link
-          href="/trabajadores"
-          style={{
-            display: 'inline-block',
-            padding: '10px 20px',
-            backgroundColor: '#FFC107',
-            color: '#1A1A1A',
-            textDecoration: 'none',
-            borderRadius: '6px',
-            fontWeight: '600',
-          }}
-        >
-          ← Volver a Trabajadores
-        </Link>
       </div>
     );
   }
 
-  const estadoStyle = getEstadoColor(trabajador.estado);
+  const estado = getEstadoBadge(trabajador.estado || (trabajador.activo ? 'activo' : 'inactivo'));
   const edad = calcularEdad(trabajador.fecha_nacimiento);
   const antiguedad = calcularAntiguedad(trabajador.fecha_ingreso);
   const nombreCompleto = getNombreCompleto(trabajador);
@@ -204,264 +193,46 @@ export default function DetalleTrabajadorPage() {
   const deptoNombre = trabajador.departamento_area?.nombre || trabajador.departamento_legacy || null;
 
   return (
-    <div style={{ padding: '30px', color: '#F5F5F5' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '30px' }}>
-        <Link
-          href="/trabajadores"
-          style={{
-            color: '#FFC107',
-            textDecoration: 'none',
-            fontSize: '14px',
-            marginBottom: '15px',
-            display: 'inline-block',
-          }}
-        >
-          ← Volver a Trabajadores
-        </Link>
-
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            flexWrap: 'wrap',
-            gap: '15px',
-          }}
-        >
-          <div>
-            <h1 style={{ fontSize: '28px', marginBottom: '8px', color: '#FFC107' }}>
-              {nombreCompleto}
-            </h1>
-            <p style={{ color: '#BDBDBD', fontSize: '16px' }}>
-              {cargoNombre || 'Sin cargo asignado'}
-              {deptoNombre && ` · ${deptoNombre}`}
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span
-              style={{
-                padding: '6px 14px',
-                borderRadius: '20px',
-                backgroundColor: estadoStyle.bg,
-                color: estadoStyle.color,
-                fontSize: '13px',
-                fontWeight: '600',
-                textTransform: 'uppercase',
-              }}
-            >
-              {trabajador.estado || (trabajador.activo ? 'activo' : 'inactivo')}
-            </span>
-
-            <Link
-              href={`/trabajadores/${trabajadorId}/editar`}
-              style={{
-                padding: '10px 18px',
-                backgroundColor: '#FFC107',
-                color: '#1A1A1A',
-                textDecoration: 'none',
-                borderRadius: '6px',
-                fontWeight: '600',
-                fontSize: '14px',
-              }}
-            >
-              ✏️ Editar
-            </Link>
-
-            {/* 🆕 Botón Eliminar */}
-            <button
-              onClick={() => setMostrarModal(true)}
-              style={{
-                padding: '10px 18px',
-                backgroundColor: '#B71C1C',
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: '6px',
-                fontWeight: '600',
-                fontSize: '14px',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-              }}
-              onMouseEnter={(e) => (e.target.style.backgroundColor = '#D32F2F')}
-              onMouseLeave={(e) => (e.target.style.backgroundColor = '#B71C1C')}
-            >
-              🗑️ Eliminar
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '5px',
-          borderBottom: '2px solid #424242',
-          marginBottom: '25px',
-          flexWrap: 'wrap',
-        }}
-      >
-        {[
-          { id: 'informacion', label: '👤 Información Personal' },
-          { id: 'laboral', label: '💼 Información Laboral' },
-          { id: 'documentos', label: '📄 Documentos' },
-          { id: 'historial', label: '📋 Historial' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setTabActivo(tab.id)}
-            style={{
-              padding: '12px 20px',
-              backgroundColor: tabActivo === tab.id ? '#FFC107' : 'transparent',
-              color: tabActivo === tab.id ? '#1A1A1A' : '#F5F5F5',
-              border: 'none',
-              borderRadius: '8px 8px 0 0',
-              cursor: 'pointer',
-              fontWeight: tabActivo === tab.id ? '600' : '400',
-              fontSize: '14px',
-              transition: 'all 0.2s',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Contenido de los Tabs */}
-      <div
-        style={{
-          backgroundColor: '#212121',
-          padding: '25px',
-          borderRadius: '8px',
-          minHeight: '400px',
-        }}
-      >
-        {tabActivo === 'informacion' && (
-          <TabInformacion
-            trabajador={trabajador}
-            edad={edad}
-            formatearFecha={formatearFecha}
-            nombreCompleto={nombreCompleto}
-          />
-        )}
-
-        {tabActivo === 'laboral' && (
-          <TabLaboral
-            trabajador={trabajador}
-            antiguedad={antiguedad}
-            formatearFecha={formatearFecha}
-            formatearMoneda={formatearMoneda}
-            cargoNombre={cargoNombre}
-            deptoNombre={deptoNombre}
-          />
-        )}
-
-        {tabActivo === 'documentos' && (
-          <TabDocumentos trabajadorId={trabajadorId} />
-        )}
-
-        {tabActivo === 'historial' && <TabHistorial trabajadorId={trabajadorId} />}
-      </div>
-
-      {/* 🆕 MODAL DE CONFIRMACIÓN DE ELIMINACIÓN */}
+    <div className="space-y-6">
+      {/* MODAL DE ELIMINACIÓN */}
       {mostrarModal && (
         <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '20px',
-          }}
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
           onClick={() => !eliminando && setMostrarModal(false)}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: '#212121',
-              border: '2px solid #B71C1C',
-              borderRadius: '12px',
-              padding: '30px',
-              maxWidth: '500px',
-              width: '100%',
-              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
-            }}
+            className="bg-white rounded-lg border border-red-200 shadow-xl max-w-md w-full p-6"
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-              <div
-                style={{
-                  fontSize: '32px',
-                  width: '50px',
-                  height: '50px',
-                  borderRadius: '50%',
-                  backgroundColor: '#B71C1C',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                ⚠️
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                <span className="text-lg">⚠️</span>
               </div>
-              <h2 style={{ fontSize: '22px', color: '#F5F5F5', margin: 0 }}>
-                Eliminar Trabajador
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-900">Eliminar Trabajador</h2>
             </div>
 
-            <div
-              style={{
-                backgroundColor: '#1A1A1A',
-                padding: '15px',
-                borderRadius: '6px',
-                borderLeft: '3px solid #B71C1C',
-                marginBottom: '20px',
-              }}
-            >
-              <p style={{ color: '#F5F5F5', fontSize: '15px', marginBottom: '10px' }}>
-                Estás a punto de eliminar <strong style={{ color: '#FFC107' }}>permanentemente</strong> a:
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-red-800 mb-2">
+                Estás a punto de eliminar <strong>permanentemente</strong> a:
               </p>
-              <p style={{ color: '#FFC107', fontSize: '17px', fontWeight: '600', marginBottom: '10px' }}>
-                {nombreCompleto}
-              </p>
-              <p style={{ color: '#BDBDBD', fontSize: '13px' }}>
-                Cédula: {trabajador.cedula || 'No registrada'}
-              </p>
+              <p className="text-base font-semibold text-red-900">{nombreCompleto}</p>
+              {trabajador.cedula && (
+                <p className="text-sm text-red-700 mt-1">Cédula: {trabajador.cedula}</p>
+              )}
             </div>
 
-            <div
-              style={{
-                backgroundColor: '#3E2723',
-                padding: '12px',
-                borderRadius: '6px',
-                marginBottom: '20px',
-              }}
-            >
-              <p style={{ color: '#FFCDD2', fontSize: '13px', margin: 0 }}>
-                ⚠️ <strong>Esta acción NO se puede deshacer.</strong> Se eliminarán:
-              </p>
-              <ul style={{ color: '#FFCDD2', fontSize: '13px', marginTop: '8px', paddingLeft: '20px' }}>
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+              <p className="text-sm font-medium text-orange-800 mb-2">⚠️ Esta acción NO se puede deshacer. Se eliminarán:</p>
+              <ul className="text-sm text-orange-700 list-disc list-inside space-y-1">
                 <li>Datos personales y laborales</li>
                 <li>Documentos cargados</li>
                 <li>Historial de cambios</li>
               </ul>
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label
-                style={{
-                  display: 'block',
-                  color: '#BDBDBD',
-                  fontSize: '13px',
-                  marginBottom: '8px',
-                }}
-              >
-                Para confirmar, escribe <strong style={{ color: '#FFC107' }}>ELIMINAR</strong>:
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Para confirmar, escribe <strong>ELIMINAR</strong>:
               </label>
               <input
                 type="text"
@@ -469,36 +240,17 @@ export default function DetalleTrabajadorPage() {
                 onChange={(e) => setConfirmacionTexto(e.target.value)}
                 disabled={eliminando}
                 placeholder="Escribe ELIMINAR"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  backgroundColor: '#1A1A1A',
-                  border: '1px solid #424242',
-                  borderRadius: '6px',
-                  color: '#F5F5F5',
-                  fontSize: '14px',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
               />
             </div>
 
             {errorEliminar && (
-              <div
-                style={{
-                  backgroundColor: '#B71C1C',
-                  color: '#FFFFFF',
-                  padding: '10px 14px',
-                  borderRadius: '6px',
-                  marginBottom: '15px',
-                  fontSize: '13px',
-                }}
-              >
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700">
                 {errorEliminar}
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+            <div className="flex gap-2 justify-end">
               <button
                 onClick={() => {
                   setMostrarModal(false);
@@ -506,47 +258,121 @@ export default function DetalleTrabajadorPage() {
                   setErrorEliminar(null);
                 }}
                 disabled={eliminando}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: 'transparent',
-                  color: '#F5F5F5',
-                  border: '1px solid #424242',
-                  borderRadius: '6px',
-                  cursor: eliminando ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  opacity: eliminando ? 0.5 : 1,
-                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleEliminar}
                 disabled={eliminando || confirmacionTexto !== 'ELIMINAR'}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor:
-                    confirmacionTexto === 'ELIMINAR' && !eliminando
-                      ? '#B71C1C'
-                      : '#424242',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor:
-                    confirmacionTexto === 'ELIMINAR' && !eliminando
-                      ? 'pointer'
-                      : 'not-allowed',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  opacity: confirmacionTexto === 'ELIMINAR' && !eliminando ? 1 : 0.5,
-                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {eliminando ? '⏳ Eliminando...' : '🗑️ Sí, Eliminar'}
+                {eliminando ? 'Eliminando...' : 'Sí, Eliminar'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Header */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="flex items-start justify-between flex-wrap gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <Link
+                href="/trabajadores"
+                className="text-gray-500 hover:text-gray-900 text-sm"
+              >
+                ← Volver
+              </Link>
+            </div>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-2xl font-bold text-gray-900">
+                {nombreCompleto}
+              </h1>
+              <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${estado.badge}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${estado.dot}`} />
+                {estado.label}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+              {trabajador.cedula && (
+                <span className="font-mono bg-gray-100 px-2 py-1 rounded">
+                  CC {trabajador.cedula}
+                </span>
+              )}
+              {cargoNombre && <span>{cargoNombre}</span>}
+              {deptoNombre && <span>{deptoNombre}</span>}
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setMostrarModal(true)}
+              className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium"
+            >
+              Eliminar
+            </button>
+            <Link
+              href={`/trabajadores/${trabajadorId}/editar`}
+              className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium inline-flex items-center gap-1.5"
+            >
+              Editar
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="border-b border-gray-200 overflow-x-auto">
+          <nav className="flex gap-1 px-4 min-w-max">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setTabActivo(tab.id)}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  tabActivo === tab.id
+                    ? 'border-gray-900 text-gray-900'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        <div className="p-6">
+          {tabActivo === 'informacion' && (
+            <TabInformacion
+              trabajador={trabajador}
+              edad={edad}
+              formatearFecha={formatearFecha}
+              nombreCompleto={nombreCompleto}
+            />
+          )}
+
+          {tabActivo === 'laboral' && (
+            <TabLaboral
+              trabajador={trabajador}
+              antiguedad={antiguedad}
+              formatearFecha={formatearFecha}
+              formatearMoneda={formatearMoneda}
+              cargoNombre={cargoNombre}
+              deptoNombre={deptoNombre}
+            />
+          )}
+
+          {tabActivo === 'documentos' && (
+            <TabDocumentos trabajadorId={trabajadorId} />
+          )}
+
+          {tabActivo === 'historial' && (
+            <TabHistorial trabajadorId={trabajadorId} />
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -555,82 +381,50 @@ export default function DetalleTrabajadorPage() {
 // TAB: Información Personal
 // =====================================
 function TabInformacion({ trabajador, edad, formatearFecha, nombreCompleto }) {
+  const InfoRow = ({ label, value }) => (
+    <div className="py-3 border-b border-gray-100 last:border-0">
+      <dt className="text-sm text-gray-500 mb-1">{label}</dt>
+      <dd className="text-sm font-medium text-gray-900">{value || 'N/A'}</dd>
+    </div>
+  );
+
   return (
-    <div>
-      <h2 style={{ fontSize: '18px', marginBottom: '20px', color: '#FFC107' }}>
-        Datos Personales
-      </h2>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '20px',
-        }}
-      >
-        <Campo label="Cédula" valor={trabajador.cedula} />
-        <Campo label="Nombre Completo" valor={nombreCompleto} />
-        <Campo
-          label="Fecha de Nacimiento"
-          valor={
-            trabajador.fecha_nacimiento
-              ? `${formatearFecha(trabajador.fecha_nacimiento)} (${edad} años)`
-              : 'No registrada'
-          }
-        />
-        <Campo label="Género" valor={trabajador.genero} />
-        <Campo label="Estado Civil" valor={trabajador.estado_civil} />
-        <Campo label="Tipo de Sangre" valor={trabajador.tipo_sangre} />
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Datos Personales</h3>
+        <dl>
+          <InfoRow label="Cédula" value={trabajador.cedula || trabajador.tipo_documento ? `${trabajador.tipo_documento || 'CC'} ${trabajador.cedula || ''}`.trim() : null} />
+          <InfoRow label="Nombre Completo" value={nombreCompleto} />
+          <InfoRow
+            label="Fecha de Nacimiento"
+            value={
+              trabajador.fecha_nacimiento
+                ? `${formatearFecha(trabajador.fecha_nacimiento)}${edad ? ` (${edad} años)` : ''}`
+                : null
+            }
+          />
+          <InfoRow label="Género" value={trabajador.genero ? (trabajador.genero === 'M' ? 'Masculino' : trabajador.genero === 'F' ? 'Femenino' : trabajador.genero) : null} />
+          <InfoRow label="Estado Civil" value={trabajador.estado_civil} />
+          <InfoRow label="Tipo de Sangre" value={trabajador.rh || trabajador.tipo_sangre} />
+        </dl>
       </div>
 
-      <h2
-        style={{
-          fontSize: '18px',
-          margin: '30px 0 20px',
-          color: '#FFC107',
-          paddingTop: '20px',
-          borderTop: '1px solid #424242',
-        }}
-      >
-        Información de Contacto
-      </h2>
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Información de Contacto</h3>
+        <dl>
+          <InfoRow label="Teléfono" value={trabajador.telefono} />
+          <InfoRow label="Email" value={trabajador.email} />
+          <InfoRow label="Dirección" value={trabajador.direccion} />
+          <InfoRow label="Ciudad" value={trabajador.ciudad} />
+          <InfoRow label="Departamento (Geográfico)" value={trabajador.departamento_residencia} />
+        </dl>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '20px',
-        }}
-      >
-        <Campo label="Teléfono" valor={trabajador.telefono} />
-        <Campo label="Email" valor={trabajador.email} />
-        <Campo label="Dirección" valor={trabajador.direccion} />
-        <Campo label="Ciudad" valor={trabajador.ciudad} />
-        <Campo label="Departamento" valor={trabajador.departamento_residencia} />
-      </div>
-
-      <h2
-        style={{
-          fontSize: '18px',
-          margin: '30px 0 20px',
-          color: '#FFC107',
-          paddingTop: '20px',
-          borderTop: '1px solid #424242',
-        }}
-      >
-        Contacto de Emergencia
-      </h2>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '20px',
-        }}
-      >
-        <Campo label="Nombre" valor={trabajador.contacto_emergencia_nombre} />
-        <Campo label="Parentesco" valor={trabajador.contacto_emergencia_parentesco} />
-        <Campo label="Teléfono" valor={trabajador.contacto_emergencia_telefono} />
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 mt-8">Contacto de Emergencia</h3>
+        <dl>
+          <InfoRow label="Nombre" value={trabajador.contacto_emergencia_nombre} />
+          <InfoRow label="Parentesco" value={trabajador.contacto_emergencia_parentesco} />
+          <InfoRow label="Teléfono" value={trabajador.contacto_emergencia_telefono} />
+        </dl>
       </div>
     </div>
   );
@@ -640,89 +434,51 @@ function TabInformacion({ trabajador, edad, formatearFecha, nombreCompleto }) {
 // TAB: Información Laboral
 // =====================================
 function TabLaboral({ trabajador, antiguedad, formatearFecha, formatearMoneda, cargoNombre, deptoNombre }) {
+  const InfoRow = ({ label, value }) => (
+    <div className="py-3 border-b border-gray-100 last:border-0">
+      <dt className="text-sm text-gray-500 mb-1">{label}</dt>
+      <dd className="text-sm font-medium text-gray-900">{value || 'N/A'}</dd>
+    </div>
+  );
+
   return (
-    <div>
-      <h2 style={{ fontSize: '18px', marginBottom: '20px', color: '#FFC107' }}>
-        Información del Cargo
-      </h2>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '20px',
-        }}
-      >
-        <Campo label="Cargo" valor={cargoNombre} />
-        <Campo label="Departamento" valor={deptoNombre} />
-        <Campo label="Tipo de Contrato" valor={trabajador.tipo_contrato} />
-        <Campo
-          label="Fecha de Ingreso"
-          valor={
-            trabajador.fecha_ingreso
-              ? `${formatearFecha(trabajador.fecha_ingreso)}${
-                  antiguedad
-                    ? ` (${antiguedad.años} años, ${antiguedad.meses} meses)`
-                    : ''
-                }`
-              : 'No registrada'
-          }
-        />
-        <Campo
-          label="Fecha Fin Contrato"
-          valor={formatearFecha(trabajador.fecha_fin_contrato)}
-        />
-        <Campo label="Salario" valor={formatearMoneda(trabajador.salario)} />
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Información del Cargo</h3>
+        <dl>
+          <InfoRow label="Cargo" value={cargoNombre} />
+          <InfoRow label="Departamento" value={deptoNombre} />
+          <InfoRow label="Tipo de Contrato" value={trabajador.tipo_contrato} />
+          <InfoRow
+            label="Fecha de Ingreso"
+            value={
+              trabajador.fecha_ingreso
+                ? `${formatearFecha(trabajador.fecha_ingreso)}${
+                    antiguedad ? ` (${antiguedad.años} años, ${antiguedad.meses} meses)` : ''
+                  }`
+                : null
+            }
+          />
+          <InfoRow label="Fecha Fin Contrato" value={formatearFecha(trabajador.fecha_fin_contrato)} />
+          <InfoRow label="Salario" value={formatearMoneda(trabajador.salario)} />
+        </dl>
       </div>
 
-      <h2
-        style={{
-          fontSize: '18px',
-          margin: '30px 0 20px',
-          color: '#FFC107',
-          paddingTop: '20px',
-          borderTop: '1px solid #424242',
-        }}
-      >
-        Seguridad Social
-      </h2>
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Seguridad Social</h3>
+        <dl>
+          <InfoRow label="EPS" value={trabajador.eps} />
+          <InfoRow label="ARL" value={trabajador.arl} />
+          <InfoRow label="Fondo de Pensión" value={trabajador.fondo_pension || trabajador.afp} />
+          <InfoRow label="Caja de Compensación" value={trabajador.caja_compensacion} />
+        </dl>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '20px',
-        }}
-      >
-        <Campo label="EPS" valor={trabajador.eps} />
-        <Campo label="ARL" valor={trabajador.arl} />
-        <Campo label="Fondo de Pensión" valor={trabajador.fondo_pension} />
-        <Campo label="Fondo de Cesantías" valor={trabajador.fondo_cesantias} />
-        <Campo label="Caja de Compensación" valor={trabajador.caja_compensacion} />
-      </div>
-
-      <h2
-        style={{
-          fontSize: '18px',
-          margin: '30px 0 20px',
-          color: '#FFC107',
-          paddingTop: '20px',
-          borderTop: '1px solid #424242',
-        }}
-      >
-        Información Bancaria
-      </h2>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '20px',
-        }}
-      >
-        <Campo label="Banco" valor={trabajador.banco} />
-        <Campo label="Tipo de Cuenta" valor={trabajador.tipo_cuenta} />
-        <Campo label="Número de Cuenta" valor={trabajador.numero_cuenta} />
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 mt-8">Información Bancaria</h3>
+        <dl>
+          <InfoRow label="Banco" value={trabajador.banco} />
+          <InfoRow label="Tipo de Cuenta" value={trabajador.tipo_cuenta} />
+          <InfoRow label="Número de Cuenta" value={trabajador.numero_cuenta} />
+        </dl>
       </div>
     </div>
   );
@@ -732,6 +488,7 @@ function TabLaboral({ trabajador, antiguedad, formatearFecha, formatearMoneda, c
 // TAB: Historial
 // =====================================
 function TabHistorial({ trabajadorId }) {
+  const supabase = createClient();
   const [historial, setHistorial] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -758,52 +515,37 @@ function TabHistorial({ trabajadorId }) {
   };
 
   if (loading) {
-    return <p style={{ color: '#BDBDBD' }}>Cargando historial...</p>;
+    return <p className="text-gray-500">Cargando historial...</p>;
   }
 
   return (
     <div>
-      <h2 style={{ fontSize: '18px', marginBottom: '20px', color: '#FFC107' }}>
-        Historial de Cambios
-      </h2>
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">Historial de Cambios</h3>
 
       {historial.length === 0 ? (
-        <p style={{ color: '#BDBDBD' }}>
-          No hay registros de historial para este trabajador.
-        </p>
+        <div className="text-center py-12">
+          <p className="text-gray-500">No hay registros de historial para este trabajador.</p>
+        </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div className="space-y-3">
           {historial.map((item) => (
             <div
               key={item.id}
-              style={{
-                padding: '15px',
-                backgroundColor: '#1A1A1A',
-                borderRadius: '6px',
-                borderLeft: '3px solid #FFC107',
-              }}
+              className="bg-gray-50 border border-gray-200 rounded-lg p-4 border-l-4 border-l-gray-900"
             >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  marginBottom: '6px',
-                  flexWrap: 'wrap',
-                  gap: '8px',
-                }}
-              >
-                <strong style={{ color: '#FFC107', fontSize: '14px' }}>
-                  {item.tipo_cambio || 'Cambio'}
+              <div className="flex justify-between items-start mb-2 flex-wrap gap-2">
+                <strong className="text-sm font-semibold text-gray-900">
+                  {item.tipo_evento || item.tipo_cambio || 'Cambio'}
                 </strong>
-                <span style={{ color: '#BDBDBD', fontSize: '12px' }}>
-                  {new Date(item.created_at).toLocaleString('es-CO')}
+                <span className="text-xs text-gray-500">
+                  {new Date(item.created_at || item.fecha_evento).toLocaleString('es-CO')}
                 </span>
               </div>
-              <p style={{ color: '#F5F5F5', fontSize: '14px' }}>
+              <p className="text-sm text-gray-700">
                 {item.descripcion || 'Sin descripción'}
               </p>
               {item.usuario && (
-                <p style={{ color: '#9E9E9E', fontSize: '12px', marginTop: '6px' }}>
+                <p className="text-xs text-gray-400 mt-2">
                   Por: {item.usuario}
                 </p>
               )}
@@ -811,30 +553,6 @@ function TabHistorial({ trabajadorId }) {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-// =====================================
-// Componente Auxiliar: Campo
-// =====================================
-function Campo({ label, valor }) {
-  return (
-    <div>
-      <p
-        style={{
-          fontSize: '12px',
-          color: '#9E9E9E',
-          marginBottom: '4px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px',
-        }}
-      >
-        {label}
-      </p>
-      <p style={{ fontSize: '15px', color: '#F5F5F5' }}>
-        {valor || <span style={{ color: '#616161' }}>No registrado</span>}
-      </p>
     </div>
   );
 }

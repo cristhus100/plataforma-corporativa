@@ -73,3 +73,118 @@ body {
   outline: 2px solid var(--sm-yellow);
   outline-offset: 2px;
 }
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+[data-theme="dark"] body {
+  --sm-gray-100: #111111;
+  --sm-gray-200: #1A1A1A;
+  --sm-gray-300: #2D2D2D;
+  --sm-gray-500: #757575;
+  --sm-gray-700: #9E9E9E;
+  --sm-gray-800: #BDBDBD;
+  --sm-gray-900: #E0E0E0;
+  --sm-black: #FFFFFF;
+  --sm-white: #1A1A1A;
+  --foreground: #E0E0E0;
+  --background: #111111;
+}
+
+[data-theme="dark"] body {
+  background: #111111;
+  color: #E0E0E0;
+}
+
+[data-theme="dark"] .bg-white {
+  background-color: #1A1A1A !important;
+}
+
+[data-theme="dark"] .border-gray-200 {
+  border-color: #2D2D2D !important;
+}
+
+[data-theme="dark"] .border-gray-100 {
+  border-color: #2D2D2D !important;
+}
+
+[data-theme="dark"] .text-gray-900 {
+  color: #E0E0E0 !important;
+}
+
+[data-theme="dark"] .text-gray-700 {
+  color: #BDBDBD !important;
+}
+
+[data-theme="dark"] .text-gray-600 {
+  color: #9E9E9E !important;
+}
+
+[data-theme="dark"] .text-gray-500 {
+  color: #757575 !important;
+}
+
+[data-theme="dark"] .bg-gray-50 {
+  background-color: #1F1F1F !important;
+}
+
+[data-theme="dark"] .bg-gray-100 {
+  background-color: #2D2D2D !important;
+}
+
+[data-theme="dark"] .divide-gray-200 {
+  border-color: #2D2D2D !important;
+}
+
+[data-theme="dark"] .hover\:bg-gray-50:hover {
+  background-color: #2D2D2D !important;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: #2D2D2D !important;
+  border-color: #424242 !important;
+  color: #E0E0E0 !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: #757575 !important;
+}
+
+/* ============================================
+   ANIMACIONES
+   ============================================ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out;
+}
+
+/* ============================================
+   ESTILOS DE IMPRESIÓN (PDF)
+   ============================================ */
+@media print {
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+  .no-print { display: none !important; }
+}
