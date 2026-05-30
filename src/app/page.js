@@ -4,8 +4,9 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import StatsCard from '@/components/ui/StatsCard'
-import { Users, Wrench, MapPin, Megaphone, AlertTriangle, CheckCircle2, Clock, XCircle, History, UserPlus, FileUp, Truck } from 'lucide-react'
+import { Users, Wrench, MapPin, AlertTriangle, CheckCircle2, Clock, XCircle, History, UserPlus, FileUp, Truck, Car, Wind, Settings } from 'lucide-react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { useAlertas } from '@/hooks/useAlertas'
 
 const COLORS_ESTADOS = {
   operativa: '#10B981',
@@ -27,13 +28,12 @@ export default function Dashboard() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [dashboardData, setDashboardData] = useState({
-    stats: { trabajadores: 0, maquinaria: 0, ubicacion: 0, comunicados: 0 },
+    stats: { trabajadores: 0, maquinaria: 0, vehiculos: 0, ubicacion: 0 },
     maquinariaPorEstado: [],
     trabajadoresPorDepto: [],
-    alertas: [],
-    announcements: [],
     timeline: [],
   })
+  const { documentos: alertasDocumentos, maquinaria: alertasMaquinaria, vehiculos: alertasVehiculos, filtroAire: alertasFiltroAire } = useAlertas()
 
   useEffect(() => {
     fetchDashboardData()
@@ -45,22 +45,26 @@ export default function Dashboard() {
         { count: trabCount },
         maqRes,
         trabRes,
-        { count: comCount },
-        newsRes,
-        alertasRes,
+        vehiculosCountRes,
         historialRes,
         nuevosTrabRes,
         nuevaMaqRes,
+        nuevosVehRes,
+        docsTrabRes,
+        docsVehRes,
+        cambiosAceiteRes,
       ] = await Promise.all([
         supabase.from('trabajadores').select('*', { count: 'exact', head: true }),
         supabase.from('maquinaria').select('estado').eq('activo', true),
         supabase.from('trabajadores').select('departamento_area:departamentos(nombre)').not('departamento_id', 'is', null),
-        supabase.from('comunicados').select('*', { count: 'exact', head: true }),
-        supabase.from('comunicados').select('*').order('created_at', { ascending: false }).limit(5),
-        supabase.from('vw_alertas_documentos').select('estado_alerta').neq('estado_alerta', 'VIGENTE'),
+        supabase.from('vehiculos').select('*', { count: 'exact', head: true }).eq('activo', true),
         supabase.from('historial_trabajadores').select('*, trabajador:trabajadores!trabajador_id(nombre,primer_apellido)').order('created_at', { ascending: false }).limit(20),
         supabase.from('trabajadores').select('id, nombre, primer_apellido, created_at').order('created_at', { ascending: false }).limit(5),
         supabase.from('maquinaria').select('id, nombre, codigo_interno, created_at').eq('activo', true).order('created_at', { ascending: false }).limit(5),
+        supabase.from('vehiculos').select('id, nombre, placa, created_at').eq('activo', true).order('created_at', { ascending: false }).limit(5),
+        supabase.from('documentos_trabajadores').select('id, created_at, tipo_documento_id, tipos_documentos_trabajador!tipo_documento_id(nombre), trabajador:trabajadores!trabajador_id(nombre,primer_apellido)').order('created_at', { ascending: false }).limit(10),
+        supabase.from('documentos_vehiculos').select('id, created_at, tipo_documento_id, tipo:tipos_documentos_vehiculo!tipo_documento_id(nombre), vehiculo:vehiculos!vehiculo_id(nombre,placa)').order('created_at', { ascending: false }).limit(10),
+        supabase.from('registros_horometro').select('id, created_at, es_cambio_aceite, es_cambio_filtro_combustible, condicion_filtro_aire, operador_nombre, maquinaria_id, maquinaria:maquinaria!maquinaria_id(nombre, codigo_interno)').or('es_cambio_aceite.eq.true,es_cambio_filtro_combustible.eq.true,condicion_filtro_aire.not.is.null').order('created_at', { ascending: false }).limit(10),
       ])
 
       // Maquinaria por estado
@@ -74,7 +78,7 @@ export default function Dashboard() {
         color: COLORS_ESTADOS[name] || '#6B7280',
       }))
 
-      // Trabajadores por departamento
+      // Empleados por departamento
       const deptoMap = {}
       ;(trabRes.data || []).forEach((t) => {
         const nombre = t.departamento_area?.nombre || 'Sin departamento'
@@ -96,7 +100,7 @@ export default function Dashboard() {
           fecha: h.created_at,
           tipo: h.tipo_evento === 'actualizacion' ? 'edit' : h.tipo_evento?.startsWith('documento') ? 'file' : 'edit',
           mensaje: h.titulo || h.descripcion || 'Actualización',
-          entidad: 'Trabajador',
+          entidad: 'Empleado',
           nombre,
           icon: h.tipo_evento?.startsWith('documento') ? FileUp : Settings,
         })
@@ -107,8 +111,8 @@ export default function Dashboard() {
           id: `nt-${t.id}`,
           fecha: t.created_at,
           tipo: 'create',
-          mensaje: 'Nuevo trabajador registrado',
-          entidad: 'Trabajador',
+          mensaje: 'Nuevo empleado registrado',
+          entidad: 'Empleado',
           nombre: `${t.nombre || ''} ${t.primer_apellido || ''}`.trim(),
           icon: UserPlus,
         })
@@ -126,6 +130,76 @@ export default function Dashboard() {
         })
       })
 
+      // Nuevos vehículos
+      ;(nuevosVehRes.data || []).forEach((v) => {
+        timeline.push({
+          id: `nv-${v.id}`,
+          fecha: v.created_at,
+          tipo: 'create',
+          mensaje: `Nuevo vehículo: ${v.placa || ''}`,
+          entidad: 'Vehículo',
+          nombre: v.nombre || '',
+          icon: Car,
+        })
+      })
+
+      // Documentos subidos - trabajadores
+      ;(docsTrabRes.data || []).forEach((d) => {
+        const nombreTrab = d.trabajador
+          ? `${d.trabajador.nombre || ''} ${d.trabajador.primer_apellido || ''}`.trim()
+          : 'Empleado'
+        timeline.push({
+          id: `dt-${d.id}`,
+          fecha: d.created_at,
+          tipo: 'file',
+          mensaje: `Documento: ${d.tipos_documentos_trabajador?.nombre || 'Documento'}`,
+          entidad: 'Empleado',
+          nombre: nombreTrab,
+          icon: FileUp,
+        })
+      })
+
+      // Documentos subidos - vehículos
+      ;(docsVehRes.data || []).forEach((d) => {
+        timeline.push({
+          id: `dv-${d.id}`,
+          fecha: d.created_at,
+          tipo: 'file',
+          mensaje: `Documento: ${d.tipo?.nombre || 'Documento'}`,
+          entidad: 'Vehículo',
+          nombre: d.vehiculo?.nombre || d.vehiculo?.placa || 'Vehículo',
+          icon: FileUp,
+        })
+      })
+
+      // Cambios de aceite, filtros y condición de filtro de aire
+      ;(cambiosAceiteRes.data || []).forEach((r) => {
+        const maqNombre = r.maquinaria?.nombre || r.maquinaria?.codigo_interno || 'Maquinaria'
+        let mensaje = ''
+        let icon = null
+        if (r.es_cambio_aceite) {
+          mensaje = `Cambio de aceite realizado por ${r.operador_nombre || 'operador'}`
+          icon = Truck
+        } else if (r.es_cambio_filtro_combustible) {
+          mensaje = `Cambio de filtros combustible por ${r.operador_nombre || 'operador'}`
+          icon = Wrench
+        } else if (r.condicion_filtro_aire) {
+          mensaje = `Filtro de aire: ${r.condicion_filtro_aire === 'critica' ? 'Crítico' : r.condicion_filtro_aire === 'regular' ? 'Regular' : 'Buena'} (${r.operador_nombre || 'operador'})`
+          icon = Wind
+        }
+        if (mensaje) {
+          timeline.push({
+            id: `rh-${r.id}`,
+            fecha: r.created_at,
+            tipo: 'edit',
+            mensaje,
+            entidad: 'Maquinaria',
+            nombre: maqNombre,
+            icon: icon || Settings,
+          })
+        }
+      })
+
       timeline.sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
       const timelineLimit = timeline.slice(0, 20)
 
@@ -133,13 +207,11 @@ export default function Dashboard() {
         stats: {
           trabajadores: trabCount || 0,
           maquinaria: maqRes.data?.length || 0,
+          vehiculos: vehiculosCountRes.count || 0,
           ubicacion: maqRes.data?.length || 0,
-          comunicados: comCount || 0,
         },
         maquinariaPorEstado,
         trabajadoresPorDepto,
-        alertas: alertasRes.data || [],
-        announcements: newsRes.data || [],
         timeline: timelineLimit,
       })
     } catch (error) {
@@ -159,10 +231,6 @@ export default function Dashboard() {
       day: '2-digit', month: 'short', year: 'numeric',
     })
 
-  // Resumen de alertas
-  const alertasCriticas = dashboardData.alertas.filter(
-    (a) => a.estado_alerta === 'VENCIDO' || a.estado_alerta === 'CRITICO'
-  ).length
 
   return (
     <div className="p-6 space-y-6">
@@ -175,15 +243,17 @@ export default function Dashboard() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Link href="/trabajadores">
-          <StatsCard title="Trabajadores" value={loading ? '...' : dashboardData.stats.trabajadores} icon={Users} color="blue" />
+          <StatsCard title="Empleados" value={loading ? '...' : dashboardData.stats.trabajadores} icon={Users} color="blue" />
         </Link>
         <Link href="/maquinaria">
           <StatsCard title="Maquinaria" value={loading ? '...' : dashboardData.stats.maquinaria} icon={Wrench} color="green" />
         </Link>
+        <Link href="/vehiculos">
+          <StatsCard title="Vehículos" value={loading ? '...' : dashboardData.stats.vehiculos} icon={Car} color="blue" />
+        </Link>
         <Link href="/ubicacion">
           <StatsCard title="Ubicación" value={loading ? '...' : dashboardData.stats.ubicacion} icon={MapPin} color="purple" />
         </Link>
-        <StatsCard title="Comunicados" value={loading ? '...' : dashboardData.stats.comunicados} icon={Megaphone} color="orange" />
       </div>
 
       {/* Charts Row */}
@@ -242,9 +312,9 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Bar Chart - Trabajadores por departamento */}
+        {/* Bar Chart - Empleados por departamento */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Trabajadores por Departamento</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Empleados por Departamento</h2>
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <p className="text-gray-400">Cargando...</p>
@@ -261,7 +331,7 @@ export default function Dashboard() {
                 <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
                 <Tooltip
                   contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 13 }}
-                  formatter={(value) => [value, 'Trabajadores']}
+                  formatter={(value) => [value, 'Empleados']}
                 />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]} fill="#1A1A1A" />
               </BarChart>
@@ -322,11 +392,11 @@ export default function Dashboard() {
       </div>
 
       {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Alertas rápidas */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Alertas Documentos */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Alertas</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Alertas Documentos</h2>
             <Link href="/alertas" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
               Ver todas
             </Link>
@@ -334,62 +404,132 @@ export default function Dashboard() {
           {loading ? (
             <p className="text-gray-400">Cargando...</p>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <XCircle size={16} className="text-red-600" />
-                  <span className="text-sm font-medium text-red-800">Vencidos</span>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <XCircle size={14} className="text-red-600" />
+                  <span className="text-sm text-red-800">Vencidos</span>
                 </div>
-                <p className="text-2xl font-bold text-red-700">
-                  {dashboardData.alertas.filter((a) => a.estado_alerta === 'VENCIDO').length}
-                </p>
+                <span className="text-lg font-bold text-red-700">{alertasDocumentos.filter((a) => a.estado_alerta === 'VENCIDO').length}</span>
               </div>
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <AlertTriangle size={16} className="text-orange-600" />
-                  <span className="text-sm font-medium text-orange-800">Críticos</span>
+              <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle size={14} className="text-orange-600" />
+                  <span className="text-sm text-orange-800">Críticos</span>
                 </div>
-                <p className="text-2xl font-bold text-orange-700">
-                  {dashboardData.alertas.filter((a) => a.estado_alerta === 'CRITICO').length}
-                </p>
+                <span className="text-lg font-bold text-orange-700">{alertasDocumentos.filter((a) => a.estado_alerta === 'CRITICO').length}</span>
               </div>
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <Clock size={16} className="text-yellow-600" />
-                  <span className="text-sm font-medium text-yellow-800">Próximos</span>
+              <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Clock size={14} className="text-yellow-600" />
+                  <span className="text-sm text-yellow-800">Próximos</span>
                 </div>
-                <p className="text-2xl font-bold text-yellow-700">
-                  {dashboardData.alertas.filter((a) => a.estado_alerta === 'PROXIMO').length}
-                </p>
-              </div>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <CheckCircle2 size={16} className="text-green-600" />
-                  <span className="text-sm font-medium text-green-800">Vigentes</span>
-                </div>
-                <p className="text-2xl font-bold text-green-700">
-                  {dashboardData.alertas.filter((a) => a.estado_alerta === 'VIGENTE').length}
-                </p>
+                <span className="text-lg font-bold text-yellow-700">{alertasDocumentos.filter((a) => a.estado_alerta === 'PROXIMO').length}</span>
               </div>
             </div>
           )}
         </div>
 
-        {/* Comunicados */}
+        {/* Alertas Maquinaria */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Comunicados</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Wrench className="w-5 h-5" /> Mantenimiento
+            </h2>
+            <Link href="/alertas" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+              Ver todas
+            </Link>
+          </div>
           {loading ? (
             <p className="text-gray-400">Cargando...</p>
-          ) : dashboardData.announcements.length === 0 ? (
-            <p className="text-gray-400">No hay comunicados</p>
           ) : (
             <div className="space-y-3">
-              {dashboardData.announcements.map((item) => (
-                <div key={item.id} className="border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-                  <p className="font-medium text-gray-900">{item.titulo}</p>
-                  <p className="text-sm text-gray-500 mt-0.5">{formatDate(item.created_at)}</p>
+              <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <XCircle size={14} className="text-red-600" />
+                  <span className="text-sm text-red-800">Vencidos</span>
                 </div>
-              ))}
+                <span className="text-lg font-bold text-red-700">{alertasMaquinaria.filter((a) => a.estado_alerta === 'VENCIDO').length}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle size={14} className="text-orange-600" />
+                  <span className="text-sm text-orange-800">Críticos</span>
+                </div>
+                <span className="text-lg font-bold text-orange-700">{alertasMaquinaria.filter((a) => a.estado_alerta === 'CRITICO').length}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Clock size={14} className="text-yellow-600" />
+                  <span className="text-sm text-yellow-800">Próximos</span>
+                </div>
+                <span className="text-lg font-bold text-yellow-700">{alertasMaquinaria.filter((a) => a.estado_alerta === 'PROXIMO').length}</span>
+              </div>
+              {alertasMaquinaria.length > 0 && (
+                <div className="pt-2 border-t border-gray-100">
+                  <p className="text-xs text-gray-500">
+                    {alertasMaquinaria.filter(a => a.tipo_alerta === 'aceite_motor').length} de aceite motor · {alertasMaquinaria.filter(a => a.tipo_alerta === 'filtro_combustible').length} de filtros
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Alertas Vehículos */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Car className="w-5 h-5" /> Vehículos
+            </h2>
+            <Link href="/alertas" className="text-sm text-blue-600 hover:text-blue-700 font-medium">Ver todas</Link>
+          </div>
+          {loading ? (
+            <p className="text-gray-400">Cargando...</p>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                <div className="flex items-center gap-2"><XCircle size={14} className="text-red-600" /><span className="text-sm text-red-800">Vencidos</span></div>
+                <span className="text-lg font-bold text-red-700">{alertasVehiculos.filter((a) => a.estado_alerta === 'VENCIDO').length}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                <div className="flex items-center gap-2"><AlertTriangle size={14} className="text-orange-600" /><span className="text-sm text-orange-800">Críticos</span></div>
+                <span className="text-lg font-bold text-orange-700">{alertasVehiculos.filter((a) => a.estado_alerta === 'CRITICO').length}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                <div className="flex items-center gap-2"><Clock size={14} className="text-yellow-600" /><span className="text-sm text-yellow-800">Próximos</span></div>
+                <span className="text-lg font-bold text-yellow-700">{alertasVehiculos.filter((a) => a.estado_alerta === 'PROXIMO').length}</span>
+              </div>
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-xs text-gray-500">{alertasVehiculos.length} alertas activas</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Alertas Filtro de Aire */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Wind size={18} /> Filtro de Aire
+            </h2>
+            <Link href="/alertas" className="text-sm text-blue-600 hover:text-blue-700 font-medium">Ver todas</Link>
+          </div>
+          {loading ? (
+            <p className="text-gray-400">Cargando...</p>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                <div className="flex items-center gap-2"><AlertTriangle size={14} className="text-orange-600" /><span className="text-sm text-orange-800">Críticos</span></div>
+                <span className="text-lg font-bold text-orange-700">{alertasFiltroAire.filter((a) => a.ultima_condicion_filtro_aire === 'critica').length}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                <div className="flex items-center gap-2"><Clock size={14} className="text-yellow-600" /><span className="text-sm text-yellow-800">Regulares</span></div>
+                <span className="text-lg font-bold text-yellow-700">{alertasFiltroAire.filter((a) => a.ultima_condicion_filtro_aire === 'regular').length}</span>
+              </div>
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-xs text-gray-500">{alertasFiltroAire.length} equipos con alerta</p>
+              </div>
             </div>
           )}
         </div>

@@ -3,15 +3,29 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useRole } from '@/context/RoleContext'
 import { Bell, Mail, Shield, AlertTriangle, XCircle, Clock, CheckCircle2, Save, Loader2 } from 'lucide-react'
 
 export default function ConfiguracionPage() {
   const supabase = createClient()
+  const router = useRouter()
+  const { isAdmin, loading: roleLoading } = useRole()
   const [alertas, setAlertas] = useState([])
   const [loading, setLoading] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [guardado, setGuardado] = useState(false)
+
+  // Redirect si no es admin
+  useEffect(() => {
+    if (!roleLoading && !isAdmin) {
+      router.replace('/');
+    }
+  }, [roleLoading, isAdmin, router]);
+
+  if (roleLoading) return <div className="p-8 text-center text-gray-500">Verificando permisos...</div>;
+  if (!isAdmin) return null;
 
   const [config, setConfig] = useState({
     email_notifications: false,

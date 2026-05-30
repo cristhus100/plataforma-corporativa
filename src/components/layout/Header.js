@@ -5,15 +5,19 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Bell, Search, User, Menu, LogOut, Sun, Moon, AlertTriangle, XCircle, Clock, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useRole } from '@/context/RoleContext'
+import { useAlertas } from '@/hooks/useAlertas'
 
 export default function Header({ onToggleSidebar }) {
   const router = useRouter()
   const supabase = createClient()
+  const { perfil, user, isAdmin, loading: roleLoading } = useRole()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotif, setShowNotif] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
-  const [notificaciones, setNotificaciones] = useState([])
   const notifRef = useRef(null)
+  const { notificaciones: todasNotifs, conteoUrgente: alertCount } = useAlertas()
+  const notificaciones = todasNotifs.slice(0, 10)
 
   useEffect(() => {
     // Cargar preferencia de tema
@@ -22,12 +26,6 @@ export default function Header({ onToggleSidebar }) {
       setDarkMode(true)
       document.documentElement.setAttribute('data-theme', 'dark')
     }
-  }, [])
-
-  useEffect(() => {
-    fetchNotificaciones()
-    const interval = setInterval(fetchNotificaciones, 5 * 60 * 1000)
-    return () => clearInterval(interval)
   }, [])
 
   // Cerrar notificaciones al hacer click fuera
@@ -40,21 +38,6 @@ export default function Header({ onToggleSidebar }) {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
-
-  async function fetchNotificaciones() {
-    try {
-      const { data, error } = await supabase
-        .from('vw_alertas_documentos')
-        .select('*')
-        .neq('estado_alerta', 'VIGENTE')
-        .order('dias_para_vencer', { ascending: true })
-        .limit(10)
-
-      if (!error) setNotificaciones(data || [])
-    } catch (err) {
-      console.error('Error fetching notificaciones:', err)
-    }
-  }
 
   function toggleTheme() {
     const newTheme = darkMode ? 'light' : 'dark'
@@ -77,10 +60,6 @@ export default function Header({ onToggleSidebar }) {
       default: return <Bell size={14} className="text-gray-400 flex-shrink-0" />
     }
   }
-
-  const alertCount = notificaciones.filter(
-    (n) => n.estado_alerta === 'VENCIDO' || n.estado_alerta === 'CRITICO'
-  ).length
 
   return (
     <header className="bg-white border-b border-gray-200 h-16 flex-shrink-0 animate-fade-in no-print">
@@ -172,12 +151,19 @@ export default function Header({ onToggleSidebar }) {
                           {getAlertIcon(n.estado_alerta)}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 truncate">
-                              {n.nombre_entidad || 'Sin nombre'}
+                              {n._origen === 'maquinaria' ? (n.nombre_equipo || 'Sin nombre') :
+                               n._origen === 'vehiculos' ? (n.nombre_vehiculo || 'Sin nombre') :
+                               n._origen === 'filtro_aire' ? (n.nombre || 'Sin nombre') :
+                               (n.nombre_entidad || 'Sin nombre')}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {n.tipo_documento || 'Documento'} · {n.estado_alerta === 'VENCIDO'
-                                ? `Vencido hace ${Math.abs(n.dias_para_vencer)} días`
-                                : `${n.dias_para_vencer} días`}
+                              {n._origen === 'maquinaria'
+                                ? `${n.tipo_alerta === 'aceite_motor' ? 'Aceite motor' : 'Filtros combustible'} · ${n.horas_desde_cambio ?? 0} hrs`
+                                : n._origen === 'vehiculos'
+                                ? `${n.nombre_alerta || 'Documento'} · ${n.dias_para_vencer < 0 ? `Vencido hace ${Math.abs(n.dias_para_vencer)} días` : `${n.dias_para_vencer} días`}`
+                                : n._origen === 'filtro_aire'
+                                ? `Filtro de aire · ${n.ultima_condicion_filtro_aire === 'critica' ? 'Crítico' : 'Regular'}`
+                                : `${n.tipo_documento || 'Documento'} · ${n.estado_alerta === 'VENCIDO' ? `Vencido hace ${Math.abs(n.dias_para_vencer)} días` : `${n.dias_para_vencer} días`}`}
                             </p>
                           </div>
                         </Link>
@@ -199,8 +185,12 @@ export default function Header({ onToggleSidebar }) {
                 <User className="w-5 h-5 text-white" />
               </div>
               <div className="hidden md:block text-left">
-                <p className="text-sm font-medium text-gray-900">Admin</p>
-                <p className="text-xs text-gray-500">Administrador</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {roleLoading ? '...' : perfil?.nombre_mostrar || user?.email?.split('@')[0] || 'Usuario'}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {roleLoading ? '...' : isAdmin ? 'Administrador' : 'Usuario'}
+                </p>
               </div>
             </button>
 
@@ -208,15 +198,17 @@ export default function Header({ onToggleSidebar }) {
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowUserMenu(false)} />
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
-                  <Link
-                    href="/configuracion"
-                    onClick={() => setShowUserMenu(false)}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                  >
-                    <Settings size={16} />
-                    Configuración
-                  </Link>
-                  <div className="border-t border-gray-100 my-1" />
+                  {isAdmin && (
+                    <Link
+                      href="/configuracion"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                    >
+                      <Settings size={16} />
+                      Configuración
+                    </Link>
+                  )}
+                  {isAdmin && <div className="border-t border-gray-100 my-1" />}
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"

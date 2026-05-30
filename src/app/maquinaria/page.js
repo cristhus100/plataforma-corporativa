@@ -2,11 +2,21 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { fetchPaginated } from '@/lib/supabase/paginacion';
 import StatsCard from '@/components/ui/StatsCard';
+import Pagination from '@/components/ui/Pagination';
+import usePaginacion from '@/hooks/usePaginacion';
 import { ESTADOS_MAQUINARIA } from '@/lib/utils/maquinaria';
+import { useRole } from '@/context/RoleContext';
+import {
+  calcularEstadoAceite,
+  getEstadoAceiteConfig,
+  calcularEstadoFiltroCombustible,
+  calcularEstadoFiltroAire,
+} from '@/lib/utils/aceite';
 import {
   Truck,
   CheckCircle2,
@@ -18,110 +28,138 @@ import {
   Pencil,
   ImageOff,
   FileDown,
+  Wind,
 } from 'lucide-react';
 
 export default function MaquinariaPage() {
   const supabase = createClient();
-  const [maquinaria, setMaquinaria] = useState([]);
+  const { isAdmin } = useRole();
   const [tipos, setTipos] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [resumen, setResumen] = useState({ total: 0, operativa: 0, mantenimiento: 0, fueraServicio: 0 });
 
-  // Filtros
-  const [search, setSearch] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState('');
-  const [filtroTipo, setFiltroTipo] = useState('');
-
+  // Cargar tipos de maquinaria y resumen al montar
   useEffect(() => {
-    cargarDatos();
-  }, []);
+    async function init() {
+      const [tiposRes] = await Promise.all([
+        supabase.from('tipos_maquinaria').select('id, nombre').order('nombre'),
+      ]);
+      if (tiposRes.data) setTipos(tiposRes.data);
 
-  async function cargarDatos() {
-    setLoading(true);
+      // Cargar conteos para resumen
+      const [totalRes, opRes, mantRes, fueraRes] = await Promise.all([
+        supabase.from('maquinaria').select('id', { count: 'exact', head: true }).eq('activo', true),
+        supabase.from('maquinaria').select('id', { count: 'exact', head: true }).eq('activo', true).eq('estado', 'operativa'),
+        supabase.from('maquinaria').select('id', { count: 'exact', head: true }).eq('activo', true).in('estado', ['en_mantenimiento', 'en_reparacion']),
+        supabase.from('maquinaria').select('id', { count: 'exact', head: true }).eq('activo', true).in('estado', ['fuera_servicio', 'dada_de_baja']),
+      ]);
 
-    const [maqRes, tiposRes] = await Promise.all([
-      supabase
-        .from('maquinaria')
-        .select(`
-          id,
-          codigo_interno,
-          nombre,
-          marca,
-          modelo,
-          placa,
-          numero_serie,
-          estado,
-          foto_url,
-          activo,
-          tipo_maquinaria_id,
-          tipos_maquinaria ( id, nombre )
-        `)
-        .eq('activo', true)
-        .order('codigo_interno', { ascending: true }),
-      supabase
-        .from('tipos_maquinaria')
-        .select('id, nombre')
-        .order('nombre'),
-    ]);
+      setResumen({
+        total: totalRes.count || 0,
+        operativa: opRes.count || 0,
+        mantenimiento: mantRes.count || 0,
+        fueraServicio: fueraRes.count || 0,
+      });
+    }
+    init();
+  }, [supabase]);
 
-    if (maqRes.error) console.error('Error maquinaria:', maqRes.error);
-    if (tiposRes.error) console.error('Error tipos:', tiposRes.error);
+  // FetchFn con paginación server-side
+  const fetchFn = useCallback(async ({ page, limit, search, filtros }) => {
+    let query = supabase
+      .from('maquinaria')
+      .select(`
+        id,
+        codigo_interno,
+        nombre,
+        marca,
+        modelo,
+        placa,
+        numero_serie,
+        estado,
+        foto_url,
+        activo,
+        horometro_actual,
+        ultimo_cambio_aceite_horometro,
+        ultimo_cambio_aceite_fecha,
+        ultimo_cambio_filtro_combustible_horometro,
+        ultima_condicion_filtro_aire,
+        tipo_maquinaria_id,
+        tipos_maquinaria ( id, nombre )
+      `)
+      .eq('activo', true);
 
-    setMaquinaria(maqRes.data || []);
-    setTipos(tiposRes.data || []);
-    setLoading(false);
-  }
+    // Filtros desde el servidor
+    if (filtros?.estado) {
+      query = query.eq('estado', filtros.estado);
+    }
+    if (filtros?.tipo) {
+      query = query.eq('tipo_maquinaria_id', filtros.tipo);
+    }
+    if (search) {
+      const term = `%${search}%`;
+      query = query.or(
+        `codigo_interno.ilike.${term},nombre.ilike.${term},placa.ilike.${term},numero_serie.ilike.${term},marca.ilike.${term},modelo.ilike.${term}`
+      );
+    }
 
-  // Filtrado en memoria
-  const maquinariaFiltrada = useMemo(() => {
-    return maquinaria.filter((m) => {
-      const term = search.trim().toLowerCase();
+    query = query.order('codigo_interno', { ascending: true });
+    return fetchPaginated(query, page, limit);
+  }, [supabase]);
 
-      const coincideBusqueda =
-        !term ||
-        m.codigo_interno?.toLowerCase().includes(term) ||
-        m.nombre?.toLowerCase().includes(term) ||
-        m.placa?.toLowerCase().includes(term) ||
-        m.numero_serie?.toLowerCase().includes(term) ||
-        m.marca?.toLowerCase().includes(term) ||
-        m.modelo?.toLowerCase().includes(term);
-
-      const coincideEstado = !filtroEstado || m.estado === filtroEstado;
-      const coincideTipo =
-        !filtroTipo || String(m.tipo_maquinaria_id) === String(filtroTipo);
-
-      return coincideBusqueda && coincideEstado && coincideTipo;
-    });
-  }, [maquinaria, search, filtroEstado, filtroTipo]);
-
-  // Resumen (usando valores reales de DB en minúsculas)
-  const resumen = useMemo(() => {
-    return {
-      total: maquinaria.length,
-      operativa: maquinaria.filter((m) => m.estado === 'operativa').length,
-      mantenimiento: maquinaria.filter(
-        (m) => m.estado === 'en_mantenimiento' || m.estado === 'en_reparacion'
-      ).length,
-      fueraServicio: maquinaria.filter(
-        (m) => m.estado === 'fuera_servicio' || m.estado === 'dada_de_baja'
-      ).length,
-    };
-  }, [maquinaria]);
+  const paginacion = usePaginacion({
+    fetchFn,
+    limit: 25,
+    searchDelay: 300,
+    filtrosIniciales: { estado: '', tipo: '' },
+  });
 
   async function exportarPDF() {
-    if (typeof window === 'undefined') return
-    const { default: jsPDF } = await import('jspdf')
-    const { default: autoTable } = await import('jspdf-autotable')
+    if (typeof window === 'undefined') return;
+    const { default: jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
 
-    const doc = new jsPDF({ orientation: 'landscape' })
-    doc.setFontSize(16)
-    doc.text('Maquinaria - Serviequipos', 14, 15)
-    doc.setFontSize(10)
-    doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')}`, 14, 22)
+    // Exporta TODOS los registros filtrados (sin paginación)
+    let query = supabase
+      .from('maquinaria')
+      .select(`
+        id,
+        codigo_interno,
+        nombre,
+        marca,
+        modelo,
+        placa,
+        estado,
+        tipo_maquinaria_id,
+        tipos_maquinaria ( id, nombre )
+      `)
+      .eq('activo', true);
+
+    if (paginacion.filtros?.estado) {
+      query = query.eq('estado', paginacion.filtros.estado);
+    }
+    if (paginacion.filtros?.tipo) {
+      query = query.eq('tipo_maquinaria_id', paginacion.filtros.tipo);
+    }
+    if (paginacion.search) {
+      const term = `%${paginacion.search}%`;
+      query = query.or(
+        `codigo_interno.ilike.${term},nombre.ilike.${term},placa.ilike.${term},numero_serie.ilike.${term},marca.ilike.${term},modelo.ilike.${term}`
+      );
+    }
+
+    const { data } = await query.order('codigo_interno', { ascending: true });
+    const exportData = data || [];
+
+    const doc = new jsPDF({ orientation: 'landscape' });
+    doc.setFontSize(16);
+    doc.text('Maquinaria - Serviequipos', 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')}`, 14, 22);
 
     autoTable(doc, {
       startY: 28,
       head: [['Código', 'Nombre', 'Tipo', 'Marca / Modelo', 'Placa', 'Estado']],
-      body: maquinariaFiltrada.map((m) => [
+      body: exportData.map((m) => [
         m.codigo_interno || '',
         m.nombre || '',
         m.tipos_maquinaria?.nombre || '',
@@ -131,18 +169,45 @@ export default function MaquinariaPage() {
       ]),
       styles: { fontSize: 8 },
       headStyles: { fillColor: [26, 26, 26] },
-    })
+    });
 
-    doc.save(`maquinaria_${new Date().toISOString().split('T')[0]}.pdf`)
+    doc.save(`maquinaria_${new Date().toISOString().split('T')[0]}.pdf`);
   }
 
-  function limpiarFiltros() {
-    setSearch('');
-    setFiltroEstado('');
-    setFiltroTipo('');
+  // Helpers para badges
+  function renderAceiteBadge(m) {
+    const estado = calcularEstadoAceite(m.horometro_actual, m.ultimo_cambio_aceite_horometro);
+    const config = getEstadoAceiteConfig(estado);
+    return (
+      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${config.badge}`}>
+        <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
+        {config.label}
+      </span>
+    );
   }
 
-  // Helper para renderizar el badge de estado
+  function renderFiltroBadge(m) {
+    const estado = calcularEstadoFiltroCombustible(m.horometro_actual, m.ultimo_cambio_filtro_combustible_horometro);
+    const config = getEstadoAceiteConfig(estado);
+    return (
+      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${config.badge}`}>
+        <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
+        {config.label}
+      </span>
+    );
+  }
+
+  function renderFiltroAireBadge(m) {
+    const estado = calcularEstadoFiltroAire(m.ultima_condicion_filtro_aire);
+    const config = getEstadoAceiteConfig(estado);
+    return (
+      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${config.badge}`}>
+        <Wind className="w-3 h-3" />
+        {config.label}
+      </span>
+    );
+  }
+
   function renderEstadoBadge(estado) {
     const config = ESTADOS_MAQUINARIA[estado];
     if (!config) {
@@ -153,14 +218,14 @@ export default function MaquinariaPage() {
       );
     }
     return (
-      <span
-        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${config.badge}`}
-      >
+      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${config.badge}`}>
         <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
         {config.label}
       </span>
     );
   }
+
+  const hayFiltrosActivos = paginacion.search || paginacion.filtros.estado || paginacion.filtros.tipo;
 
   return (
     <div className="space-y-6">
@@ -168,118 +233,85 @@ export default function MaquinariaPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Maquinaria</h1>
-          <p className="text-sm text-gray-600">
-            Gestión de equipos y maquinaria pesada
-          </p>
+          <p className="text-sm text-gray-600">Gestión de equipos y maquinaria pesada</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={exportarPDF}
-            disabled={maquinariaFiltrada.length === 0}
+            disabled={paginacion.total === 0}
             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
             title="Exportar a PDF"
           >
             <FileDown className="h-4 w-4" />
             <span className="hidden sm:inline">Exportar PDF</span>
           </button>
-          <Link
-            href="/maquinaria/nuevo"
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition"
-          >
-            <Plus className="h-4 w-4" />
-            Nueva Maquinaria
-          </Link>
+          {isAdmin && (
+            <Link
+              href="/maquinaria/nuevo"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition"
+            >
+              <Plus className="h-4 w-4" />
+              Nueva Maquinaria
+            </Link>
+          )}
         </div>
       </div>
 
       {/* Tarjetas de resumen */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatsCard
-          title="Total"
-          value={resumen.total}
-          icon={Truck}
-          variant="default"
-        />
-        <StatsCard
-          title="Operativas"
-          value={resumen.operativa}
-          icon={CheckCircle2}
-          variant="success"
-        />
-        <StatsCard
-          title="En Mantenimiento"
-          value={resumen.mantenimiento}
-          icon={Wrench}
-          variant="warning"
-        />
-        <StatsCard
-          title="Fuera de Servicio"
-          value={resumen.fueraServicio}
-          icon={XCircle}
-          variant="danger"
-        />
+        <StatsCard title="Total" value={resumen.total} icon={Truck} color="blue" />
+        <StatsCard title="Operativas" value={resumen.operativa} icon={CheckCircle2} color="green" />
+        <StatsCard title="En Mantenimiento" value={resumen.mantenimiento} icon={Wrench} color="orange" />
+        <StatsCard title="Fuera de Servicio" value={resumen.fueraServicio} icon={XCircle} color="red" />
       </div>
 
       {/* Filtros */}
       <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
-          {/* Búsqueda */}
           <div className="md:col-span-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 placeholder="Buscar por código, nombre, placa, serie..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={paginacion.search}
+                onChange={(e) => paginacion.setSearch(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
           </div>
-
-          {/* Estado */}
           <div className="md:col-span-3">
             <select
-              value={filtroEstado}
-              onChange={(e) => setFiltroEstado(e.target.value)}
+              value={paginacion.filtros.estado}
+              onChange={(e) => paginacion.setFiltro('estado', e.target.value)}
               className="w-full rounded-lg border border-gray-300 bg-white py-2 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Todos los estados</option>
               {Object.entries(ESTADOS_MAQUINARIA).map(([key, config]) => (
-                <option key={key} value={key}>
-                  {config.label}
-                </option>
+                <option key={key} value={key}>{config.label}</option>
               ))}
             </select>
           </div>
-
-          {/* Tipo */}
           <div className="md:col-span-3">
             <select
-              value={filtroTipo}
-              onChange={(e) => setFiltroTipo(e.target.value)}
+              value={paginacion.filtros.tipo}
+              onChange={(e) => paginacion.setFiltro('tipo', e.target.value)}
               className="w-full rounded-lg border border-gray-300 bg-white py-2 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Todos los tipos</option>
               {tipos.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nombre}
-                </option>
+                <option key={t.id} value={t.id}>{t.nombre}</option>
               ))}
             </select>
           </div>
         </div>
 
-        {(search || filtroEstado || filtroTipo) && (
+        {hayFiltrosActivos && (
           <div className="mt-3 flex items-center justify-between text-sm">
             <span className="text-gray-600">
-              Mostrando <strong>{maquinariaFiltrada.length}</strong> de{' '}
-              <strong>{maquinaria.length}</strong> equipos
+              Mostrando <strong>{paginacion.total}</strong> resultados
             </span>
-            <button
-              onClick={limpiarFiltros}
-              className="text-blue-600 hover:text-blue-700 font-medium"
-            >
+            <button onClick={paginacion.limpiarFiltros} className="text-blue-600 hover:text-blue-700 font-medium">
               Limpiar filtros
             </button>
           </div>
@@ -288,26 +320,23 @@ export default function MaquinariaPage() {
 
       {/* Tabla */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-        {loading ? (
+        {paginacion.loading ? (
           <div className="p-12 text-center text-gray-500">Cargando maquinaria...</div>
-        ) : maquinariaFiltrada.length === 0 ? (
+        ) : paginacion.error ? (
+          <div className="p-12 text-center">
+            <p className="text-red-600">Error: {paginacion.error}</p>
+          </div>
+        ) : paginacion.data.length === 0 ? (
           <div className="p-12 text-center">
             <Truck className="mx-auto h-12 w-12 text-gray-300" />
             <h3 className="mt-3 text-sm font-semibold text-gray-900">
-              {maquinaria.length === 0
-                ? 'No hay maquinaria registrada'
-                : 'No se encontraron resultados'}
+              {resumen.total === 0 ? 'No hay maquinaria registrada' : 'No se encontraron resultados'}
             </h3>
             <p className="mt-1 text-sm text-gray-500">
-              {maquinaria.length === 0
-                ? 'Comienza registrando tu primer equipo.'
-                : 'Intenta ajustar los filtros de búsqueda.'}
+              {resumen.total === 0 ? 'Comienza registrando tu primer equipo.' : 'Intenta ajustar los filtros de búsqueda.'}
             </p>
-            {maquinaria.length === 0 && (
-              <Link
-                href="/maquinaria/nuevo"
-                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-              >
+            {resumen.total === 0 && isAdmin && (
+              <Link href="/maquinaria/nuevo" className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
                 <Plus className="h-4 w-4" />
                 Registrar maquinaria
               </Link>
@@ -318,44 +347,27 @@ export default function MaquinariaPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
-                    Foto
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
-                    Código
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
-                    Nombre
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
-                    Tipo
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
-                    Marca / Modelo
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
-                    Placa
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
-                    Estado
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600">
-                    Acciones
-                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Foto</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Código</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Nombre</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Tipo</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Marca / Modelo</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Placa</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Estado</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Aceite</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Filtros</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Filtro Aire</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {maquinariaFiltrada.map((m) => (
+                {paginacion.data.map((m) => (
                   <tr key={m.id} className="hover:bg-gray-50 transition">
                     <td className="px-4 py-3">
                       <Link href={`/maquinaria/${m.id}`}>
                         {m.foto_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={m.foto_url}
-                            alt={m.nombre}
-                            className="h-12 w-12 rounded-lg object-cover border border-gray-200 hover:ring-2 hover:ring-blue-400 transition"
-                          />
+                          <img src={m.foto_url} alt={m.nombre} className="h-12 w-12 rounded-lg object-cover border border-gray-200 hover:ring-2 hover:ring-blue-400 transition" />
                         ) : (
                           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 border border-gray-200 hover:ring-2 hover:ring-blue-400 transition">
                             <ImageOff className="h-5 w-5 text-gray-400" />
@@ -364,53 +376,46 @@ export default function MaquinariaPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-sm font-mono font-semibold text-gray-900">
-                      <Link
-                        href={`/maquinaria/${m.id}`}
-                        className="hover:text-blue-600 transition"
-                      >
-                        {m.codigo_interno || '—'}
-                      </Link>
+                      <Link href={`/maquinaria/${m.id}`} className="hover:text-blue-600 transition">{m.codigo_interno || '—'}</Link>
                     </td>
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                      <Link
-                        href={`/maquinaria/${m.id}`}
-                        className="hover:text-blue-600 transition"
-                      >
-                        {m.nombre || '—'}
-                      </Link>
+                      <Link href={`/maquinaria/${m.id}`} className="hover:text-blue-600 transition">{m.nombre || '—'}</Link>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {m.tipos_maquinaria?.nombre || '—'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {[m.marca, m.modelo].filter(Boolean).join(' / ') || '—'}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-mono text-gray-700">
-                      {m.placa || '—'}
-                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{m.tipos_maquinaria?.nombre || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{[m.marca, m.modelo].filter(Boolean).join(' / ') || '—'}</td>
+                    <td className="px-4 py-3 text-sm font-mono text-gray-700">{m.placa || '—'}</td>
                     <td className="px-4 py-3">{renderEstadoBadge(m.estado)}</td>
+                    <td className="px-4 py-3">{renderAceiteBadge(m)}</td>
+                    <td className="px-4 py-3">{renderFiltroBadge(m)}</td>
+                    <td className="px-4 py-3">{renderFiltroAireBadge(m)}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex items-center gap-1">
-                        <Link
-                          href={`/maquinaria/${m.id}`}
-                          className="inline-flex items-center justify-center rounded-md p-1.5 text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition"
-                          title="Ver detalle"
-                        >
+                        <Link href={`/maquinaria/${m.id}`} className="inline-flex items-center justify-center rounded-md p-1.5 text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition" title="Ver detalle">
                           <Eye className="h-4 w-4" />
                         </Link>
-                        <Link
-                          href={`/maquinaria/${m.id}/editar`}
-                          className="inline-flex items-center justify-center rounded-md p-1.5 text-gray-500 hover:bg-amber-50 hover:text-amber-600 transition"
-                          title="Editar"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Link>
+                        {isAdmin && (
+                          <Link href={`/maquinaria/${m.id}/editar`} className="inline-flex items-center justify-center rounded-md p-1.5 text-gray-500 hover:bg-amber-50 hover:text-amber-600 transition" title="Editar">
+                            <Pencil className="h-4 w-4" />
+                          </Link>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Paginación server-side */}
+        {!paginacion.loading && paginacion.totalPages > 1 && (
+          <div className="border-t border-gray-200 bg-gray-50 px-4">
+            <Pagination
+              page={paginacion.page}
+              totalPages={paginacion.totalPages}
+              onPageChange={paginacion.setPage}
+              isLoading={paginacion.loading}
+            />
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { Inter } from 'next/font/google'
 import './globals.css'
 import MainLayout from '@/components/layout/MainLayout'
+import { RoleProvider } from '@/context/RoleContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -13,9 +14,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="es">
       <body className={inter.className}>
-        <MainLayout>
-          {children}
-        </MainLayout>
+        <RoleProvider>
+          <MainLayout>
+            {children}
+          </MainLayout>
+        </RoleProvider>
       </body>
     </html>
   )

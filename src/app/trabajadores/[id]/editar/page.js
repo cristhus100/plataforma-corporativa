@@ -6,12 +6,24 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { useRole } from '@/context/RoleContext';
 
 export default function EditarTrabajadorPage() {
   const router = useRouter();
   const params = useParams();
   const supabase = createClient();
+  const { isAdmin, loading: roleLoading } = useRole();
   const trabajadorId = params.id;
+
+  // Redirect si no es admin
+  useEffect(() => {
+    if (!roleLoading && !isAdmin) {
+      router.replace('/trabajadores');
+    }
+  }, [roleLoading, isAdmin, router]);
+
+  if (roleLoading) return <div className="p-8 text-center text-gray-500">Verificando permisos...</div>;
+  if (!isAdmin) return null;
 
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -328,7 +340,7 @@ export default function EditarTrabajadorPage() {
       <div className="mb-6">
         <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
           <Link href="/trabajadores" className="hover:text-gray-900">
-            Trabajadores
+            Empleados
           </Link>
           <span>/</span>
           <Link href={`/trabajadores/${trabajadorId}`} className="hover:text-gray-900">
@@ -337,7 +349,7 @@ export default function EditarTrabajadorPage() {
           <span>/</span>
           <span className="text-gray-900">Editar</span>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900">Editar Trabajador</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Editar Empleado</h1>
         <p className="text-gray-600 mt-1">
           Actualiza la información del empleado
         </p>

@@ -9,8 +9,8 @@ export default function MainLayout({ children }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Login page es standalone (sin sidebar ni header)
-  if (pathname === '/login') {
+  // Login y formulario QR son standalone (sin sidebar ni header)
+  if (pathname === '/login' || pathname.startsWith('/mantenimiento/')) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#F5F5F5' }}>
         {children}

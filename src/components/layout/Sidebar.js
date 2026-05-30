@@ -3,8 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase/client';
+import { useAlertas } from '@/hooks/useAlertas';
 import {
   LayoutDashboard,
   Users,
@@ -13,12 +12,14 @@ import {
   MapPin,
   CalendarDays,
   Megaphone,
+  Car,
 } from 'lucide-react';
 
 const menuItems = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { label: 'Trabajadores', href: '/trabajadores', icon: Users },
+  { label: 'Empleados', href: '/trabajadores', icon: Users },
   { label: 'Maquinaria', href: '/maquinaria', icon: Wrench },
+  { label: 'Vehículos', href: '/vehiculos', icon: Car },
   { label: 'Ubicación', href: '/ubicacion', icon: MapPin },
   { label: 'Calendario', href: '/calendario', icon: CalendarDays },
   { label: 'Alertas', href: '/alertas', icon: Bell, showBadge: true },
@@ -27,31 +28,7 @@ const menuItems = [
 
 export default function Sidebar({ isOpen }) {
   const pathname = usePathname();
-  const [alertCount, setAlertCount] = useState(0);
-
-  useEffect(() => {
-    fetchAlertCount();
-    const interval = setInterval(fetchAlertCount, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchAlertCount = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('vw_alertas_documentos')
-        .select('estado_alerta');
-
-      if (error) throw error;
-
-      const count = (data || []).filter(
-        (a) => a.estado_alerta && a.estado_alerta !== 'VIGENTE'
-      ).length;
-
-      setAlertCount(count);
-    } catch (err) {
-      console.error('Error fetching alert count:', err);
-    }
-  };
+  const { conteoTotal: alertCount } = useAlertas();
 
 
   const isActive = (href) => {

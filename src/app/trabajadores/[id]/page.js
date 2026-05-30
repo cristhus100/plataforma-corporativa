@@ -6,7 +6,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { getNombreCompleto } from '@/lib/utils/trabajador';
+import { getNombreCompleto, ESTADOS_TRABAJADOR } from '@/lib/utils/trabajador';
+import { useRole } from '@/context/RoleContext';
 import TabDocumentos from './components/TabDocumentos';
 
 const TABS = [
@@ -20,6 +21,7 @@ export default function DetalleTrabajadorPage() {
   const params = useParams();
   const router = useRouter();
   const supabase = createClient();
+  const { isAdmin } = useRole();
   const trabajadorId = params.id;
 
   const [trabajador, setTrabajador] = useState(null);
@@ -148,14 +150,7 @@ export default function DetalleTrabajadorPage() {
   };
 
   const getEstadoBadge = (estado) => {
-    const config = {
-      activo: { badge: 'border-green-200 bg-green-50 text-green-700', dot: 'bg-green-500', label: 'Activo' },
-      inactivo: { badge: 'border-gray-200 bg-gray-100 text-gray-700', dot: 'bg-gray-400', label: 'Inactivo' },
-      vacaciones: { badge: 'border-blue-200 bg-blue-50 text-blue-700', dot: 'bg-blue-500', label: 'Vacaciones' },
-      incapacidad: { badge: 'border-orange-200 bg-orange-50 text-orange-700', dot: 'bg-orange-500', label: 'Incapacidad' },
-      retirado: { badge: 'border-red-200 bg-red-50 text-red-700', dot: 'bg-red-500', label: 'Retirado' },
-    };
-    return config[estado] || config.inactivo;
+    return ESTADOS_TRABAJADOR[estado] || ESTADOS_TRABAJADOR.inactivo;
   };
 
   if (loading) {
@@ -173,7 +168,7 @@ export default function DetalleTrabajadorPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Trabajador no encontrado</p>
+          <p className="text-gray-600 mb-4">Empleado no encontrado</p>
           <Link
             href="/trabajadores"
             className="text-gray-900 underline hover:text-gray-700"
@@ -208,7 +203,7 @@ export default function DetalleTrabajadorPage() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
                 <span className="text-lg">⚠️</span>
               </div>
-              <h2 className="text-lg font-semibold text-gray-900">Eliminar Trabajador</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Eliminar Empleado</h2>
             </div>
 
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
@@ -307,12 +302,14 @@ export default function DetalleTrabajadorPage() {
           </div>
 
           <div className="flex gap-2">
-            <button
-              onClick={() => setMostrarModal(true)}
-              className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium"
-            >
-              Eliminar
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setMostrarModal(true)}
+                className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium"
+              >
+                Eliminar
+              </button>
+            )}
             <Link
               href={`/trabajadores/${trabajadorId}/editar`}
               className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium inline-flex items-center gap-1.5"
@@ -365,7 +362,7 @@ export default function DetalleTrabajadorPage() {
           )}
 
           {tabActivo === 'documentos' && (
-            <TabDocumentos trabajadorId={trabajadorId} />
+            <TabDocumentos trabajadorId={trabajadorId} isAdmin={isAdmin} />
           )}
 
           {tabActivo === 'historial' && (

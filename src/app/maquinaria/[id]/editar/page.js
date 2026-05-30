@@ -6,13 +6,25 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { useRole } from '@/context/RoleContext'
 
 export default function EditarMaquinariaPage() {
   const supabase = createClient()
   const router = useRouter()
   const params = useParams()
+  const { isAdmin, loading: roleLoading } = useRole()
 
   const [cargando, setCargando] = useState(true)
+
+  // Redirect si no es admin
+  useEffect(() => {
+    if (!roleLoading && !isAdmin) {
+      router.replace('/maquinaria');
+    }
+  }, [roleLoading, isAdmin, router]);
+
+  if (roleLoading) return <div className="p-8 text-center text-gray-500">Verificando permisos...</div>;
+  if (!isAdmin) return null;
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState(null)
   const [tiposMaquinaria, setTiposMaquinaria] = useState([])

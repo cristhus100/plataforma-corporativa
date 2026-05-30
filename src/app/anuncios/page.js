@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useRole } from '@/context/RoleContext'
 import { Megaphone, Plus, Pencil, Trash2, X, Loader2 } from 'lucide-react'
 
 const PRIORIDADES = {
@@ -29,6 +30,7 @@ function anuncioVacio() {
 
 export default function AnunciosPage() {
   const supabase = createClient()
+  const { isAdmin } = useRole()
   const [anuncios, setAnuncios] = useState([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -151,6 +153,7 @@ export default function AnunciosPage() {
             Comunicados y noticias internas de Serviequipos
           </p>
         </div>
+        {isAdmin && (
         <button
           onClick={abrirNuevo}
           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition"
@@ -158,6 +161,7 @@ export default function AnunciosPage() {
           <Plus className="h-4 w-4" />
           Nuevo Anuncio
         </button>
+        )}
       </div>
 
       {/* Lista de anuncios */}
@@ -168,6 +172,7 @@ export default function AnunciosPage() {
           <Megaphone className="mx-auto h-12 w-12 text-gray-300" />
           <h3 className="mt-3 text-sm font-semibold text-gray-900">No hay anuncios</h3>
           <p className="mt-1 text-sm text-gray-500">Crea el primer anuncio para tu equipo.</p>
+          {isAdmin && (
           <button
             onClick={abrirNuevo}
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -175,6 +180,7 @@ export default function AnunciosPage() {
             <Plus className="h-4 w-4" />
             Crear anuncio
           </button>
+        )}
         </div>
       ) : (
         <div className="grid gap-4">
@@ -203,6 +209,7 @@ export default function AnunciosPage() {
                       <span className="capitalize">{anuncio.tipo}</span>
                     </div>
                   </div>
+                  {isAdmin && (
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button
                       onClick={() => abrirEditar(anuncio)}
@@ -219,6 +226,7 @@ export default function AnunciosPage() {
                       <Trash2 size={16} />
                     </button>
                   </div>
+                )}
                 </div>
               </div>
             )

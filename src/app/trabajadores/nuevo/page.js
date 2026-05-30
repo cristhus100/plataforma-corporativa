@@ -6,14 +6,26 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { useRole } from '@/context/RoleContext';
 
 export default function NuevoTrabajadorPage() {
   const supabase = createClient();
   const router = useRouter();
+  const { isAdmin, loading: roleLoading } = useRole();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [cargos, setCargos] = useState([]);
   const [departamentos, setDepartamentos] = useState([]);
+
+  // Redirect si no es admin
+  useEffect(() => {
+    if (!roleLoading && !isAdmin) {
+      router.replace('/trabajadores');
+    }
+  }, [roleLoading, isAdmin, router]);
+
+  if (roleLoading) return <div className="p-8 text-center text-gray-500">Verificando permisos...</div>;
+  if (!isAdmin) return null;
 
   const [openSections, setOpenSections] = useState({
     personal: true,
@@ -117,12 +129,12 @@ export default function NuevoTrabajadorPage() {
       <div className="mb-6">
         <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
           <Link href="/trabajadores" className="hover:text-gray-900">
-            Trabajadores
+            Empleados
           </Link>
           <span>/</span>
           <span className="text-gray-900">Nuevo</span>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900">Registrar Nuevo Trabajador</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Registrar Nuevo Empleado</h1>
         <p className="text-gray-600 mt-1">
           Complete la información del empleado. Los campos marcados con * son obligatorios.
         </p>
@@ -305,7 +317,7 @@ export default function NuevoTrabajadorPage() {
                 Guardando...
               </>
             ) : (
-              <>Guardar Trabajador</>
+              <>Guardar Empleado</>
             )}
           </button>
         </div>

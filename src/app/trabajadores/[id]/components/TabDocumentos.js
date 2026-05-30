@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Upload, FileText, Download, Trash2, Calendar, AlertTriangle, X, Plus } from 'lucide-react';
+import { Upload, FileText, Download, Trash2, Calendar, AlertTriangle, X, Plus, ToggleLeft, ToggleRight } from 'lucide-react';
 
-export default function TabDocumentos({ trabajadorId }) {
+export default function TabDocumentos({ trabajadorId, isAdmin = false }) {
   const supabase = createClient();
   const [documentos, setDocumentos] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
@@ -18,7 +18,11 @@ export default function TabDocumentos({ trabajadorId }) {
     numero_documento: '',
     observaciones: '',
     archivo: null,
+    noVence: false,
   });
+
+  const tipoSeleccionado = tiposDocumento.find(t => String(t.id) === String(formData.tipo_documento_id));
+  const esCertificado = tipoSeleccionado?.nombre === 'Certificados';
 
   useEffect(() => {
     if (trabajadorId) {
@@ -32,7 +36,7 @@ export default function TabDocumentos({ trabajadorId }) {
 
       const { data: tipos, error: tiposError } = await supabase
         .from('tipos_documentos_trabajador')
-        .select('id, nombre, requiere_vencimiento, obligatorio')
+        .select('id, nombre, requiere_vencimiento')
         .eq('activo', true)
         .order('nombre');
 
@@ -78,6 +82,10 @@ export default function TabDocumentos({ trabajadorId }) {
       alert('Selecciona un tipo de documento y un archivo');
       return;
     }
+    if (esCertificado && !formData.observaciones.trim()) {
+      alert('Debes escribir el nombre del certificado en el campo "Nombre del Certificado"');
+      return;
+    }
 
     setUploading(true);
     let filePath = null;
@@ -98,10 +106,13 @@ export default function TabDocumentos({ trabajadorId }) {
         .insert([{
           trabajador_id: trabajadorId,
           tipo_documento_id: parseInt(formData.tipo_documento_id),
+          nombre_archivo: formData.archivo.name,
+          ruta_archivo: fileName,
+          tamano_bytes: formData.archivo.size,
+          tipo_mime: formData.archivo.type,
           numero_documento: formData.numero_documento || null,
           fecha_emision: formData.fecha_emision || null,
-          fecha_vencimiento: formData.fecha_vencimiento || null,
-          archivo_url: fileName,
+          fecha_vencimiento: formData.noVence ? null : (formData.fecha_vencimiento || null),
           observaciones: formData.observaciones || null,
         }]);
 
@@ -119,6 +130,7 @@ export default function TabDocumentos({ trabajadorId }) {
         numero_documento: '',
         observaciones: '',
         archivo: null,
+        noVence: false,
       });
       cargarDatos();
     } catch (error) {
@@ -146,10 +158,10 @@ export default function TabDocumentos({ trabajadorId }) {
     if (!confirm('¿Eliminar este documento?')) return;
 
     try {
-      if (doc.archivo_url) {
+      if (doc.ruta_archivo) {
         await supabase.storage
           .from('documentos-trabajadores')
-          .remove([doc.archivo_url]);
+          .remove([doc.ruta_archivo]);
       }
 
       const { error } = await supabase
@@ -189,9 +201,10 @@ export default function TabDocumentos({ trabajadorId }) {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Documentos del Trabajador</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Documentos del Empleado</h3>
           <p className="text-sm text-gray-500">{documentos.length} documento(s) registrado(s)</p>
         </div>
+        {isAdmin && (
         <button
           onClick={() => setShowModal(true)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
@@ -199,6 +212,7 @@ export default function TabDocumentos({ trabajadorId }) {
           <Plus size={16} />
           Subir Documento
         </button>
+        )}
       </div>
 
       {/* Lista de documentos */}
@@ -212,7 +226,11 @@ export default function TabDocumentos({ trabajadorId }) {
         <div className="space-y-3">
           {documentos.map((doc) => {
             const estadoVenc = calcularEstadoVencimiento(doc.fecha_vencimiento);
-            const tipoNombre = doc.tipos_documentos_trabajador?.nombre || 'Sin tipo';
+            const tipoInfo = doc.tipos_documentos_trabajador;
+            const esTipoCertificado = tipoInfo?.nombre === 'Certificados';
+            const tipoNombre = esTipoCertificado && doc.observaciones
+              ? doc.observaciones
+              : (tipoInfo?.nombre || 'Sin tipo');
 
             return (
               <div
@@ -236,14 +254,22 @@ export default function TabDocumentos({ trabajadorId }) {
                             Emitido: {new Date(doc.fecha_emision).toLocaleDateString('es-CO')}
                           </span>
                         )}
-                        {doc.fecha_vencimiento && (
+                        {doc.fecha_vencimiento ? (
                           <span className="flex items-center gap-1">
                             <Calendar size={12} />
                             Vence: {new Date(doc.fecha_vencimiento).toLocaleDateString('es-CO')}
                           </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-gray-400">
+                            <Calendar size={12} />
+                            No vence
+                          </span>
                         )}
                       </div>
-                      {estadoVenc && (
+                      {esTipoCertificado && (
+                        <p className="text-xs text-gray-400 mt-1">Certificado</p>
+                      )}
+                      {estadoVenc ? (
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium mt-2 ${
                             estadoVenc.color === 'red'
@@ -256,20 +282,25 @@ export default function TabDocumentos({ trabajadorId }) {
                           {estadoVenc.color !== 'green' && <AlertTriangle size={12} />}
                           {estadoVenc.texto} ({estadoVenc.dias} días)
                         </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium mt-2 bg-gray-50 text-gray-500 border border-gray-200">
+                          No vence
+                        </span>
                       )}
-                      {doc.observaciones && (
+                      {doc.observaciones && !esTipoCertificado && (
                         <p className="text-xs text-gray-400 mt-2 italic">{doc.observaciones}</p>
                       )}
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handleDescargar(doc.archivo_url)}
+                      onClick={() => handleDescargar(doc.ruta_archivo)}
                       className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition"
                       title="Descargar"
                     >
                       <Download size={16} />
                     </button>
+                    {isAdmin && (
                     <button
                       onClick={() => handleEliminar(doc)}
                       className="p-2 bg-gray-100 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 transition"
@@ -277,7 +308,8 @@ export default function TabDocumentos({ trabajadorId }) {
                     >
                       <Trash2 size={16} />
                     </button>
-                  </div>
+                    )}
+                </div>
                 </div>
               </div>
             );
@@ -347,25 +379,56 @@ export default function TabDocumentos({ trabajadorId }) {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Fecha Vencimiento
                   </label>
-                  <input
-                    type="date"
-                    value={formData.fecha_vencimiento}
-                    onChange={(e) => setFormData({ ...formData, fecha_vencimiento: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                  <div className="space-y-2">
+                    <input
+                      type="date"
+                      value={formData.fecha_vencimiento}
+                      onChange={(e) => setFormData({ ...formData, fecha_vencimiento: e.target.value })}
+                      disabled={formData.noVence}
+                      className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+                        formData.noVence ? 'bg-gray-100 text-gray-400 border-gray-200' : 'border-gray-300'
+                      }`}
+                    />
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={formData.noVence}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setFormData({
+                            ...formData,
+                            noVence: checked,
+                            fecha_vencimiento: checked ? '' : formData.fecha_vencimiento,
+                          });
+                        }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-xs text-gray-500">No vence</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Observaciones
+                  {esCertificado ? 'Nombre del Certificado *' : 'Observaciones'}
                 </label>
-                <textarea
-                  value={formData.observaciones}
-                  onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-                  rows="2"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
+                {esCertificado ? (
+                  <input
+                    type="text"
+                    value={formData.observaciones}
+                    onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+                    placeholder="Ej: Certificado de manipulación de alimentos"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                ) : (
+                  <textarea
+                    value={formData.observaciones}
+                    onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+                    rows="2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                )}
               </div>
 
               <div>

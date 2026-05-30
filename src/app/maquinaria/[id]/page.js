@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { useRole } from '@/context/RoleContext';
 import {
   getEstadoBadge,
   getEstadoLabel,
@@ -14,10 +15,16 @@ import {
   formatearMoneda,
   calcularAntiguedad,
 } from '@/lib/utils/maquinaria';
+import TabCambioAceite from './components/TabCambioAceite';
+import TabHistorial from './components/TabHistorial';
+import TabDocumentos from './components/TabDocumentos';
+import TabFotos from './components/TabFotos';
+import TabOperador from './components/TabOperador';
 
 const TABS = [
   { id: 'general', label: 'Información General', icon: '📋' },
   { id: 'documentos', label: 'Documentos', icon: '📄' },
+  { id: 'aceite', label: 'Mantenimiento', icon: '🔧' },
   { id: 'fotos', label: 'Fotos', icon: '📸' },
   { id: 'operador', label: 'Operador', icon: '👷' },
   { id: 'historial', label: 'Historial', icon: '🔧' },
@@ -26,10 +33,14 @@ const TABS = [
 export default function MaquinariaDetallePage() {
   const params = useParams();
   const router = useRouter();
+  const { isAdmin } = useRole();
   const [maquinaria, setMaquinaria] = useState(null);
   const [tipoMaquinaria, setTipoMaquinaria] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('general');
+  const [mostrarModal, setMostrarModal] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
+  const [errorEliminar, setErrorEliminar] = useState(null);
 
   useEffect(() => {
     if (params.id) {
@@ -62,6 +73,47 @@ export default function MaquinariaDetallePage() {
       console.error('Error cargando maquinaria:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEliminar = async () => {
+    setEliminando(true);
+    setErrorEliminar(null);
+    try {
+      // Eliminar fotos del storage
+      const { data: fotos } = await supabase
+        .from('fotos_maquinaria')
+        .select('ruta_archivo')
+        .eq('maquinaria_id', params.id);
+      if (fotos && fotos.length > 0) {
+        await supabase.storage
+          .from('fotos-maquinaria')
+          .remove(fotos.map(f => f.ruta_archivo));
+      }
+
+      // Eliminar documentos del storage
+      const { data: docs } = await supabase
+        .from('documentos_maquinaria')
+        .select('ruta_archivo')
+        .eq('maquinaria_id', params.id);
+      if (docs && docs.length > 0) {
+        await supabase.storage
+          .from('documentos-maquinaria')
+          .remove(docs.map(d => d.ruta_archivo));
+      }
+
+      // La maquinaria se elimina en cascada (documentos, fotos, historial)
+      const { error } = await supabase
+        .from('maquinaria')
+        .delete()
+        .eq('id', params.id);
+
+      if (error) throw error;
+      router.push('/maquinaria');
+      router.refresh();
+    } catch (err) {
+      setErrorEliminar(err.message);
+      setEliminando(false);
     }
   };
 
@@ -166,12 +218,61 @@ export default function MaquinariaDetallePage() {
         {/* Tab Content */}
         <div className="p-6">
           {activeTab === 'general' && <TabGeneral maquinaria={maquinaria} tipo={tipoMaquinaria} />}
-          {activeTab === 'documentos' && <TabDocumentos maquinariaId={params.id} />}
-          {activeTab === 'fotos' && <TabFotos maquinariaId={params.id} />}
-          {activeTab === 'operador' && <TabOperador maquinaria={maquinaria} onUpdate={cargarMaquinaria} />}
-          {activeTab === 'historial' && <TabHistorial maquinariaId={params.id} />}
+          {activeTab === 'documentos' && <TabDocumentos maquinariaId={params.id} isAdmin={isAdmin} />}
+          {activeTab === 'aceite' && <TabCambioAceite maquinariaId={params.id} maquinaria={maquinaria} onUpdate={cargarMaquinaria} isAdmin={isAdmin} />}
+          {activeTab === 'fotos' && <TabFotos maquinariaId={params.id} isAdmin={isAdmin} />}
+          {activeTab === 'operador' && <TabOperador maquinaria={maquinaria} onUpdate={cargarMaquinaria} isAdmin={isAdmin} />}
+          {activeTab === 'historial' && <TabHistorial maquinariaId={params.id} maquinaria={maquinaria} isAdmin={isAdmin} />}
         </div>
       </div>
+
+      {/* Zona de peligro - Eliminar (solo admin) */}
+      {isAdmin && (
+      <div className="bg-white rounded-lg border border-red-200 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+            <span className="text-lg">⚠️</span>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Zona de Peligro</h2>
+            <p className="text-sm text-gray-500">Eliminar esta maquinaria permanentemente</p>
+          </div>
+        </div>
+        {!mostrarModal ? (
+          <button
+            onClick={() => setMostrarModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition"
+          >
+            Eliminar Maquinaria
+          </button>
+        ) : (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
+            <p className="text-sm text-red-800 font-medium">
+              ¿Estás seguro de eliminar <strong>{maquinaria.nombre}</strong> ({maquinaria.codigo_interno})?
+            </p>
+            <p className="text-xs text-red-600">Esta acción NO se puede deshacer. Se eliminarán documentos, fotos, historial y registros de mantenimiento asociados.</p>
+            {errorEliminar && (
+              <div className="bg-red-100 border border-red-300 rounded p-2 text-sm text-red-700">{errorEliminar}</div>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={handleEliminar}
+                disabled={eliminando}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+              >
+                {eliminando ? 'Eliminando...' : 'Sí, eliminar'}
+              </button>
+              <button
+                onClick={() => { setMostrarModal(false); setErrorEliminar(null); }}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+      )}
     </div>
   );
 }
@@ -215,7 +316,7 @@ function TabGeneral({ maquinaria, tipo }) {
             } 
           />
           <InfoRow label="Ubicación Actual" value={maquinaria.ubicacion_actual} />
-          <InfoRow label="Horómetro" value={maquinaria.horometro ? `${maquinaria.horometro} hrs` : null} />
+          <InfoRow label="Horómetro" value={maquinaria.horometro_actual ? `${maquinaria.horometro_actual} hrs` : null} />
           <InfoRow label="Kilometraje" value={maquinaria.kilometraje ? `${maquinaria.kilometraje} km` : null} />
           <InfoRow label="Fecha de Compra" value={formatearFecha(maquinaria.fecha_compra)} />
           <InfoRow label="Valor de Compra" value={maquinaria.valor_compra ? formatearMoneda(maquinaria.valor_compra) : null} />
@@ -230,66 +331,3 @@ function TabGeneral({ maquinaria, tipo }) {
   );
 }
 
-// ============================================
-// TAB: DOCUMENTOS
-// ============================================
-function TabDocumentos({ maquinariaId }) {
-  return (
-    <div className="text-center py-12">
-      <div className="text-4xl mb-3">📄</div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">Documentos</h3>
-      <p className="text-gray-600 mb-4">
-        Aquí podrás gestionar SOAT, técnico-mecánica, pólizas y demás documentos
-      </p>
-      <p className="text-sm text-gray-500">Módulo en desarrollo</p>
-    </div>
-  );
-}
-
-// ============================================
-// TAB: FOTOS
-// ============================================
-function TabFotos({ maquinariaId }) {
-  return (
-    <div className="text-center py-12">
-      <div className="text-4xl mb-3">📸</div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">Galería de Fotos</h3>
-      <p className="text-gray-600 mb-4">
-        Aquí podrás subir y visualizar fotografías de la maquinaria
-      </p>
-      <p className="text-sm text-gray-500">Módulo en desarrollo</p>
-    </div>
-  );
-}
-
-// ============================================
-// TAB: OPERADOR
-// ============================================
-function TabOperador({ maquinaria, onUpdate }) {
-  return (
-    <div className="text-center py-12">
-      <div className="text-4xl mb-3">👷</div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">Operador Asignado</h3>
-      <p className="text-gray-600 mb-4">
-        Aquí podrás asignar un trabajador como operador de esta maquinaria
-      </p>
-      <p className="text-sm text-gray-500">Módulo en desarrollo</p>
-    </div>
-  );
-}
-
-// ============================================
-// TAB: HISTORIAL DE MANTENIMIENTO
-// ============================================
-function TabHistorial({ maquinariaId }) {
-  return (
-    <div className="text-center py-12">
-      <div className="text-4xl mb-3">🔧</div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">Historial de Mantenimiento</h3>
-      <p className="text-gray-600 mb-4">
-        Aquí podrás registrar y consultar mantenimientos preventivos y correctivos
-      </p>
-      <p className="text-sm text-gray-500">Módulo en desarrollo</p>
-    </div>
-  );
-}
