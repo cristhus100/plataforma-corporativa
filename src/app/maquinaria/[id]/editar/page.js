@@ -28,6 +28,7 @@ export default function EditarMaquinariaPage() {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState(null)
   const [tiposMaquinaria, setTiposMaquinaria] = useState([])
+  const [frentes, setFrentes] = useState([])
 
   const [formData, setFormData] = useState({
     codigo_interno: '',
@@ -42,6 +43,7 @@ export default function EditarMaquinariaPage() {
     placa: '',
     estado: 'operativa',
     ubicacion_actual: '',
+    frente_trabajo_id: '',
     horometro_actual: '',
     kilometraje_actual: '',
     fecha_adquisicion: '',
@@ -69,15 +71,17 @@ export default function EditarMaquinariaPage() {
       setCargando(true)
 
       // Cargar catálogos y datos en paralelo
-      const [tiposRes, maqRes] = await Promise.all([
+      const [tiposRes, maqRes, frentesRes] = await Promise.all([
         supabase.from('tipos_maquinaria').select('id, nombre').eq('activo', true).order('nombre'),
         supabase.from('maquinaria').select('*').eq('id', params.id).single(),
+        supabase.from('frentes_trabajo').select('id, codigo, nombre').eq('activo', true).order('nombre'),
       ])
 
       if (tiposRes.error) throw tiposRes.error
       if (maqRes.error) throw maqRes.error
 
       setTiposMaquinaria(tiposRes.data || [])
+      setFrentes(frentesRes.data || [])
 
       const m = maqRes.data
 
@@ -95,6 +99,7 @@ export default function EditarMaquinariaPage() {
         placa: m.placa || '',
         estado: m.estado || 'operativa',
         ubicacion_actual: m.ubicacion_actual || '',
+        frente_trabajo_id: m.frente_trabajo_id || '',
         horometro_actual: m.horometro_actual || m.horometro || '',
         kilometraje_actual: m.kilometraje_actual || m.kilometraje || '',
         fecha_adquisicion: m.fecha_adquisicion || m.fecha_compra || '',
@@ -364,6 +369,22 @@ export default function EditarMaquinariaPage() {
               onChange={handleChange}
               placeholder="Ej: Obra La Calera"
             />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Frente de Trabajo</label>
+              <select
+                name="frente_trabajo_id"
+                value={formData.frente_trabajo_id}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
+              >
+                <option value="">Sin asignar</option>
+                {frentes.map((f) => (
+                  <option key={f.id} value={f.id}>{f.codigo} — {f.nombre}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </CollapsibleSection>
 

@@ -31,6 +31,7 @@ export default function EditarTrabajadorPage() {
   const [datosOriginales, setDatosOriginales] = useState(null);
   const [cargos, setCargos] = useState([]);
   const [departamentos, setDepartamentos] = useState([]);
+  const [frentes, setFrentes] = useState([]);
 
   const [formData, setFormData] = useState({
     cedula: '',
@@ -52,6 +53,7 @@ export default function EditarTrabajadorPage() {
 
     cargo_id: '',
     departamento_id: '',
+    frente_trabajo_id: '',
     fecha_ingreso: '',
     tipo_contrato: '',
     salario: '',
@@ -75,13 +77,15 @@ export default function EditarTrabajadorPage() {
   useEffect(() => {
     async function cargarDatos() {
       try {
-        const [cargosRes, deptRes] = await Promise.all([
+        const [cargosRes, deptRes, frentesRes] = await Promise.all([
           supabase.from('cargos').select('id, nombre').order('nombre'),
           supabase.from('departamentos').select('id, nombre').order('nombre'),
+          supabase.from('frentes_trabajo').select('id, codigo, nombre').eq('activo', true).order('nombre'),
         ]);
 
         setCargos(cargosRes.data || []);
         setDepartamentos(deptRes.data || []);
+        setFrentes(frentesRes.data || []);
 
         const { data, error } = await supabase
           .from('trabajadores')
@@ -100,24 +104,12 @@ export default function EditarTrabajadorPage() {
             );
             if (match) cargoId = match.id;
           }
-          if (!cargoId && data.cargo_legacy) {
-            const match = (cargosRes.data || []).find(
-              (c) => c.nombre.toLowerCase() === data.cargo_legacy.toLowerCase()
-            );
-            if (match) cargoId = match.id;
-          }
 
           // Determinar departamento_id
           let deptoId = data.departamento_id || '';
           if (!deptoId && data.departamento) {
             const match = (deptRes.data || []).find(
               (d) => d.nombre.toLowerCase() === data.departamento.toLowerCase()
-            );
-            if (match) deptoId = match.id;
-          }
-          if (!deptoId && data.departamento_legacy) {
-            const match = (deptRes.data || []).find(
-              (d) => d.nombre.toLowerCase() === data.departamento_legacy.toLowerCase()
             );
             if (match) deptoId = match.id;
           }
@@ -140,6 +132,7 @@ export default function EditarTrabajadorPage() {
             departamento_residencia: data.departamento_residencia || '',
             cargo_id: cargoId,
             departamento_id: deptoId,
+            frente_trabajo_id: data.frente_trabajo_id || '',
             fecha_ingreso: data.fecha_ingreso || '',
             tipo_contrato: data.tipo_contrato || '',
             salario: data.salario || '',
@@ -175,7 +168,7 @@ export default function EditarTrabajadorPage() {
 
   function limpiarDatos(data) {
     const camposFecha = ['fecha_nacimiento', 'fecha_ingreso'];
-    const camposNumericos = ['salario', 'cargo_id', 'departamento_id'];
+    const camposNumericos = ['salario', 'cargo_id', 'departamento_id', 'frente_trabajo_id'];
 
     const limpio = {};
 
@@ -224,6 +217,7 @@ export default function EditarTrabajadorPage() {
       departamento_residencia: 'Departamento de Residencia',
       cargo_id: 'Cargo',
       departamento_id: 'Departamento',
+      frente_trabajo_id: 'Frente de Trabajo',
       fecha_ingreso: 'Fecha de Ingreso',
       tipo_contrato: 'Tipo de Contrato',
       salario: 'Salario',
@@ -262,6 +256,12 @@ export default function EditarTrabajadorPage() {
           if (dAnterior) displayAnterior = dAnterior.nombre;
           if (dNuevo) displayNuevo = dNuevo.nombre;
         }
+        if (campo === 'frente_trabajo_id') {
+          const fAnterior = frentes.find((f) => String(f.id) === String(valorAnterior));
+          const fNuevo = frentes.find((f) => String(f.id) === String(valorNuevo));
+          if (fAnterior) displayAnterior = `${fAnterior.codigo} — ${fAnterior.nombre}`;
+          if (fNuevo) displayNuevo = `${fNuevo.codigo} — ${fNuevo.nombre}`;
+        }
 
         cambios.push({
           campo: etiquetas[campo] || campo,
@@ -283,11 +283,9 @@ export default function EditarTrabajadorPage() {
       const cambios = detectarCambios();
       const datosActualizar = limpiarDatos(formData);
 
-      // Guardar también el nombre legible como fallback
-      const cargoSel = cargos.find((c) => String(c.id) === String(formData.cargo_id));
-      const deptoSel = departamentos.find((d) => String(d.id) === String(formData.departamento_id));
-      if (cargoSel) datosActualizar.cargo_legacy = cargoSel.nombre;
-      if (deptoSel) datosActualizar.departamento_legacy = deptoSel.nombre;
+      // Eliminar campos legacy que ya no existen en la BD
+      delete datosActualizar.cargo_legacy;
+      delete datosActualizar.departamento_legacy;
 
       const { error: errorUpdate } = await supabase
         .from('trabajadores')
@@ -589,6 +587,18 @@ export default function EditarTrabajadorPage() {
                 className={inputClass}
                 placeholder="Ej: 2500000"
               />
+            </Field>
+            <Field label="Frente de Trabajo">
+              <select
+                value={formData.frente_trabajo_id}
+                onChange={handleChange('frente_trabajo_id')}
+                className={selectClass}
+              >
+                <option value="">Sin asignar</option>
+                {frentes.map((f) => (
+                  <option key={f.id} value={f.id}>{f.codigo} — {f.nombre}</option>
+                ))}
+              </select>
             </Field>
             <Field label="Estado" required>
               <select

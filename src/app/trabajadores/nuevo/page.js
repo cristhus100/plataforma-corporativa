@@ -16,6 +16,7 @@ export default function NuevoTrabajadorPage() {
   const [error, setError] = useState(null);
   const [cargos, setCargos] = useState([]);
   const [departamentos, setDepartamentos] = useState([]);
+  const [frentes, setFrentes] = useState([]);
 
   // Redirect si no es admin
   useEffect(() => {
@@ -54,6 +55,7 @@ export default function NuevoTrabajadorPage() {
     // Información Laboral
     cargo_id: '',
     departamento_id: '',
+    frente_trabajo_id: '',
     fecha_ingreso: '',
     tipo_contrato: '',
     salario: '',
@@ -76,8 +78,10 @@ export default function NuevoTrabajadorPage() {
   const cargarCatalogos = async () => {
     const { data: cargosData } = await supabase.from('cargos').select('*').order('nombre');
     const { data: deptData } = await supabase.from('departamentos').select('*').order('nombre');
+    const { data: frentesData } = await supabase.from('frentes_trabajo').select('*').eq('activo', true).order('nombre');
     setCargos(cargosData || []);
     setDepartamentos(deptData || []);
+    setFrentes(frentesData || []);
   };
 
   const toggleSection = (section) => {
@@ -99,6 +103,7 @@ export default function NuevoTrabajadorPage() {
         ...form,
         cargo_id: form.cargo_id || null,
         departamento_id: form.departamento_id || null,
+        frente_trabajo_id: form.frente_trabajo_id || null,
         salario: form.salario ? parseFloat(form.salario) : null,
         fecha_nacimiento: form.fecha_nacimiento || null,
         fecha_ingreso: form.fecha_ingreso || null,
@@ -247,6 +252,18 @@ export default function NuevoTrabajadorPage() {
                 <option value="">Seleccionar área</option>
                 {departamentos.map((d) => (
                   <option key={d.id} value={d.id}>{d.nombre}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Frente de Trabajo</label>
+              <select name="frente_trabajo_id" value={form.frente_trabajo_id} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900">
+                <option value="">Sin asignar</option>
+                {frentes.map((f) => (
+                  <option key={f.id} value={f.id}>{f.codigo} — {f.nombre}</option>
                 ))}
               </select>
             </div>

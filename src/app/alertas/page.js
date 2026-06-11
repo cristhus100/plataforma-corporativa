@@ -88,22 +88,18 @@ export default function AlertasPage() {
 
   async function cargarDescartadas() {
     try {
-      const { data } = await supabase.from('alertas_suprimidas').select('id')
-      if (data) setDescartadas(data.map(d => d.id))
+      const { data } = await supabase.from('alertas_suprimidas').select('entidad_id')
+      if (data) setDescartadas(data.map(d => d.entidad_id))
     } catch (e) { /* ignore */ }
   }
 
   async function descartarAlerta(id) {
     if (!id) return
     try {
-      const { data } = await supabase.from('alertas_suprimidas').insert([{ entidad_id: id }]).select('id')
-      if (data && data[0]) {
-        setDescartadas(prev => [...prev, data[0].id])
-      } else {
-        setDescartadas(prev => [...prev, `tmp_${id}`])
-      }
+      await supabase.from('alertas_suprimidas').insert([{ entidad_id: id }])
+      setDescartadas(prev => [...prev, id])
     } catch (e) {
-      setDescartadas(prev => [...prev, `tmp_${id}`])
+      setDescartadas(prev => [...prev, id])
       console.error('Error al descartar alerta:', e)
     }
   }

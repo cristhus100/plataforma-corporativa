@@ -13,13 +13,20 @@ import {
   CalendarDays,
   Megaphone,
   Car,
+  ClipboardCheck,
+  ClipboardList,
+  History,
+  Clock,
 } from 'lucide-react';
 
 const menuItems = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Empleados', href: '/trabajadores', icon: Users },
+  { label: 'Turnos', href: '/turnos', icon: Clock },
   { label: 'Maquinaria', href: '/maquinaria', icon: Wrench },
   { label: 'Vehículos', href: '/vehiculos', icon: Car },
+  { label: 'Órdenes Mtto.', href: '/mantenimiento/ordenes', icon: ClipboardList },
+  { label: 'Auditorías', href: '/auditorias', icon: ClipboardCheck },
   { label: 'Ubicación', href: '/ubicacion', icon: MapPin },
   { label: 'Calendario', href: '/calendario', icon: CalendarDays },
   { label: 'Alertas', href: '/alertas', icon: Bell, showBadge: true },

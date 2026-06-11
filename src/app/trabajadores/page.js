@@ -54,8 +54,9 @@ export default function TrabajadoresPage() {
       .select(`
         *,
         cargo:cargos(id, nombre),
-        departamento_area:departamentos(id, nombre)
-      `);
+        departamento_area:departamentos(id, nombre),
+        frente_trabajo:frentes_trabajo!frente_trabajo_id(id, codigo, nombre)
+      `, { count: 'exact' });
 
     // Filtros desde el servidor
     if (filtros?.estado === 'activo') {
@@ -282,6 +283,7 @@ export default function TrabajadoresPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Nombre Completo</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Cargo</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Departamento</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Frente</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Estado</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600">Acciones</th>
                 </tr>
@@ -297,6 +299,7 @@ export default function TrabajadoresPage() {
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700">{t.cargo?.nombre || t.cargo_legacy || '—'}</td>
                     <td className="px-4 py-3 text-sm text-gray-700">{t.departamento_area?.nombre || t.departamento_legacy || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{t.frente_trabajo?.codigo ? `${t.frente_trabajo.codigo} — ${t.frente_trabajo.nombre}` : '—'}</td>
                     <td className="px-4 py-3">{renderEstadoBadge(t)}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex items-center gap-1">

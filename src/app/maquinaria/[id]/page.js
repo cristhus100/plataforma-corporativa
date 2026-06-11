@@ -54,7 +54,7 @@ export default function MaquinariaDetallePage() {
       
       const { data: maq, error: errMaq } = await supabase
         .from('maquinaria')
-        .select('*')
+        .select('*, frente_trabajo:frentes_trabajo!frente_trabajo_id(id, codigo, nombre)')
         .eq('id', params.id)
         .single();
 
@@ -316,6 +316,11 @@ function TabGeneral({ maquinaria, tipo }) {
             } 
           />
           <InfoRow label="Ubicación Actual" value={maquinaria.ubicacion_actual} />
+          <InfoRow label="Frente de Trabajo" value={
+            maquinaria.frente_trabajo
+              ? `${maquinaria.frente_trabajo.codigo} — ${maquinaria.frente_trabajo.nombre}`
+              : 'Sin asignar'
+          } />
           <InfoRow label="Horómetro" value={maquinaria.horometro_actual ? `${maquinaria.horometro_actual} hrs` : null} />
           <InfoRow label="Kilometraje" value={maquinaria.kilometraje ? `${maquinaria.kilometraje} km` : null} />
           <InfoRow label="Fecha de Compra" value={formatearFecha(maquinaria.fecha_compra)} />

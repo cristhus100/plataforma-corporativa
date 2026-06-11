@@ -49,7 +49,8 @@ export default function DetalleTrabajadorPage() {
         .select(`
           *,
           cargo:cargos(id, nombre),
-          departamento_area:departamentos(id, nombre)
+          departamento_area:departamentos(id, nombre),
+          frente_trabajo:frentes_trabajo!frente_trabajo_id(id, codigo, nombre)
         `)
         .eq('id', trabajadorId)
         .single();
@@ -445,6 +446,11 @@ function TabLaboral({ trabajador, antiguedad, formatearFecha, formatearMoneda, c
         <dl>
           <InfoRow label="Cargo" value={cargoNombre} />
           <InfoRow label="Departamento" value={deptoNombre} />
+          <InfoRow label="Frente de Trabajo" value={
+            trabajador.frente_trabajo
+              ? `${trabajador.frente_trabajo.codigo} — ${trabajador.frente_trabajo.nombre}`
+              : 'Sin asignar'
+          } />
           <InfoRow label="Tipo de Contrato" value={trabajador.tipo_contrato} />
           <InfoRow
             label="Fecha de Ingreso"

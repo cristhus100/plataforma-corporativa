@@ -84,8 +84,9 @@ export default function MaquinariaPage() {
         ultimo_cambio_filtro_combustible_horometro,
         ultima_condicion_filtro_aire,
         tipo_maquinaria_id,
-        tipos_maquinaria ( id, nombre )
-      `)
+        tipos_maquinaria ( id, nombre ),
+        frente_trabajo:frentes_trabajo!frente_trabajo_id(id, codigo, nombre)
+      `, { count: 'exact' })
       .eq('activo', true);
 
     // Filtros desde el servidor
@@ -130,7 +131,8 @@ export default function MaquinariaPage() {
         placa,
         estado,
         tipo_maquinaria_id,
-        tipos_maquinaria ( id, nombre )
+        tipos_maquinaria ( id, nombre ),
+        frente_trabajo:frentes_trabajo!frente_trabajo_id(id, codigo, nombre)
       `)
       .eq('activo', true);
 
@@ -158,13 +160,14 @@ export default function MaquinariaPage() {
 
     autoTable(doc, {
       startY: 28,
-      head: [['Código', 'Nombre', 'Tipo', 'Marca / Modelo', 'Placa', 'Estado']],
+      head: [['Código', 'Nombre', 'Tipo', 'Marca / Modelo', 'Placa', 'Frente', 'Estado']],
       body: exportData.map((m) => [
         m.codigo_interno || '',
         m.nombre || '',
         m.tipos_maquinaria?.nombre || '',
         [m.marca, m.modelo].filter(Boolean).join(' / '),
         m.placa || '',
+        m.frente_trabajo?.codigo ? `${m.frente_trabajo.codigo} — ${m.frente_trabajo.nombre}` : '',
         ESTADOS_MAQUINARIA[m.estado]?.label || m.estado || '',
       ]),
       styles: { fontSize: 8 },
@@ -353,6 +356,7 @@ export default function MaquinariaPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Tipo</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Marca / Modelo</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Placa</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Frente</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Estado</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Aceite</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Filtros</th>
@@ -384,6 +388,7 @@ export default function MaquinariaPage() {
                     <td className="px-4 py-3 text-sm text-gray-700">{m.tipos_maquinaria?.nombre || '—'}</td>
                     <td className="px-4 py-3 text-sm text-gray-700">{[m.marca, m.modelo].filter(Boolean).join(' / ') || '—'}</td>
                     <td className="px-4 py-3 text-sm font-mono text-gray-700">{m.placa || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{m.frente_trabajo?.codigo ? `${m.frente_trabajo.codigo} — ${m.frente_trabajo.nombre}` : '—'}</td>
                     <td className="px-4 py-3">{renderEstadoBadge(m.estado)}</td>
                     <td className="px-4 py-3">{renderAceiteBadge(m)}</td>
                     <td className="px-4 py-3">{renderFiltroBadge(m)}</td>

@@ -16,17 +16,6 @@ export default function ConfiguracionPage() {
   const [loading, setLoading] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [guardado, setGuardado] = useState(false)
-
-  // Redirect si no es admin
-  useEffect(() => {
-    if (!roleLoading && !isAdmin) {
-      router.replace('/');
-    }
-  }, [roleLoading, isAdmin, router]);
-
-  if (roleLoading) return <div className="p-8 text-center text-gray-500">Verificando permisos...</div>;
-  if (!isAdmin) return null;
-
   const [config, setConfig] = useState({
     email_notifications: false,
     email_destino: '',
@@ -37,9 +26,21 @@ export default function ConfiguracionPage() {
     resend_api_key: '',
   })
 
+  // Redirect si no es admin
   useEffect(() => {
-    Promise.all([fetchAlertas(), fetchConfig()])
-  }, [])
+    if (!roleLoading && !isAdmin) {
+      router.replace('/');
+    }
+  }, [roleLoading, isAdmin, router]);
+
+  useEffect(() => {
+    if (!roleLoading && isAdmin) {
+      Promise.all([fetchAlertas(), fetchConfig()])
+    }
+  }, [roleLoading, isAdmin])
+
+  if (roleLoading) return <div className="p-8 text-center text-gray-500">Verificando permisos...</div>;
+  if (!isAdmin) return null;
 
   async function fetchAlertas() {
     try {

@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis de Valor y Propuesta Comercial - Plataforma Corporativa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f4f4f5;
+            color: #18181b;
+        }
+        
+        .hero-section {
+            background-color: #1A1A1A;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(43,100%,50%,0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, hsla(0,0%,15%,1) 0px, transparent 50%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-pattern {
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle at 2px 2px, rgba(255,193,7,0.1) 1px, transparent 0);
+            background-size: 32px 32px;
+        }
+
+        .text-brand {
+            color: #FFC107;
+        }
+
+        .bg-brand {
+            background-color: #FFC107;
+        }
+        
+        .bg-brand-hover:hover {
+            background-color: #e0a800;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #FFC107 0%, #F59E0B 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .table-stripe:nth-child(even) {
+            background-color: #f8fafc;
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-yellow-200 selection:text-black">
+
+    <!-- Hero Section -->
+    <header class="hero-section text-white py-24 px-6 lg:px-8 relative">
+        <div class="hero-pattern"></div>
+        <div class="max-w-7xl mx-auto relative z-10 flex flex-col items-center text-center">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm mb-8 text-sm font-medium text-yellow-400">
+                <i class="fas fa-chart-line"></i>
+                Análisis de Valor & Propuesta Comercial
+            </div>
+            <h1 class="text-5xl lg:text-7xl font-extrabold tracking-tight mb-6">
+                Plataforma Corporativa <br>
+                <span class="gradient-text">Serviequipos Mantenimiento</span>
+            </h1>
+            <p class="text-xl lg:text-2xl text-gray-400 max-w-3xl mb-10 font-light">
+                Un ecosistema digital de vanguardia construido para escalar, optimizar recursos y transformar la gestión operativa de maquinaria y personal.
+            </p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-6 lg:px-8 py-16 -mt-16 relative z-20">
+        
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+            <div class="glass-card rounded-2xl p-6 shadow-lg">
+                <div class="w-12 h-12 rounded-xl bg-yellow-100 flex items-center justify-center text-yellow-600 mb-4 text-xl">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <h3 class="text-lg font-bold mb-2">Stack Tecnológico Top 1%</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">
+                    Desarrollado con Next.js 16.2 y React 19. La misma tecnología utilizada por gigantes como Netflix y TikTok, garantizando rendimiento y escalabilidad absoluta.
+                </p>
+            </div>
+            <div class="glass-card rounded-2xl p-6 shadow-lg">
+                <div class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 mb-4 text-xl">
+                    <i class="fas fa-database"></i>
+                </div>
+                <h3 class="text-lg font-bold mb-2">Arquitectura Cloud Native</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">
+                    Infraestructura soportada por Supabase (PostgreSQL) y Vercel, ofreciendo alta disponibilidad, seguridad de nivel bancario y tiempos de respuesta en milisegundos.
+                </p>
+            </div>
+            <div class="glass-card rounded-2xl p-6 shadow-lg">
+                <div class="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center text-green-600 mb-4 text-xl">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <h3 class="text-lg font-bold mb-2">Retorno de Inversión (ROI)</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">
+                    Automatización de procesos críticos que reduce en un 60% el tiempo administrativo y mitiga riesgos operativos por vencimientos de documentación.
+                </p>
+            </div>
+        </div>
+
+        <!-- In-depth Analysis -->
+        <div class="bg-white rounded-3xl shadow-xl overflow-hidden mb-16 border border-gray-100">
+            <div class="border-b border-gray-100 bg-gray-50 p-8">
+                <h2 class="text-3xl font-bold text-gray-900">Desglose de Ingeniería & Análisis de Valor</h2>
+                <p class="text-gray-500 mt-2">Valoración basada en el esfuerzo real de desarrollo de software Senior.</p>
+            </div>
+            
+            <div class="p-8">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b-2 border-gray-200">
+                                <th class="py-4 px-4 font-semibold text-gray-600 uppercase text-sm tracking-wider">Módulo / Componente</th>
+                                <th class="py-4 px-4 font-semibold text-gray-600 uppercase text-sm tracking-wider">Descripción Técnica</th>
+                                <th class="py-4 px-4 font-semibold text-gray-600 uppercase text-sm tracking-wider text-center">Horas Estimadas</th>
+                                <th class="py-4 px-4 font-semibold text-gray-600 uppercase text-sm tracking-wider text-right">Valor (COP)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-700">
+                            <tr class="table-stripe border-b border-gray-100">
+                                <td class="py-5 px-4 font-medium text-gray-900">
+                                    <div class="flex items-center gap-3">
+                                        <i class="fas fa-layer-group text-blue-500 w-5"></i>
+                                        Arquitectura & UI/UX Design
+                                    </div>
+                                </td>
+                                <td class="py-5 px-4 text-sm">Configuración de Next.js App Router, Tailwind CSS, shadcn/ui. Diseño de identidad visual, sistema de componentes y layouts responsivos.</td>
+                                <td class="py-5 px-4 text-center font-semibold">45h</td>
+                                <td class="py-5 px-4 text-right font-medium text-gray-900">$ 5.400.000</td>
+                            </tr>
+                            <tr class="table-stripe border-b border-gray-100">
+                                <td class="py-5 px-4 font-medium text-gray-900">
+                                    <div class="flex items-center gap-3">
+                                        <i class="fas fa-users text-green-500 w-5"></i>
+                                        Gestión de Trabajadores
+                                    </div>
+                                </td>
+                                <td class="py-5 px-4 text-sm">CRUD complejo, validaciones estrictas, subida y gestión de documentos PDF/imágenes en Supabase Storage, soft-delete e historial.</td>
+                                <td class="py-5 px-4 text-center font-semibold">55h</td>
+                                <td class="py-5 px-4 text-right font-medium text-gray-900">$ 6.600.000</td>
+                            </tr>
+                            <tr class="table-stripe border-b border-gray-100">
+                                <td class="py-5 px-4 font-medium text-gray-900">
+                                    <div class="flex items-center gap-3">
+                                        <i class="fas fa-tractor text-yellow-500 w-5"></i>
+                                        Inventario de Maquinaria
+                                    </div>
+                                </td>
+                                <td class="py-5 px-4 text-sm">Sistema multi-tab (Info, Docs, Fotos, Operador, Historial). Gestión de estados operativos, relaciones de base de datos complejas.</td>
+                                <td class="py-5 px-4 text-center font-semibold">65h</td>
+                                <td class="py-5 px-4 text-right font-medium text-gray-900">$ 7.800.000</td>
+                            </tr>
+                            <tr class="table-stripe border-b border-gray-100">
+                                <td class="py-5 px-4 font-medium text-gray-900">
+                                    <div class="flex items-center gap-3">
+                                        <i class="fas fa-bell text-red-500 w-5"></i>
+                                        Dashboard & Alertas
+                                    </div>
+                                </td>
+                                <td class="py-5 px-4 text-sm">Motor de cálculo de vencimientos en tiempo real. KPIs estadísticos, resúmenes ejecutivos e interfaces de monitoreo de cotizaciones.</td>
+                                <td class="py-5 px-4 text-center font-semibold">40h</td>
+                                <td class="py-5 px-4 text-right font-medium text-gray-900">$ 4.800.000</td>
+                            </tr>
+                            <tr class="table-stripe border-b border-gray-100">
+                                <td class="py-5 px-4 font-medium text-gray-900">
+                                    <div class="flex items-center gap-3">
+                                        <i class="fas fa-server text-purple-500 w-5"></i>
+                                        Backend (Supabase & APIs)
+                                    </div>
+                                </td>
+                                <td class="py-5 px-4 text-sm">Diseño relacional PostgreSQL, Row Level Security (RLS), políticas de acceso, integración de Storage y despliegue continuo en Vercel.</td>
+                                <td class="py-5 px-4 text-center font-semibold">35h</td>
+                                <td class="py-5 px-4 text-right font-medium text-gray-900">$ 4.200.000</td>
+                            </tr>
+                            <tr class="table-stripe">
+                                <td class="py-5 px-4 font-medium text-gray-900">
+                                    <div class="flex items-center gap-3">
+                                        <i class="fas fa-bug text-orange-500 w-5"></i>
+                                        QA, Testing & Refactorización
+                                    </div>
+                                </td>
+                                <td class="py-5 px-4 text-sm">Pruebas de usabilidad, corrección de bugs, optimización de rendimiento y limpieza de código para estándares de producción.</td>
+                                <td class="py-5 px-4 text-center font-semibold">30h</td>
+                                <td class="py-5 px-4 text-right font-medium text-gray-900">$ 3.600.000</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-gray-900 text-white border-t-4 border-yellow-400">
+                                <td colspan="2" class="py-6 px-6 font-bold text-lg text-right">TOTAL INVERSIÓN (Ingeniería)</td>
+                                <td class="py-6 px-4 text-center font-bold text-xl">270 hrs</td>
+                                <td class="py-6 px-6 text-right font-black text-2xl text-yellow-400">$ 32.400.000 <span class="text-sm font-normal text-gray-400">COP</span></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div class="mt-4 text-sm text-gray-500 text-right">
+                    * Estimación basada en una tarifa promedio de $120,000 COP/hora para un desarrollador Full-Stack Senior en Colombia.
+                </div>
+            </div>
+        </div>
+
+        <!-- Why this price? -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-16">
+            <div>
+                <h2 class="text-3xl font-bold mb-6">El Verdadero Valor del Software a Medida</h2>
+                <div class="space-y-6">
+                    <div class="flex gap-4">
+                        <div class="flex-shrink-0 w-12 h-12 rounded-full bg-brand/20 flex items-center justify-center text-yellow-600">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-bold mb-1">Propiedad Intelectual</h4>
+                            <p class="text-gray-600">A diferencia de soluciones genéricas (SaaS) donde pagas mensualidades eternas, este código es un activo tecnológico propiedad de la empresa, aumentando la valoración corporativa de Serviequipos Mantenimiento Ltda.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="flex-shrink-0 w-12 h-12 rounded-full bg-brand/20 flex items-center justify-center text-yellow-600">
+                            <i class="fas fa-expand-arrows-alt"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-bold mb-1">Escalabilidad Ilimitada</h4>
+                            <p class="text-gray-600">Al estar construido con React 19 y Next.js, la plataforma puede evolucionar a una aplicación móvil (React Native) en el futuro, o integrarse con sensores IoT de la maquinaria sin rehacer el sistema.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="flex-shrink-0 w-12 h-12 rounded-full bg-brand/20 flex items-center justify-center text-yellow-600">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-bold mb-1">Prevención de Multas Operativas</h4>
+                            <p class="text-gray-600">El módulo de alertas proactivas previene operar maquinaria con seguros vencidos o personal sin documentación al día, mitigando riesgos de demandas o multas millonarias por parte de autoridades.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-900 rounded-3xl p-10 text-white shadow-2xl relative overflow-hidden">
+                <div class="absolute -top-24 -right-24 w-64 h-64 bg-yellow-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+                
+                <h3 class="text-2xl font-bold mb-8 flex items-center gap-3">
+                    <i class="fas fa-file-signature text-yellow-400"></i>
+                    Propuesta Económica Final
+                </h3>
+                
+                <div class="space-y-4 mb-8">
+                    <div class="flex justify-between items-center pb-4 border-b border-gray-700">
+                        <span class="text-gray-400">Valor Desarrollo Base</span>
+                        <span class="font-medium">$ 32.400.000 COP</span>
+                    </div>
+                    <div class="flex justify-between items-center pb-4 border-b border-gray-700">
+                        <span class="text-gray-400">Implementación & Capacitación</span>
+                        <span class="font-medium">$ 2.600.000 COP</span>
+                    </div>
+                    <div class="flex justify-between items-center pb-4 border-b border-gray-700">
+                        <span class="text-gray-400">Soporte Técnico (1er mes)</span>
+                        <span class="font-medium text-green-400">Incluido</span>
+                    </div>
+                </div>
+                
+                <div class="bg-black/50 p-6 rounded-2xl border border-gray-700 mb-8">
+                    <div class="text-sm text-gray-400 mb-1">Inversión Total del Proyecto</div>
+                    <div class="text-4xl font-black text-yellow-400 tracking-tight">$ 35.000.000 <span class="text-xl font-normal text-gray-500">COP</span></div>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    <button class="w-full bg-brand text-black font-bold py-4 rounded-xl shadow-lg bg-brand-hover transition-colors flex items-center justify-center gap-2">
+                        <i class="fas fa-check-circle"></i> Aprobar Proyecto
+                    </button>
+                    <p class="text-center text-xs text-gray-500 mt-2">Validez de la propuesta: 30 días calendario.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Maintenance Plans -->
+        <div class="mb-16">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Planes de Mantenimiento y Soporte Continuo</h2>
+                <p class="text-gray-500 max-w-2xl mx-auto">Protege tu inversión con nuestros planes de soporte diseñados para garantizar la estabilidad, seguridad y evolución constante de tu plataforma.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Plan Básico -->
+                <div class="glass-card rounded-3xl p-8 flex flex-col relative border-t-4 border-gray-400">
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Básico</h3>
+                    <p class="text-gray-500 text-sm mb-6 h-10">Soporte preventivo y estabilidad garantizada.</p>
+                    <div class="mb-6">
+                        <span class="text-3xl font-black text-gray-900">$600.000</span>
+                        <span class="text-gray-500">/mes</span>
+                    </div>
+                    <ul class="space-y-4 mb-8 flex-1">
+                        <li class="flex items-start gap-3 text-sm text-gray-700">
+                            <i class="fas fa-check text-green-500 mt-1"></i> Alojamiento (Hosting) Estándar
+                        </li>
+                        <li class="flex items-start gap-3 text-sm text-gray-700">
+                            <i class="fas fa-check text-green-500 mt-1"></i> Backups semanales
+                        </li>
+                        <li class="flex items-start gap-3 text-sm text-gray-700">
+                            <i class="fas fa-check text-green-500 mt-1"></i> Monitoreo de Uptime 99.9%
+                        </li>
+                        <li class="flex items-start gap-3 text-sm text-gray-700">
+                            <i class="fas fa-check text-green-500 mt-1"></i> Resolución de bugs críticos
+                        </li>
+                        <li class="flex items-start gap-3 text-sm text-gray-700">
+                            <i class="fas fa-check text-green-500 mt-1"></i> SLA de respuesta: 48 horas
+                        </li>
+                    </ul>
+                    <button class="w-full py-3 rounded-xl font-semibold border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white transition-colors">Seleccionar Básico</button>
+                </div>
+
+                <!-- Plan Profesional (Recomendado) -->
+                <div class="glass-card rounded-3xl p-8 flex flex-col relative border-2 border-yellow-400 transform md:-translate-y-4 shadow-2xl">
+                    <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-black font-bold text-xs py-1 px-4 rounded-full uppercase tracking-wider">
+                        Recomendado
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Profesional</h3>
+                    <p class="text-gray-500 text-sm mb-6 h-10">Equilibrio perfecto entre soporte y evolución.</p>
+                    <div class="mb-6">
+                        <span class="text-3xl font-black text-gray-900">$1.200.000</span>
+                        <span class="text-gray-500">/mes</span>
+                    </div>
+                    <ul class="space-y-4 mb-8 flex-1">
+                        <li class="flex items-start gap-3 text-sm text-gray-700">
+                            <i class="fas fa-check text-yellow-500 mt-1"></i> <strong>Hosting Premium & Dominio</strong>
+                        </li>
+                        <li class="flex items-start gap-3 text-sm text-gray-700">
+                            <i class="fas fa-check text-yellow-500 mt-1"></i> Backups diarios
+                        </li>
+                        <li class="flex items-start gap-3 text-sm text-gray-700">
+                            <i class="fas fa-check text-yellow-500 mt-1"></i> <strong>Bolsa de 10 horas/mes</strong> (Soporte o ajustes)
+                        </li>
+                        <li class="flex items-start gap-3 text-sm text-gray-700">
+                            <i class="fas fa-check text-yellow-500 mt-1"></i> Actualizaciones de seguridad
+                        </li>
+                        <li class="flex items-start gap-3 text-sm text-gray-700">
+                            <i class="fas fa-check text-yellow-500 mt-1"></i> SLA de respuesta: 24 horas
+                        </li>
+                    </ul>
+                    <button class="w-full py-3 rounded-xl font-bold bg-yellow-400 text-black hover:bg-yellow-500 transition-colors shadow-lg shadow-yellow-400/30">Seleccionar Profesional</button>
+                </div>
+
+                <!-- Plan Enterprise -->
+                <div class="glass-card rounded-3xl p-8 flex flex-col relative bg-gray-900 text-white border-none shadow-xl">
+                    <h3 class="text-xl font-bold text-white mb-2">Enterprise</h3>
+                    <p class="text-gray-400 text-sm mb-6 h-10">Crecimiento continuo y máxima prioridad.</p>
+                    <div class="mb-6">
+                        <span class="text-3xl font-black text-white">$2.500.000</span>
+                        <span class="text-gray-400">/mes</span>
+                    </div>
+                    <ul class="space-y-4 mb-8 flex-1">
+                        <li class="flex items-start gap-3 text-sm text-gray-300">
+                            <i class="fas fa-check text-purple-400 mt-1"></i> Infraestructura Dedicada
+                        </li>
+                        <li class="flex items-start gap-3 text-sm text-gray-300">
+                            <i class="fas fa-check text-purple-400 mt-1"></i> Backups en tiempo real
+                        </li>
+                        <li class="flex items-start gap-3 text-sm text-gray-300">
+                            <i class="fas fa-check text-purple-400 mt-1"></i> <strong>Bolsa de 25 horas/mes</strong> (Nuevos features)
+                        </li>
+                        <li class="flex items-start gap-3 text-sm text-gray-300">
+                            <i class="fas fa-check text-purple-400 mt-1"></i> Consultoría técnica trimestral
+                        </li>
+                        <li class="flex items-start gap-3 text-sm text-gray-300">
+                            <i class="fas fa-check text-purple-400 mt-1"></i> SLA de respuesta: 4 horas (Priority)
+                        </li>
+                    </ul>
+                    <button class="w-full py-3 rounded-xl font-semibold bg-white text-gray-900 hover:bg-gray-100 transition-colors">Seleccionar Enterprise</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="bg-gray-900 text-gray-400 py-12 border-t border-gray-800">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center gap-2 mb-4 md:mb-0">
+                <i class="fas fa-code text-gray-600"></i>
+                <span>Desarrollado por <strong>Cristhian Camilo Avellaneda Clavijo</strong></span>
+            </div>
+            <div class="text-sm">
+                &copy; 2026 Análisis de Software. Confidencial.
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

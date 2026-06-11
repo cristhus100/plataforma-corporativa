@@ -15,6 +15,7 @@ export default function NuevaMaquinariaPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [tiposMaquinaria, setTiposMaquinaria] = useState([])
+  const [frentes, setFrentes] = useState([])
 
   // Redirect si no es admin
   useEffect(() => {
@@ -50,6 +51,7 @@ export default function NuevaMaquinariaPage() {
     placa: '',
     estado: 'operativa', // ✅ minúscula
     ubicacion_actual: '',
+    frente_trabajo_id: '',
     horometro_actual: '',
     kilometraje_actual: '',
     fecha_adquisicion: '',
@@ -59,16 +61,15 @@ export default function NuevaMaquinariaPage() {
   })
 
   useEffect(() => {
-    async function fetchTipos() {
-      const { data, error } = await supabase
-        .from('tipos_maquinaria')
-        .select('id, nombre')
-        .eq('activo', true)
-        .order('nombre')
-
-      if (!error) setTiposMaquinaria(data || [])
+    async function fetchCatalogos() {
+      const [tiposRes, frentesRes] = await Promise.all([
+        supabase.from('tipos_maquinaria').select('id, nombre').eq('activo', true).order('nombre'),
+        supabase.from('frentes_trabajo').select('id, codigo, nombre').eq('activo', true).order('nombre'),
+      ])
+      if (!tiposRes.error) setTiposMaquinaria(tiposRes.data || [])
+      if (!frentesRes.error) setFrentes(frentesRes.data || [])
     }
-    fetchTipos()
+    fetchCatalogos()
   }, [])
 
   const toggleSection = (section) => {
@@ -432,6 +433,22 @@ export default function NuevaMaquinariaPage() {
               onChange={handleChange}
               placeholder="Ej: Obra La Calera"
             />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Frente de Trabajo</label>
+              <select
+                name="frente_trabajo_id"
+                value={formData.frente_trabajo_id}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
+              >
+                <option value="">Sin asignar</option>
+                {frentes.map((f) => (
+                  <option key={f.id} value={f.id}>{f.codigo} — {f.nombre}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </CollapsibleSection>
 
