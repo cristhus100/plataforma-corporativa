@@ -1,23 +1,17 @@
 # 🏗️ Plataforma Corporativa - Serviequipos Mantenimiento Ltda
 
-Sistema integral de gestión empresarial desarrollado para **Serviequipos Mantenimiento Ltda** (NIT 832005736-3), ubicado en La Calera, Cundinamarca.
-
-## 🎯 Descripción
-
-Plataforma web corporativa que centraliza la gestión de:
-- 👷 **Trabajadores**: Hojas de vida, documentos y seguridad social
-- 🚜 **Maquinaria**: Inventario, mantenimiento y operadores
-- 📋 **Cotizaciones**: Propuestas comerciales
-- 🔔 **Alertas**: Notificaciones de vencimientos
-- 📊 **Dashboard**: Indicadores clave de gestión
+Sistema de gestión empresarial desarrollado para **Serviequipos Mantenimiento Ltda** (NIT 832005736-3).
 
 ## 🚀 Stack Tecnológico
 
-- **Framework**: Next.js 16.2.4
-- **UI**: React 19 + Tailwind CSS + shadcn/ui
-- **Backend**: Supabase (PostgreSQL + Storage)
+- **Framework**: Next.js 16.2.4 (App Router)
+- **UI**: React 19 + Tailwind CSS 4 + shadcn/ui + Radix UI
+- **Backend**: Supabase (PostgreSQL + Auth + Storage + RLS)
+- **Charts**: Recharts
+- **Mapas**: Leaflet / React-Leaflet
+- **PDF**: jsPDF + jspdf-autotable
 - **Iconos**: Lucide React
-- **Deploy**: Vercel
+- **Despliegue**: Vercel
 
 ## 🎨 Identidad Visual
 
@@ -28,80 +22,37 @@ Plataforma web corporativa que centraliza la gestión de:
 ## 📦 Instalación Local
 
 ```bash
-# Clonar repositorio
 git clone https://github.com/tu-usuario/plataforma-corporativa.git
 cd plataforma-corporativa
-
-# Instalar dependencias
 npm install
-
-# Configurar variables de entorno
 cp .env.example .env.local
-# Editar .env.local con tus credenciales de Supabase
-
-# Ejecutar en desarrollo
+# Editar .env.local con credenciales de Supabase
 npm run dev
-
 ```
 
 ## 🔐 Variables de Entorno
-
-Crear archivo `.env.local` con:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=tu_url_supabase
 NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
 ```
 
-## 📂 Estructura del Proyecto
+## 📂 Módulos del Sistema
 
-```
-src/
-├── app/                    # Rutas Next.js (App Router)
-│   ├── dashboard/         # Panel principal
-│   ├── trabajadores/      # Módulo de trabajadores
-│   ├── maquinaria/        # Módulo de maquinaria
-│   ├── cotizaciones/      # Módulo de cotizaciones
-│   └── alertas/           # Módulo de alertas
-├── components/            # Componentes reutilizables
-│   ├── ui/               # shadcn/ui components
-│   └── layout/           # Sidebar, Header, etc.
-└── lib/                  # Utilidades
-    └── supabase/         # Cliente Supabase
-```
-
-## ✨ Funcionalidades Implementadas
-
-### ✅ Módulo Trabajadores
-- CRUD completo con validaciones
-- Gestión de documentos (PDF, imágenes)
-- Soft Delete y Hard Delete
-- Historial de cambios
-- Alertas de vencimientos
-
-### ✅ Módulo Maquinaria
-- Inventario completo
-- 5 tabs de detalle (Info, Documentos, Fotos, Operador, Historial)
-- Estados: operativa, mantenimiento, reparación, fuera de servicio
-
-### ✅ Sistema de Alertas
-- Vencimientos de documentos
-- Notificaciones visuales
-- Resumen ejecutivo
-
-### ✅ Dashboard
-- Indicadores en tiempo real
-- Resumen de trabajadores y maquinaria
-- Estado de cotizaciones
-
-## 🗺️ Roadmap
-
-- [ ] Autenticación con Supabase Auth
-- [ ] Roles y permisos (Admin, Gerente, Operador)
-- [ ] Reportes PDF automatizados
-- [ ] Módulo de clientes
-- [ ] Gráficos avanzados con Recharts
-- [ ] Notificaciones por email
+| Módulo | Ruta | Descripción |
+|--------|------|-------------|
+| Dashboard | `/` | Indicadores, charts, actividad reciente, próximos mantenimientos |
+| Trabajadores | `/trabajadores/*` | CRUD completo, historial, documentos, PDF |
+| Maquinaria | `/maquinaria/*` | CRUD completo, fotos, documentos, operador, horómetros |
+| Vehículos | `/vehiculos/*` | CRUD completo, documentos, kilometraje |
+| Mantenimiento | `/mantenimiento/*` | Cambio aceite (QR), ordenes de mantenimiento (OM-XXXX) |
+| Turnos | `/turnos/*` | Turnos A/B/C, asignación semanal, asistencia diaria |
+| Auditorías | `/auditorias` | Cumplimiento normativo ponderado (6 categorías) |
+| Alertas | `/alertas` | Alertas de documentos, maquinaria y vehículos |
+| Calendario | `/calendario` | Eventos, vencimientos, cumpleaños |
+| Ubicación | `/ubicacion` | Mapa Leaflet con ubicación de equipos |
+| Anuncios | `/anuncios` | Comunicados internos |
+| Configuración | `/configuracion` | Notificaciones email vía Resend |
 
 ## 👨‍💻 Desarrollador
 
@@ -109,9 +60,8 @@ src/
 
 ## 📄 Licencia
 
-Proyecto privado © 2025 Serviequipos Mantenimiento Ltda. Todos los derechos reservados.
+Proyecto privado © 2026 Serviequipos Mantenimiento Ltda. Todos los derechos reservados.
 
 ---
 
 ⚡ **Desarrollado con Next.js + Supabase**
-
