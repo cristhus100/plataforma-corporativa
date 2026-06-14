@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { crearMaquinaria } from '@/actions'
 import { useRole } from '@/context/RoleContext'
 
 export default function NuevaMaquinariaPage() {
@@ -67,7 +68,13 @@ export default function NuevaMaquinariaPage() {
         supabase.from('frentes_trabajo').select('id, codigo, nombre').eq('activo', true).order('nombre'),
       ])
       if (!tiposRes.error) setTiposMaquinaria(tiposRes.data || [])
-      if (!frentesRes.error) setFrentes(frentesRes.data || [])
+      if (!frentesRes.error) {
+        // Mostrar solo frentes de Santa Rosa
+        const frentesData = (frentesRes.data || []).filter(f =>
+          f.codigo === 'FT-SR' || f.nombre?.toLowerCase().includes('santa rosa')
+        )
+        setFrentes(frentesData)
+      }
     }
     fetchCatalogos()
   }, [])
@@ -129,43 +136,40 @@ export default function NuevaMaquinariaPage() {
         throw new Error('Código interno, nombre y tipo son obligatorios')
       }
 
+      // Subir foto desde el cliente (más simple que via Server Action)
       let fotoUrl = null
       if (fotoFile) {
-        fotoUrl = await uploadFoto(formData.codigo_interno)
+        const fileExt = fotoFile.name.split('.').pop()
+        const fileName = `${formData.codigo_interno}-${Date.now()}.${fileExt}`
+        const filePath = `${fileName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('fotos-maquinaria')
+          .upload(filePath, fotoFile, { cacheControl: '3600', upsert: true })
+
+        if (uploadError) throw uploadError
+
+        const { data: urlData } = supabase.storage
+          .from('fotos-maquinaria')
+          .getPublicUrl(filePath)
+
+        fotoUrl = urlData.publicUrl
       }
 
-      const dataToInsert = {
+      // Enviar datos al servidor para INSERT seguro (Server Action)
+      const result = await crearMaquinaria({
         ...formData,
+        foto_url: fotoUrl,
         tipo_maquinaria_id: parseInt(formData.tipo_maquinaria_id),
         anio: formData.anio ? parseInt(formData.anio) : null,
         horometro_actual: formData.horometro_actual ? parseFloat(formData.horometro_actual) : null,
         kilometraje_actual: formData.kilometraje_actual ? parseFloat(formData.kilometraje_actual) : null,
         valor_adquisicion: formData.valor_adquisicion ? parseFloat(formData.valor_adquisicion) : null,
         fecha_adquisicion: formData.fecha_adquisicion || null,
-        foto_url: fotoUrl,
-        activo: true,
-      }
-
-      Object.keys(dataToInsert).forEach((key) => {
-        if (dataToInsert[key] === '') dataToInsert[key] = null
       })
 
-      // 🔍 DEBUG: Ver exactamente qué se envía
-      console.log('📦 Payload a insertar:', JSON.stringify(dataToInsert, null, 2))
-      console.log('🎯 Estado enviado:', dataToInsert.estado)
-
-      const { data, error: insertError } = await supabase
-        .from('maquinaria')
-        .insert([dataToInsert])
-        .select()
-
-      if (insertError) {
-        console.error('❌ Error completo:', insertError)
-        throw insertError
-      }
-
-      console.log('✅ Insertado correctamente:', data)
-      router.push('/maquinaria')
+      if (result.error) throw new Error(result.error)
+      if (result.success) router.push('/maquinaria')
     } catch (err) {
       console.error('Error:', err)
       setError(err.message || 'Error al crear la maquinaria')

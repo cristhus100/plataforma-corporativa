@@ -3,8 +3,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { getDatosAuditoria } from '@/lib/supabase/auditoria'
+import { calcularCumplimientoEmpleado, calcularCumplimientoMaquinaria, calcularCumplimientoGlobal } from '@/lib/utils/auditoria'
 import StatsCard from '@/components/ui/StatsCard'
-import { Users, Wrench, MapPin, AlertTriangle, CheckCircle2, Clock, XCircle, History, UserPlus, FileUp, Truck, Car, Wind, Settings, ClipboardList, ClipboardCheck, Calendar, ArrowRight } from 'lucide-react'
+import { Users, Wrench, MapPin, AlertTriangle, CheckCircle2, Clock, XCircle, History, UserPlus, FileUp, Truck, Car, Wind, Settings, ClipboardList, ClipboardCheck, Calendar, ArrowRight, Receipt, Calculator, DollarSign, Landmark } from 'lucide-react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 const COLORS_ESTADOS = {
@@ -94,6 +96,9 @@ export default function Dashboard() {
         cambiosAceiteRes,
         ordenesRes,
         frentesRes,
+        facturasFinRes,
+        planCuentasRes,
+        nominasFinRes,
       ] = await Promise.all([
         supabase.from('trabajadores').select('*', { count: 'exact', head: true }),
         supabase.from('maquinaria').select('estado').eq('activo', true),
@@ -108,6 +113,9 @@ export default function Dashboard() {
         supabase.from('registros_horometro').select('id, created_at, es_cambio_aceite, es_cambio_filtro_combustible, condicion_filtro_aire, operador_nombre, maquinaria_id, maquinaria:maquinaria!maquinaria_id(nombre, codigo_interno)').or('es_cambio_aceite.eq.true,es_cambio_filtro_combustible.eq.true,condicion_filtro_aire.not.is.null').order('created_at', { ascending: false }).limit(10),
         supabase.from('ordenes_mantenimiento').select('id, codigo, titulo, tipo, prioridad, estado, fecha_programada, maquinaria:maquinaria!maquinaria_id(codigo_interno, nombre)').in('estado', ['pendiente', 'en_proceso']).order('fecha_programada', { ascending: true }).limit(8),
         supabase.from('frentes_trabajo').select('id, codigo, nombre').eq('activo', true).limit(10),
+        supabase.from('facturas').select('total, estado').eq('activo', true),
+        supabase.from('plan_cuentas').select('id', { count: 'exact', head: true }).eq('activa', true),
+        supabase.from('nominas').select('id').eq('pagado', false).eq('activo', true),
       ])
 
       // Maquinaria por estado
@@ -217,11 +225,47 @@ export default function Dashboard() {
       timeline.sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
       const timelineLimit = timeline.slice(0, 15)
 
-      // Calcular cumplimiento simulado por frente
-      const cumplimientoFrentes = (frentesRes.data || []).map((f) => ({
-        ...f,
-        pct: Math.floor(Math.random() * 40) + 50, // Simulado hasta tener datos reales
-      })).sort((a, b) => a.pct - b.pct)
+      // Calcular cumplimiento REAL por frente usando pipeline de auditoría
+      const cumplimientoFrentes = []
+      const frentes = (frentesRes.data || []).filter(f =>
+        ['FT-SR', 'FT-SANTA-ROSA', 'SANTA ROSA'].includes(f.codigo?.toUpperCase()) ||
+        f.nombre?.toLowerCase().includes('santa rosa')
+      )
+      if (frentes.length === 0) {
+        // Fallback: mostrar todos los activos
+        frentes.push(...(frentesRes.data || []))
+      }
+      for (const frente of frentes) {
+        try {
+          const datosAuditoria = await getDatosAuditoria(frente.id)
+          if (datosAuditoria) {
+            const { empleados, maquinaria } = datosAuditoria
+            empleados.forEach(emp => { emp._cumplimiento = calcularCumplimientoEmpleado(emp) })
+            maquinaria.forEach(maq => { maq._cumplimiento = calcularCumplimientoMaquinaria(maq) })
+            const global = calcularCumplimientoGlobal(empleados, maquinaria)
+            cumplimientoFrentes.push({ ...frente, pct: global.porcentaje, categorias: global.categorias })
+          }
+        } catch (err) {
+          console.error(`Error en auditoría para frente ${frente.codigo}:`, err)
+          cumplimientoFrentes.push({ ...frente, pct: 0, categorias: {} })
+        }
+      }
+      cumplimientoFrentes.sort((a, b) => a.pct - b.pct)
+      // Solo mostrar frentes con datos reales o que sean Santa Rosa
+      const frentesValidos = cumplimientoFrentes.filter(f =>
+        f.pct > 0 ||
+        ['FT-SR', 'FT-SANTA-ROSA'].includes(f.codigo?.toUpperCase()) ||
+        f.nombre?.toLowerCase().includes('santa rosa')
+      )
+
+      // Financieros
+      const facturasFin = facturasFinRes.data || []
+      const carteraVencida = facturasFin
+        .filter(f => f.estado === 'vencida')
+        .reduce((sum, f) => sum + Number(f.total || 0), 0)
+      const facturacionTotal = facturasFin
+        .filter(f => f.estado !== 'anulada')
+        .reduce((sum, f) => sum + Number(f.total || 0), 0)
 
       setDashboardData({
         stats: {
@@ -229,12 +273,16 @@ export default function Dashboard() {
           maquinaria: maqRes.data?.length || 0,
           vehiculos: vehiculosCountRes.count || 0,
           ubicacion: (maqRes.data || []).filter(m => m.estado === 'operativa').length,
+          facturacion: Math.round(facturacionTotal / 1000000),
+          cuentas: planCuentasRes.count || 0,
+          nominaPendientes: nominasFinRes.data?.length || 0,
+          carteraVencida: Math.round(carteraVencida / 1000000),
         },
         maquinariaPorEstado,
         trabajadoresPorDepto,
         timeline: timelineLimit,
         proximasOrdenes: ordenesRes.data || [],
-        cumplimientoFrentes,
+        cumplimientoFrentes: frentesValidos,
       })
     } catch (error) {
       console.error('Error cargando dashboard:', error)
@@ -272,7 +320,23 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      {/* Charts Row */}
+      {/* Financial Stats Cards */}
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  <Link href="/facturacion">
+    <StatsCard title="Facturación" value={loading ? '...' : `$${dashboardData.stats.facturacion || 0}`} icon={Receipt} color="orange" />
+  </Link>
+  <Link href="/contabilidad">
+    <StatsCard title="Contabilidad" value={loading ? '...' : `${dashboardData.stats.cuentas || 0} cuentas`} icon={Calculator} color="green" />
+  </Link>
+  <Link href="/nomina">
+    <StatsCard title="Nómina" value={loading ? '...' : `${dashboardData.stats.nominaPendientes || 0} pendientes`} icon={DollarSign} color="purple" />
+  </Link>
+  <Link href="/facturacion/cartera">
+    <StatsCard title="Cartera Vencida" value={loading ? '...' : `$${dashboardData.stats.carteraVencida || 0}`} icon={Landmark} color="red" />
+  </Link>
+</div>
+
+{/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Doughnut Chart - Maquinaria */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">

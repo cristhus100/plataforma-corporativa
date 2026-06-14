@@ -17,6 +17,9 @@ import {
   ClipboardList,
   History,
   Clock,
+  Receipt,
+  Calculator,
+  DollarSign,
 } from 'lucide-react';
 
 const menuItems = [
@@ -27,13 +30,16 @@ const menuItems = [
   { label: 'Vehículos', href: '/vehiculos', icon: Car },
   { label: 'Órdenes Mtto.', href: '/mantenimiento/ordenes', icon: ClipboardList },
   { label: 'Auditorías', href: '/auditorias', icon: ClipboardCheck },
+  { label: 'Facturación', href: '/facturacion', icon: Receipt },
+  { label: 'Contabilidad', href: '/contabilidad', icon: Calculator },
+  { label: 'Nómina', href: '/nomina', icon: DollarSign },
   { label: 'Ubicación', href: '/ubicacion', icon: MapPin },
   { label: 'Calendario', href: '/calendario', icon: CalendarDays },
   { label: 'Alertas', href: '/alertas', icon: Bell, showBadge: true },
   { label: 'Anuncios', href: '/anuncios', icon: Megaphone },
 ];
 
-export default function Sidebar({ isOpen }) {
+export default function Sidebar({ isOpen, onClose }) {
   const pathname = usePathname();
   const { conteoTotal: alertCount } = useAlertas();
 
@@ -92,6 +98,7 @@ export default function Sidebar({ isOpen }) {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  onClick={() => { if (window.innerWidth < 1024) onClose?.() }}
                   className="group flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
                   style={{
                     backgroundColor: active ? '#FFC107' : 'transparent',

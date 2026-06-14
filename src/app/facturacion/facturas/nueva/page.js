@@ -1,0 +1,302 @@
+'use client'
+
+export const dynamic = 'force-dynamic'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
+import { crearFactura } from '@/actions/facturacion'
+import { useRole } from '@/context/RoleContext'
+import { formatCOP } from '@/lib/utils/facturacion'
+import { ArrowLeft, Save, Loader2, Plus, Trash2 } from 'lucide-react'
+
+export default function NuevaFacturaPage() {
+  const supabase = createClient()
+  const router = useRouter()
+  const { isAdmin, loading: roleLoading } = useRole()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  const [terceros, setTerceros] = useState([])
+  const [tiposDocumento, setTiposDocumento] = useState([])
+
+  const [formData, setFormData] = useState({
+    tipo_documento_id: '',
+    tercero_id: '',
+    fecha_emision: new Date().toISOString().split('T')[0],
+    fecha_vencimiento: '',
+    notas: '',
+    orden_servicio: '',
+  })
+
+  const [items, setItems] = useState([
+    { descripcion: '', cantidad: 1, unidad: 'UNIDAD', valor_unitario: 0, porcentaje_iva: 19, codigo_item: '' },
+  ])
+
+  useEffect(() => {
+    if (!roleLoading && !isAdmin) {
+      router.replace('/facturacion/facturas')
+    }
+  }, [roleLoading, isAdmin, router])
+
+  useEffect(() => {
+    async function init() {
+      const [tercerosRes, tiposRes] = await Promise.all([
+        supabase.from('terceros').select('id, nombre_completo, nombre_comercial, tipo_documento, numero_documento')
+          .eq('activo', true).in('tipo_tercero', ['cliente', 'ambos']).order('nombre_completo'),
+        supabase.from('tipo_documentos_factura').select('id, nombre, prefijo, consecutivo_actual')
+          .eq('activo', true).order('nombre'),
+      ])
+      if (tercerosRes.data) setTerceros(tercerosRes.data)
+      if (tiposRes.data) setTiposDocumento(tiposRes.data)
+    }
+    init()
+  }, [supabase])
+
+  if (roleLoading) return <div className="p-8 text-center text-gray-500">Verificando permisos...</div>
+  if (!isAdmin) return null
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleItemChange = (index, field, value) => {
+    setItems(prev => {
+      const updated = [...prev]
+      updated[index] = { ...updated[index], [field]: field === 'cantidad' || field === 'valor_unitario' || field === 'porcentaje_iva' ? Number(value) || 0 : value }
+      return updated
+    })
+  }
+
+  const addItem = () => {
+    setItems(prev => [...prev, { descripcion: '', cantidad: 1, unidad: 'UNIDAD', valor_unitario: 0, porcentaje_iva: 19, codigo_item: '' }])
+  }
+
+  const removeItem = (index) => {
+    if (items.length <= 1) return
+    setItems(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // Auto calculate totals
+  const calculos = items.reduce((acc, item) => {
+    const subt = (Number(item.cantidad) || 0) * (Number(item.valor_unitario) || 0)
+    const iva = subt * ((Number(item.porcentaje_iva) || 0) / 100)
+    return { subtotal: acc.subtotal + subt, iva: acc.iva + iva }
+  }, { subtotal: 0, iva: 0 })
+  const total = calculos.subtotal + calculos.iva
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    try {
+      if (!formData.tipo_documento_id) throw new Error('Seleccione un tipo de documento')
+      if (!formData.tercero_id) throw new Error('Seleccione un cliente')
+
+      const validItems = items.filter(item => item.descripcion?.trim())
+      if (validItems.length === 0) throw new Error('Agregue al menos un item con descripci&oacute;n')
+
+      const result = await crearFactura({
+        ...formData,
+        items: JSON.stringify(validItems),
+        tipo_documento_id: Number(formData.tipo_documento_id),
+        tercero_id: Number(formData.tercero_id),
+      })
+
+      if (result.error) throw new Error(result.error)
+      if (result.success) router.push(`/facturacion/facturas/${result.id}`)
+    } catch (err) {
+      setError(err.message)
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <div className="mb-6">
+        <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+          <Link href="/facturacion" className="hover:text-gray-900">Facturaci&oacute;n</Link>
+          <span>/</span>
+          <Link href="/facturacion/facturas" className="hover:text-gray-900">Facturas</Link>
+          <span>/</span>
+          <span className="text-gray-900">Nueva</span>
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900">Nueva Factura</h1>
+        <p className="text-sm text-gray-600 mt-1">Crea una nueva factura electr&oacute;nica</p>
+      </div>
+
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800 font-medium">{error}</p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Encabezado */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Encabezado</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo Documento <span className="text-red-500">*</span></label>
+              <select name="tipo_documento_id" value={formData.tipo_documento_id} onChange={handleChange} required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                <option value="">Seleccione...</option>
+                {tiposDocumento.map(t => (
+                  <option key={t.id} value={t.id}>{t.nombre} ({t.prefijo})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Cliente <span className="text-red-500">*</span></label>
+              <select name="tercero_id" value={formData.tercero_id} onChange={handleChange} required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                <option value="">Seleccione un cliente...</option>
+                {terceros.map(t => (
+                  <option key={t.id} value={t.id}>{t.nombre_comercial || t.nombre_completo}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Orden de Servicio</label>
+              <input type="text" name="orden_servicio" value={formData.orden_servicio} onChange={handleChange}
+                placeholder="OS-001"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Emisi&oacute;n <span className="text-red-500">*</span></label>
+              <input type="date" name="fecha_emision" value={formData.fecha_emision} onChange={handleChange} required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Vencimiento</label>
+              <input type="date" name="fecha_vencimiento" value={formData.fecha_vencimiento} onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+            </div>
+            <div className="md:col-span-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+              <textarea name="notas" value={formData.notas} onChange={handleChange} rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                placeholder="Notas adicionales..." />
+            </div>
+          </div>
+        </div>
+
+        {/* Items */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Items</h2>
+            <button type="button" onClick={addItem}
+              className="inline-flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+              <Plus className="h-3.5 w-3.5" />
+              Agregar Item
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">C&oacute;digo</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Descripci&oacute;n <span className="text-red-500">*</span></th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-gray-600">Cant.</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">Und</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-gray-600">Vr. Unitario</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-gray-600">IVA %</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-gray-600">Subtotal</th>
+                  <th className="px-3 py-2"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {items.map((item, idx) => {
+                  const subtItem = (Number(item.cantidad) || 0) * (Number(item.valor_unitario) || 0)
+                  return (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="px-3 py-2">
+                        <input type="text" value={item.codigo_item} onChange={(e) => handleItemChange(idx, 'codigo_item', e.target.value)}
+                          className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input type="text" value={item.descripcion} onChange={(e) => handleItemChange(idx, 'descripcion', e.target.value)}
+                          required
+                          className="w-full min-w-[200px] px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          placeholder="Descripci&oacute;n del item..." />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input type="number" min="1" step="1" value={item.cantidad}
+                          onChange={(e) => handleItemChange(idx, 'cantidad', e.target.value)}
+                          className="w-16 px-2 py-1.5 border border-gray-300 rounded text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input type="text" value={item.unidad} onChange={(e) => handleItemChange(idx, 'unidad', e.target.value)}
+                          className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input type="number" min="0" step="100" value={item.valor_unitario}
+                          onChange={(e) => handleItemChange(idx, 'valor_unitario', e.target.value)}
+                          className="w-24 px-2 py-1.5 border border-gray-300 rounded text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input type="number" min="0" max="100" step="1" value={item.porcentaje_iva}
+                          onChange={(e) => handleItemChange(idx, 'porcentaje_iva', e.target.value)}
+                          className="w-16 px-2 py-1.5 border border-gray-300 rounded text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      </td>
+                      <td className="px-3 py-2 text-sm font-medium text-right text-gray-900">{formatCOP(subtItem)}</td>
+                      <td className="px-3 py-2 text-right">
+                        {items.length > 1 && (
+                          <button type="button" onClick={() => removeItem(idx)}
+                            className="p-1 text-gray-400 hover:text-red-600 transition">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Totals */}
+          <div className="border-t border-gray-200 mt-4 pt-4">
+            <div className="flex justify-end">
+              <dl className="w-full max-w-xs space-y-2">
+                <div className="flex justify-between text-sm">
+                  <dt className="text-gray-600">Subtotal:</dt>
+                  <dd className="font-medium text-gray-900">{formatCOP(calculos.subtotal)}</dd>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <dt className="text-gray-600">IVA:</dt>
+                  <dd className="font-medium text-gray-900">{formatCOP(calculos.iva)}</dd>
+                </div>
+                <div className="flex justify-between text-base font-semibold border-t border-gray-200 pt-2">
+                  <dt className="text-gray-900">Total:</dt>
+                  <dd className="text-gray-900">{formatCOP(total)}</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex items-center justify-end gap-3">
+          <Link href="/facturacion/facturas"
+            className="inline-flex items-center gap-2 px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+            <ArrowLeft className="h-4 w-4" />
+            Cancelar
+          </Link>
+          <button type="submit" disabled={loading}
+            className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            {loading ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Creando...</>
+            ) : (
+              <><Save className="h-4 w-4" /> Crear Factura</>
+            )}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}

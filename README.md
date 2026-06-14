@@ -51,6 +51,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
 | Alertas | `/alertas` | Alertas de documentos, maquinaria y vehículos |
 | Calendario | `/calendario` | Eventos, vencimientos, cumpleaños |
 | Ubicación | `/ubicacion` | Mapa Leaflet con ubicación de equipos |
+| Facturación / Cartera | `/facturacion/*` | Facturas, recibos de caja, notas crédito/débito, cartera aging |
+| Contabilidad | `/contabilidad/*` | PUC colombiano, comprobantes, asientos, estados financieros |
+| Nómina | `/nomina/*` | Periodos, liquidación, seguridad social, prestaciones sociales |
 | Anuncios | `/anuncios` | Comunicados internos |
 | Configuración | `/configuracion` | Notificaciones email vía Resend |
 

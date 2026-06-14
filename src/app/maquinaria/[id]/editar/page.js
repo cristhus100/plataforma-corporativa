@@ -81,7 +81,11 @@ export default function EditarMaquinariaPage() {
       if (maqRes.error) throw maqRes.error
 
       setTiposMaquinaria(tiposRes.data || [])
-      setFrentes(frentesRes.data || [])
+      // Mostrar solo frentes de Santa Rosa
+      const frentesData = (frentesRes.data || []).filter(f =>
+        f.codigo === 'FT-SR' || f.nombre?.toLowerCase().includes('santa rosa')
+      )
+      setFrentes(frentesData)
 
       const m = maqRes.data
 

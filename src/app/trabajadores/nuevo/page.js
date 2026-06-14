@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { crearTrabajador } from '@/actions';
 import { useRole } from '@/context/RoleContext';
 
 export default function NuevoTrabajadorPage() {
@@ -81,7 +82,11 @@ export default function NuevoTrabajadorPage() {
     const { data: frentesData } = await supabase.from('frentes_trabajo').select('*').eq('activo', true).order('nombre');
     setCargos(cargosData || []);
     setDepartamentos(deptData || []);
-    setFrentes(frentesData || []);
+    // Mostrar solo frentes de Santa Rosa
+    const soloSantaRosa = (frentesData || []).filter(f =>
+      f.codigo === 'FT-SR' || f.nombre?.toLowerCase().includes('santa rosa')
+    )
+    setFrentes(soloSantaRosa);
   };
 
   const toggleSection = (section) => {
@@ -99,29 +104,12 @@ export default function NuevoTrabajadorPage() {
     setError(null);
 
     try {
-      const datos = {
-        ...form,
-        cargo_id: form.cargo_id || null,
-        departamento_id: form.departamento_id || null,
-        frente_trabajo_id: form.frente_trabajo_id || null,
-        salario: form.salario ? parseFloat(form.salario) : null,
-        fecha_nacimiento: form.fecha_nacimiento || null,
-        fecha_ingreso: form.fecha_ingreso || null,
-      };
+      const result = await crearTrabajador(form)
 
-      Object.keys(datos).forEach((key) => {
-        if (datos[key] === '') datos[key] = null;
-      });
-
-      const { data, error: insertError } = await supabase
-        .from('trabajadores')
-        .insert([datos])
-        .select()
-        .single();
-
-      if (insertError) throw insertError;
-
-      router.push(`/trabajadores/${data.id}`);
+      if (result.error) throw new Error(result.error)
+      if (result.success) {
+        router.push(`/trabajadores/${result.id}`);
+      }
     } catch (err) {
       console.error('Error:', err);
       setError(err.message || 'Error al crear trabajador');

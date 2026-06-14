@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { crearAnuncio, actualizarAnuncio, eliminarAnuncio } from '@/actions'
 import { useRole } from '@/context/RoleContext'
 import { Megaphone, Plus, Pencil, Trash2, X, Loader2 } from 'lucide-react'
 
@@ -91,32 +92,14 @@ export default function AnunciosPage() {
     setError(null)
 
     try {
+      let result
       if (editando) {
-        const { error: err } = await supabase
-          .from('comunicados')
-          .update({
-            titulo: form.titulo.trim(),
-            contenido: form.contenido.trim(),
-            tipo: form.tipo,
-            prioridad: form.prioridad,
-          })
-          .eq('id', editando)
-
-        if (err) throw err
+        result = await actualizarAnuncio(editando, form)
       } else {
-        const { error: err } = await supabase
-          .from('comunicados')
-          .insert([{
-            titulo: form.titulo.trim(),
-            contenido: form.contenido.trim(),
-            tipo: form.tipo,
-            prioridad: form.prioridad,
-            fecha_publicacion: new Date().toISOString(),
-            activo: true,
-          }])
-
-        if (err) throw err
+        result = await crearAnuncio(form)
       }
+
+      if (result.error) throw new Error(result.error)
 
       setModalOpen(false)
       cargarAnuncios()
@@ -131,7 +114,7 @@ export default function AnunciosPage() {
     if (!confirm('¿Eliminar este anuncio?')) return
 
     try {
-      await supabase.from('comunicados').update({ activo: false }).eq('id', id)
+      await eliminarAnuncio(id)
       cargarAnuncios()
     } catch (err) {
       console.error('Error eliminando:', err)

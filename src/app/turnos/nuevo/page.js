@@ -10,9 +10,9 @@ import {
   getTiposTurno,
   getSantaRosaFrenteId,
   getEmpleadosActivos,
-  crearAsignacionesTurno,
   tieneAsignacionSolapada,
 } from '@/lib/supabase/turnos';
+import { crearAsignacionesTurno } from '@/actions';
 import { getNombreCompleto, TURNOS } from '@/lib/utils/turnos';
 import { Users, ArrowLeft, Plus, Trash2, AlertCircle, Check } from 'lucide-react';
 
@@ -142,9 +142,11 @@ export default function NuevaAsignacionPage() {
         observaciones: a.observaciones || null,
       }));
 
-      const creadas = await crearAsignacionesTurno(datosInsertar);
+      const result = await crearAsignacionesTurno(datosInsertar);
 
-      setExito(`Se crearon ${creadas.length} asignación(es) exitosamente`);
+      if (result.error) throw new Error(result.error)
+
+      setExito(`Se crearon ${result.data?.length || 0} asignación(es) exitosamente`);
       setTimeout(() => {
         router.push('/turnos');
       }, 1500);

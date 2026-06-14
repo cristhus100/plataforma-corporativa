@@ -188,3 +188,53 @@ body {
   .print-area { position: absolute; left: 0; top: 0; width: 100%; }
   .no-print { display: none !important; }
 }
+
+/* ============================================
+   RESPONSIVE — Mejoras mobile/tablet
+   ============================================ */
+
+/* Tablets y pantallas medianas */
+@media (max-width: 1023px) {
+  .sidebar-overlay {
+    backdrop-filter: blur(4px);
+  }
+}
+
+/* Móviles pequeños */
+@media (max-width: 640px) {
+  .p-6 { padding: 1rem !important; }
+  .gap-6 { gap: 1rem !important; }
+
+  /* Stats cards en una columna */
+  .grid-cols-1\:sm\:grid-cols-2\:lg\:grid-cols-4,
+  .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Formularios: inputs full-width */
+  input, select, textarea {
+    font-size: 16px !important; /* Previene zoom en iOS */
+  }
+
+  /* Tablas responsive */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Sidebar full-width en mobile */
+  aside.w-64 {
+    width: 85vw !important;
+    max-width: 320px;
+  }
+}
+
+/* Safe area para iOS notches */
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { crearVehiculo } from '@/actions';
 import { useRole } from '@/context/RoleContext';
 import { ArrowLeft, Save, Loader2, AlertTriangle, Upload, X, ImageOff, Car } from 'lucide-react';
 
@@ -68,6 +69,7 @@ export default function NuevoVehiculoPage() {
     try {
       setGuardando(true);
 
+      // Subir foto desde el cliente (más simple)
       let fotoUrl = null;
       if (fotoFile) {
         const ext = fotoFile.name.split('.').pop();
@@ -83,33 +85,27 @@ export default function NuevoVehiculoPage() {
         }
       }
 
-      const payload = {
+      // Enviar datos al servidor para INSERT seguro (Server Action)
+      const result = await crearVehiculo({
         placa: formData.placa.trim().toUpperCase(),
         nombre: formData.nombre.trim(),
-        marca: formData.marca || null,
-        modelo: formData.modelo || null,
-        anio: formData.anio ? parseInt(formData.anio) : null,
-        color: formData.color || null,
+        marca: formData.marca,
+        modelo: formData.modelo,
+        anio: formData.anio,
+        color: formData.color,
         tipo: formData.tipo,
-        numero_motor: formData.numero_motor || null,
-        numero_chasis: formData.numero_chasis || null,
+        numero_motor: formData.numero_motor,
+        numero_chasis: formData.numero_chasis,
         estado: formData.estado,
-        kilometraje_actual: formData.kilometraje_actual ? parseFloat(formData.kilometraje_actual) : null,
+        kilometraje_actual: formData.kilometraje_actual,
         foto_url: fotoUrl,
-        activo: true,
-      };
-      Object.keys(payload).forEach(k => { if (payload[k] === '') payload[k] = null; });
+      })
 
-      const { data, error: insertError } = await supabase
-        .from('vehiculos')
-        .insert([payload])
-        .select();
-
-      if (insertError) throw new Error(insertError.message);
-      if (!data || !data[0]) throw new Error('No se pudo recuperar el registro');
-
-      setSuccess(true);
-      setTimeout(() => router.push(`/vehiculos/${data[0].id}`), 1000);
+      if (result.error) throw new Error(result.error);
+      if (result.success) {
+        setSuccess(true);
+        setTimeout(() => router.push(`/vehiculos/${result.id}`), 1000);
+      }
     } catch (err) {
       setError(err.message);
     } finally {

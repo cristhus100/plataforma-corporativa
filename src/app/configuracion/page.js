@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { guardarConfiguracionAlertas } from '@/actions'
 import { useRole } from '@/context/RoleContext'
 import { Bell, Mail, Shield, AlertTriangle, XCircle, Clock, CheckCircle2, Save, Loader2 } from 'lucide-react'
 
@@ -82,25 +83,21 @@ export default function ConfiguracionPage() {
     setGuardado(false)
 
     try {
-      // Intentar guardar — si la tabla no existe, mostrar mensaje
-      const { error } = await supabase
-        .from('configuracion_alertas')
-        .upsert({
-          id: 1,
-          email_notifications: config.email_notifications,
-          email_destino: config.email_destino,
-          alertar_vencidos: config.alertar_vencidos,
-          alertar_criticos: config.alertar_criticos,
-          alertar_proximos: config.alertar_proximos,
-          dias_anticipacion: config.dias_anticipacion,
-        })
+      const result = await guardarConfiguracionAlertas({
+        email_notifications: config.email_notifications,
+        email_destino: config.email_destino,
+        alertar_vencidos: config.alertar_vencidos,
+        alertar_criticos: config.alertar_criticos,
+        alertar_proximos: config.alertar_proximos,
+        dias_anticipacion: config.dias_anticipacion,
+      })
 
-      if (error) throw error
+      if (result.error) throw new Error(result.error)
       setGuardado(true)
       setTimeout(() => setGuardado(false), 3000)
     } catch (err) {
       console.error('Error guardando configuración:', err)
-      alert('No se pudo guardar. Crea la tabla configuracion_alertas en Supabase.')
+      alert('No se pudo guardar. Verifica los permisos de administrador.')
     } finally {
       setGuardando(false)
     }

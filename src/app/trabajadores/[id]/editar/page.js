@@ -85,7 +85,11 @@ export default function EditarTrabajadorPage() {
 
         setCargos(cargosRes.data || []);
         setDepartamentos(deptRes.data || []);
-        setFrentes(frentesRes.data || []);
+        // Mostrar solo frentes de Santa Rosa
+        const soloSantaRosa = (frentesRes.data || []).filter(f =>
+          f.codigo === 'FT-SR' || f.nombre?.toLowerCase().includes('santa rosa')
+        )
+        setFrentes(soloSantaRosa);
 
         const { data, error } = await supabase
           .from('trabajadores')

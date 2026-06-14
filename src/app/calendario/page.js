@@ -25,22 +25,32 @@ export default function CalendarioPage() {
   const [mes, setMes] = useState(hoy.getMonth())
   const [año, setAño] = useState(hoy.getFullYear())
   const [eventos, setEventos] = useState([])
+  const [eventosAnuales, setEventosAnuales] = useState([])
   const [diaSeleccionado, setDiaSeleccionado] = useState(null)
+  const [cargandoEventos, setCargandoEventos] = useState(false)
 
+  // Cargar eventos fijos (documentos) — solo una vez al montar
   useEffect(() => {
-    cargarEventos()
+    cargarDocumentos()
   }, [])
 
-  async function cargarEventos() {
-    try {
-      setLoading(true)
-      const eventosTemp = []
+  // Re-proyectar eventos anuales cuando cambia el año
+  useEffect(() => {
+    if (eventosAnuales.length > 0 || !loading) {
+      proyectarEventosAnuales(año)
+    }
+  }, [año])
 
-      // Vencimientos de documentos de trabajadores
+  async function cargarDocumentos() {
+    try {
+      setCargandoEventos(true)
+
+      // Vencimientos de documentos de trabajadores (eventos fijos)
       const { data: docs } = await supabase
         .from('documentos_trabajadores')
         .select('*, trabajador:trabajadores!trabajador_id(nombre,primer_apellido), tipo:tipos_documentos_trabajador!tipo_documento_id(nombre)')
 
+      const eventosTemp = []
       ;(docs || []).forEach((d) => {
         if (d.fecha_vencimiento) {
           eventosTemp.push({
@@ -53,62 +63,89 @@ export default function CalendarioPage() {
         }
       })
 
-      // Cumpleaños de trabajadores
-      const { data: trabajadores } = await supabase
-        .from('trabajadores')
-        .select('id, nombre, primer_apellido, fecha_nacimiento')
+      // Datos fuente para eventos anuales (cumpleaños, ingresos, adquisiciones)
+      const [trabRes, maqRes] = await Promise.all([
+        supabase.from('trabajadores').select('id, nombre, primer_apellido, fecha_nacimiento, fecha_ingreso'),
+        supabase.from('maquinaria').select('id, nombre, codigo_interno, fecha_adquisicion'),
+      ])
 
-      ;(trabajadores || []).forEach((t) => {
-        if (t.fecha_nacimiento) {
-          const nac = new Date(t.fecha_nacimiento)
-          eventosTemp.push({
-            fecha: new Date(año, nac.getMonth(), nac.getDate()).toISOString(),
-            tipo: 'cumpleanos',
-            titulo: `Cumpleaños: ${t.nombre || ''} ${t.primer_apellido || ''}`.trim(),
-            subtitulo: '',
-            link: `/trabajadores/${t.id}`,
-          })
-        }
-      })
+      const trabajadores = trabRes.data || []
+      const maquinaria = maqRes.data || []
 
-      // Ingresos de trabajadores
-      ;(trabajadores || []).forEach((t) => {
-        if (t.fecha_ingreso) {
-          const ing = new Date(t.fecha_ingreso)
-          eventosTemp.push({
-            fecha: new Date(año, ing.getMonth(), ing.getDate()).toISOString(),
-            tipo: 'ingreso',
-            titulo: `Ingreso: ${t.nombre || ''} ${t.primer_apellido || ''}`.trim(),
-            subtitulo: '',
-            link: `/trabajadores/${t.id}`,
-          })
-        }
-      })
+      // Guardar datos fuente de eventos anuales
+      const anualesBase = {
+        cumpleanos: trabajadores.filter(t => t.fecha_nacimiento).map(t => ({
+          id: t.id, nombre: t.nombre, apellido: t.primer_apellido,
+          mes: new Date(t.fecha_nacimiento).getMonth(),
+          dia: new Date(t.fecha_nacimiento).getDate(),
+        })),
+        ingresos: trabajadores.filter(t => t.fecha_ingreso).map(t => ({
+          id: t.id, nombre: t.nombre, apellido: t.primer_apellido,
+          mes: new Date(t.fecha_ingreso).getMonth(),
+          dia: new Date(t.fecha_ingreso).getDate(),
+        })),
+        adquisiciones: maquinaria.filter(m => m.fecha_adquisicion).map(m => ({
+          id: m.id, codigo: m.codigo_interno, nombre: m.nombre,
+          mes: new Date(m.fecha_adquisicion).getMonth(),
+          dia: new Date(m.fecha_adquisicion).getDate(),
+        })),
+      }
 
-      // Adquisiciones de maquinaria
-      const { data: maquinaria } = await supabase
-        .from('maquinaria')
-        .select('id, nombre, codigo_interno, fecha_adquisicion')
+      setEventosAnuales(anualesBase)
 
-      ;(maquinaria || []).forEach((m) => {
-        if (m.fecha_adquisicion) {
-          const adq = new Date(m.fecha_adquisicion)
-          eventosTemp.push({
-            fecha: new Date(año, adq.getMonth(), adq.getDate()).toISOString(),
-            tipo: 'adquisicion',
-            titulo: `Adquisición: ${m.codigo_interno || ''} ${m.nombre || ''}`.trim(),
-            subtitulo: '',
-            link: `/maquinaria/${m.id}`,
-          })
-        }
-      })
-
-      setEventos(eventosTemp)
+      // Proyectar eventos anuales al año actual
+      const anualesProyectados = proyectarAnuales(anualesBase, año)
+      setEventos([...eventosTemp, ...anualesProyectados])
     } catch (err) {
       console.error('Error cargando eventos:', err)
     } finally {
+      setCargandoEventos(false)
       setLoading(false)
     }
+  }
+
+  function proyectarAnuales(base, year) {
+    const result = []
+
+    base.cumpleanos.forEach((t) => {
+      result.push({
+        fecha: new Date(year, t.mes, t.dia).toISOString(),
+        tipo: 'cumpleanos',
+        titulo: `Cumpleaños: ${t.nombre || ''} ${t.apellido || ''}`.trim(),
+        subtitulo: '',
+        link: `/trabajadores/${t.id}`,
+      })
+    })
+
+    base.ingresos.forEach((t) => {
+      result.push({
+        fecha: new Date(year, t.mes, t.dia).toISOString(),
+        tipo: 'ingreso',
+        titulo: `Ingreso: ${t.nombre || ''} ${t.apellido || ''}`.trim(),
+        subtitulo: '',
+        link: `/trabajadores/${t.id}`,
+      })
+    })
+
+    base.adquisiciones.forEach((m) => {
+      result.push({
+        fecha: new Date(year, m.mes, m.dia).toISOString(),
+        tipo: 'adquisicion',
+        titulo: `Adquisición: ${m.codigo || ''} ${m.nombre || ''}`.trim(),
+        subtitulo: '',
+        link: `/maquinaria/${m.id}`,
+      })
+    })
+
+    return result
+  }
+
+  function proyectarEventosAnuales(year) {
+    setEventos(prev => {
+      const fijos = prev.filter(e => e.tipo === 'vencimiento' || e.tipo === 'documento')
+      const anuales = proyectarAnuales(eventosAnuales, year)
+      return [...fijos, ...anuales]
+    })
   }
 
   const eventosPorDia = useMemo(() => {
