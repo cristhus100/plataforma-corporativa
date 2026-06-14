@@ -2,11 +2,14 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { fetchPaginated } from '@/lib/supabase/paginacion';
 import { useRole } from '@/context/RoleContext';
 import StatsCard from '@/components/ui/StatsCard';
+import Pagination from '@/components/ui/Pagination';
+import usePaginacion from '@/hooks/usePaginacion';
 import {
   Car,
   CheckCircle2,
@@ -24,67 +27,63 @@ import { ESTADOS_VEHICULO } from '@/lib/utils/vehiculo';
 export default function VehiculosPage() {
   const supabase = createClient();
   const { isAdmin } = useRole();
-  const [vehiculos, setVehiculos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState('');
-  const [filtroTipo, setFiltroTipo] = useState('');
+  const [resumen, setResumen] = useState({ total: 0, operativos: 0, mantenimiento: 0, fueraServicio: 0 });
 
-  // Paginación
-  const ROWS_PER_PAGE = 25;
-  const [page, setPage] = useState(1);
-
+  // Cargar resumen al montar
   useEffect(() => {
-    cargarDatos();
-  }, []);
+    async function loadResumen() {
+      const [totalRes, opRes, mantRes, fueraRes] = await Promise.all([
+        supabase.from('vehiculos').select('id', { count: 'exact', head: true }).eq('activo', true),
+        supabase.from('vehiculos').select('id', { count: 'exact', head: true }).eq('activo', true).eq('estado', 'operativo'),
+        supabase.from('vehiculos').select('id', { count: 'exact', head: true }).eq('activo', true).eq('estado', 'en_mantenimiento'),
+        supabase.from('vehiculos').select('id', { count: 'exact', head: true }).eq('activo', true).in('estado', ['fuera_servicio', 'dado_de_baja']),
+      ]);
 
-  async function cargarDatos() {
-    setLoading(true);
-    const { data, error } = await supabase
+      setResumen({
+        total: totalRes.count || 0,
+        operativos: opRes.count || 0,
+        mantenimiento: mantRes.count || 0,
+        fueraServicio: fueraRes.count || 0,
+      });
+    }
+    loadResumen();
+  }, [supabase]);
+
+  // FetchFn con paginación server-side
+  const fetchFn = useCallback(async ({ page, limit, search, filtros }) => {
+    let query = supabase
       .from('vehiculos')
-      .select('*')
-      .eq('activo', true)
-      .order('placa', { ascending: true });
+      .select('*', { count: 'exact' })
+      .eq('activo', true);
 
-    if (error) console.error('Error:', error);
-    setVehiculos(data || []);
-    setLoading(false);
-  }
+    if (filtros?.estado) {
+      query = query.eq('estado', filtros.estado);
+    }
+    if (filtros?.tipo) {
+      query = query.eq('tipo', filtros.tipo);
+    }
+    if (search) {
+      const term = `%${search}%`;
+      query = query.or(
+        `placa.ilike.${term},nombre.ilike.${term},marca.ilike.${term},modelo.ilike.${term}`
+      );
+    }
 
-  const tipos = useMemo(() => {
-    const set = new Set();
-    vehiculos.forEach(v => { if (v.tipo) set.add(v.tipo); });
-    return Array.from(set).sort();
-  }, [vehiculos]);
+    query = query.order('placa', { ascending: true });
+    return fetchPaginated(query, page, limit);
+  }, [supabase]);
 
-  const filtrados = useMemo(() => {
-    return vehiculos.filter(v => {
-      const term = search.trim().toLowerCase();
-      const matchBusq = !term ||
-        v.placa?.toLowerCase().includes(term) ||
-        v.nombre?.toLowerCase().includes(term) ||
-        v.marca?.toLowerCase().includes(term) ||
-        v.modelo?.toLowerCase().includes(term);
-      const matchEstado = !filtroEstado || v.estado === filtroEstado;
-      const matchTipo = !filtroTipo || v.tipo === filtroTipo;
-      return matchBusq && matchEstado && matchTipo;
-    });
-  }, [vehiculos, search, filtroEstado, filtroTipo]);
+  const paginacion = usePaginacion({
+    fetchFn,
+    limit: 25,
+    searchDelay: 300,
+    filtrosIniciales: { estado: '', tipo: '' },
+  });
 
-  const resumen = useMemo(() => ({
-    total: vehiculos.length,
-    operativos: vehiculos.filter(v => v.estado === 'operativo').length,
-    mantenimiento: vehiculos.filter(v => v.estado === 'en_mantenimiento').length,
-    fueraServicio: vehiculos.filter(v => v.estado === 'fuera_servicio').length,
-  }), [vehiculos]);
+  // Extraer tipos únicos de los datos cargados
+  const tipos = [...new Set(paginacion.data.map(v => v.tipo).filter(Boolean))].sort();
 
-  // Paginación
-  const totalPages = Math.max(1, Math.ceil(filtrados.length / ROWS_PER_PAGE));
-  const paginaActual = Math.min(page, totalPages);
-  const vehiculosPagina = filtrados.slice(
-    (paginaActual - 1) * ROWS_PER_PAGE,
-    paginaActual * ROWS_PER_PAGE
-  );
+  const hayFiltrosActivos = paginacion.search || paginacion.filtros.estado || paginacion.filtros.tipo;
 
   function renderEstadoBadge(estado) {
     const config = ESTADOS_VEHICULO[estado];
@@ -99,17 +98,32 @@ export default function VehiculosPage() {
     );
   }
 
-  function limpiarFiltros() {
-    setSearch(''); setFiltroEstado(''); setFiltroTipo(''); setPage(1);
-  }
-
-  // Reset page on filter change
-  useEffect(() => { setPage(1); }, [search, filtroEstado, filtroTipo]);
-
   async function exportarPDF() {
     if (typeof window === 'undefined') return
     const { default: jsPDF } = await import('jspdf')
     const { default: autoTable } = await import('jspdf-autotable')
+
+    // Exporta todos los registros filtrados (sin paginación)
+    let query = supabase
+      .from('vehiculos')
+      .select('*')
+      .eq('activo', true)
+
+    if (paginacion.filtros?.estado) {
+      query = query.eq('estado', paginacion.filtros.estado)
+    }
+    if (paginacion.filtros?.tipo) {
+      query = query.eq('tipo', paginacion.filtros.tipo)
+    }
+    if (paginacion.search) {
+      const term = `%${paginacion.search}%`
+      query = query.or(
+        `placa.ilike.${term},nombre.ilike.${term},marca.ilike.${term},modelo.ilike.${term}`
+      )
+    }
+
+    const { data } = await query.order('placa', { ascending: true })
+    const exportData = data || []
 
     const doc = new jsPDF({ orientation: 'landscape' })
     doc.setFontSize(16)
@@ -120,7 +134,7 @@ export default function VehiculosPage() {
     autoTable(doc, {
       startY: 28,
       head: [['Placa', 'Nombre', 'Marca', 'Modelo', 'Año', 'Estado']],
-      body: filtrados.map((v) => [
+      body: exportData.map((v) => [
         v.placa || '',
         v.nombre || '',
         v.marca || '',
@@ -137,6 +151,7 @@ export default function VehiculosPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Vehículos</h1>
@@ -145,7 +160,7 @@ export default function VehiculosPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={exportarPDF}
-            disabled={filtrados.length === 0}
+            disabled={paginacion.total === 0}
             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
             title="Exportar a PDF"
           >
@@ -161,6 +176,7 @@ export default function VehiculosPage() {
         </div>
       </div>
 
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard title="Total" value={resumen.total} icon={Car} variant="default" />
         <StatsCard title="Operativos" value={resumen.operativos} icon={CheckCircle2} variant="success" />
@@ -168,18 +184,20 @@ export default function VehiculosPage() {
         <StatsCard title="Fuera de Servicio" value={resumen.fueraServicio} icon={XCircle} variant="danger" />
       </div>
 
+      {/* Filtros */}
       <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
           <div className="md:col-span-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input type="text" placeholder="Buscar por placa, nombre, marca..." value={search}
-                onChange={e => setSearch(e.target.value)}
+              <input type="text" placeholder="Buscar por placa, nombre, marca..."
+                value={paginacion.search}
+                onChange={e => paginacion.setSearch(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
             </div>
           </div>
           <div className="md:col-span-3">
-            <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
+            <select value={paginacion.filtros.estado} onChange={e => paginacion.setFiltro('estado', e.target.value)}
               className="w-full rounded-lg border border-gray-300 bg-white py-2 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
               <option value="">Todos los estados</option>
               {Object.entries(ESTADOS_VEHICULO).map(([k, c]) => (
@@ -188,34 +206,44 @@ export default function VehiculosPage() {
             </select>
           </div>
           <div className="md:col-span-3">
-            <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}
+            <select value={paginacion.filtros.tipo} onChange={e => paginacion.setFiltro('tipo', e.target.value)}
               className="w-full rounded-lg border border-gray-300 bg-white py-2 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
               <option value="">Todos los tipos</option>
               {tipos.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
         </div>
-        {(search || filtroEstado || filtroTipo) && (
+
+        {hayFiltrosActivos && (
           <div className="mt-3 flex items-center justify-between text-sm">
-            <span className="text-gray-600">Mostrando <strong>{filtrados.length}</strong> de <strong>{vehiculos.length}</strong> vehículos</span>
-            <button onClick={limpiarFiltros} className="text-blue-600 hover:text-blue-700 font-medium">Limpiar filtros</button>
+            <span className="text-gray-600">
+              Mostrando <strong>{paginacion.total}</strong> resultados
+            </span>
+            <button onClick={paginacion.limpiarFiltros} className="text-blue-600 hover:text-blue-700 font-medium">
+              Limpiar filtros
+            </button>
           </div>
         )}
       </div>
 
+      {/* Tabla */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-        {loading ? (
+        {paginacion.loading ? (
           <div className="p-12 text-center text-gray-500">Cargando vehículos...</div>
-        ) : filtrados.length === 0 ? (
+        ) : paginacion.error ? (
+          <div className="p-12 text-center">
+            <p className="text-red-600">Error: {paginacion.error}</p>
+          </div>
+        ) : paginacion.data.length === 0 ? (
           <div className="p-12 text-center">
             <Car className="mx-auto h-12 w-12 text-gray-300" />
             <h3 className="mt-3 text-sm font-semibold text-gray-900">
-              {vehiculos.length === 0 ? 'No hay vehículos registrados' : 'No se encontraron resultados'}
+              {resumen.total === 0 ? 'No hay vehículos registrados' : 'No se encontraron resultados'}
             </h3>
             <p className="mt-1 text-sm text-gray-500">
-              {vehiculos.length === 0 ? 'Comienza registrando tu primer vehículo.' : 'Intenta ajustar los filtros.'}
+              {resumen.total === 0 ? 'Comienza registrando tu primer vehículo.' : 'Intenta ajustar los filtros.'}
             </p>
-            {vehiculos.length === 0 && isAdmin && (
+            {resumen.total === 0 && isAdmin && (
               <Link href="/vehiculos/nuevo" className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
                 <Plus className="h-4 w-4" /> Registrar vehículo
               </Link>
@@ -237,7 +265,7 @@ export default function VehiculosPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {vehiculosPagina.map(v => (
+                {paginacion.data.map(v => (
                   <tr key={v.id} className="hover:bg-gray-50 transition">
                     <td className="px-4 py-3">
                       <Link href={`/vehiculos/${v.id}`}>
@@ -279,46 +307,15 @@ export default function VehiculosPage() {
           </div>
         )}
 
-        {/* Paginación */}
-        {!loading && filtrados.length > ROWS_PER_PAGE && (
-          <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-4 py-3">
-            <span className="text-sm text-gray-600">
-              Mostrando {(paginaActual - 1) * ROWS_PER_PAGE + 1}–{Math.min(paginaActual * ROWS_PER_PAGE, filtrados.length)} de {filtrados.length}
-            </span>
-            <div className="flex gap-1">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={paginaActual <= 1}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Anterior
-              </button>
-              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                const start = Math.max(1, Math.min(paginaActual - 2, totalPages - 4));
-                const pageNum = start + i;
-                if (pageNum > totalPages) return null;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setPage(pageNum)}
-                    className={`px-3 py-1 text-sm border rounded-lg ${
-                      pageNum === paginaActual
-                        ? 'bg-gray-900 text-white border-gray-900'
-                        : 'border-gray-300 hover:bg-white'
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
-              <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={paginaActual >= totalPages}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Siguiente
-              </button>
-            </div>
+        {/* Paginación server-side */}
+        {!paginacion.loading && paginacion.totalPages > 1 && (
+          <div className="border-t border-gray-200 bg-gray-50 px-4">
+            <Pagination
+              page={paginacion.page}
+              totalPages={paginacion.totalPages}
+              onPageChange={paginacion.setPage}
+              isLoading={paginacion.loading}
+            />
           </div>
         )}
       </div>

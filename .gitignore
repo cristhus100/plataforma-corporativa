@@ -24,6 +24,7 @@
 .DS_Store
 *.pem
 server.log
+propuesta_comercial.html
 
 # debug
 npm-debug.log*

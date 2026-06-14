@@ -52,6 +52,7 @@ export default function AnunciosPage() {
         .select('*')
         .eq('activo', true)
         .order('fecha_publicacion', { ascending: false })
+        .limit(100)
 
       if (error) throw error
       setAnuncios(data || [])

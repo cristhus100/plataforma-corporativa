@@ -129,6 +129,7 @@ export default function AlertasPage() {
   .from('vw_alertas_documentos')
   .select('*')
   .order('fecha_vencimiento', { ascending: true })
+  .limit(200)
 
   if (error) throw error
 
@@ -148,6 +149,7 @@ export default function AlertasPage() {
         .from('vw_alertas_maquinaria')
         .select('*')
         .order('horas_desde_cambio', { ascending: false })
+        .limit(200)
 
       if (error) throw error
       setAlertasAceite(data || [])
@@ -200,6 +202,7 @@ export default function AlertasPage() {
         .from('vw_alertas_vehiculos')
         .select('*')
         .order('estado_alerta', { ascending: true })
+        .limit(200)
       if (error) throw error
       setAlertasVehiculos(data || [])
     } catch (err) {

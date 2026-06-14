@@ -8,4 +8,5 @@ INSERT INTO tipos_documentos_trabajador (nombre, requiere_vencimiento, activo) V
   ('Certificado curso de seguridad', true, true),
   ('Autorización prueba de alcoholemia', false, true),
   ('Certificación bancaria', true, true),
-  ('Certificados', false, true);
+  ('Certificados', false, true)
+ON CONFLICT (nombre) DO NOTHING;

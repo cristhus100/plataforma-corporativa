@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { getDatosAuditoria } from '@/lib/supabase/auditoria'
@@ -235,7 +235,9 @@ export default function Dashboard() {
         // Fallback: mostrar todos los activos
         frentes.push(...(frentesRes.data || []))
       }
-      for (const frente of frentes) {
+
+      // Procesar TODOS los frentes en PARALELO (Promise.all en lugar de for secuencial)
+      const resultadosFrentes = await Promise.all(frentes.map(async (frente) => {
         try {
           const datosAuditoria = await getDatosAuditoria(frente.id)
           if (datosAuditoria) {
@@ -243,13 +245,15 @@ export default function Dashboard() {
             empleados.forEach(emp => { emp._cumplimiento = calcularCumplimientoEmpleado(emp) })
             maquinaria.forEach(maq => { maq._cumplimiento = calcularCumplimientoMaquinaria(maq) })
             const global = calcularCumplimientoGlobal(empleados, maquinaria)
-            cumplimientoFrentes.push({ ...frente, pct: global.porcentaje, categorias: global.categorias })
+            return { ...frente, pct: global.porcentaje, categorias: global.categorias }
           }
         } catch (err) {
           console.error(`Error en auditoría para frente ${frente.codigo}:`, err)
-          cumplimientoFrentes.push({ ...frente, pct: 0, categorias: {} })
         }
-      }
+        return { ...frente, pct: 0, categorias: {} }
+      }))
+
+      cumplimientoFrentes.push(...resultadosFrentes)
       cumplimientoFrentes.sort((a, b) => a.pct - b.pct)
       // Solo mostrar frentes con datos reales o que sean Santa Rosa
       const frentesValidos = cumplimientoFrentes.filter(f =>

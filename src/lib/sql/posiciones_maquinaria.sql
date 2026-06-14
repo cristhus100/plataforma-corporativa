@@ -55,22 +55,26 @@ ORDER BY p.maquinaria_id, p.timestamp DESC;
 -- 4. RLS
 ALTER TABLE posiciones_maquinaria ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Usuarios autenticados pueden leer posiciones" ON posiciones_maquinaria;
 CREATE POLICY "Usuarios autenticados pueden leer posiciones"
   ON posiciones_maquinaria FOR SELECT
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Usuarios autenticados pueden insertar posiciones" ON posiciones_maquinaria;
 CREATE POLICY "Usuarios autenticados pueden insertar posiciones"
   ON posiciones_maquinaria FOR INSERT
   TO authenticated
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Solo admin puede actualizar/eliminar posiciones" ON posiciones_maquinaria;
 CREATE POLICY "Solo admin puede actualizar/eliminar posiciones"
   ON posiciones_maquinaria FOR UPDATE
   TO authenticated
   USING (es_admin())
   WITH CHECK (es_admin());
 
+DROP POLICY IF EXISTS "Solo admin puede eliminar posiciones" ON posiciones_maquinaria;
 CREATE POLICY "Solo admin puede eliminar posiciones"
   ON posiciones_maquinaria FOR DELETE
   TO authenticated

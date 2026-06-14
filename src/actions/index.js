@@ -584,10 +584,227 @@ export async function guardarChecklistAuditoria(frenteId, respuestas) {
   try {
     const { supabase } = await verificarAdmin()
 
-    // Implementar cuando el checklist diario esté disponible en la DB
     console.log('Checklist guardado (pendiente implementación DB):', { frenteId, respuestas })
 
     revalidatePath('/auditorias')
+    return { success: true }
+  } catch (err) {
+    return formatearError(err)
+  }
+}
+
+// ─── FRENTES DE TRABAJO ────────────────────────────────────────
+
+/**
+ * Crear un frente de trabajo
+ */
+export async function crearFrente(formData) {
+  try {
+    const { supabase } = await verificarAdmin()
+
+    const { data, error } = await supabase
+      .from('frentes_trabajo')
+      .insert([{
+        codigo: formData.codigo.toUpperCase().trim(),
+        nombre: formData.nombre.trim(),
+        ubicacion: formData.ubicacion || null,
+        ciudad: formData.ciudad || null,
+        departamento: formData.departamento || null,
+        activo: true,
+      }])
+      .select()
+      .single()
+
+    if (error) throw error
+
+    revalidatePath('/configuracion')
+    return { success: true, id: data.id }
+  } catch (err) {
+    return formatearError(err)
+  }
+}
+
+/**
+ * Actualizar un frente de trabajo
+ */
+export async function actualizarFrente(id, formData) {
+  try {
+    const { supabase } = await verificarAdmin()
+
+    const datos = {
+      codigo: formData.codigo?.toUpperCase().trim(),
+      nombre: formData.nombre?.trim(),
+      ubicacion: formData.ubicacion || null,
+      ciudad: formData.ciudad || null,
+      departamento: formData.departamento || null,
+      activo: formData.activo !== undefined ? formData.activo : true,
+    }
+    Object.keys(datos).forEach(k => { if (datos[k] === '' || datos[k] === undefined) datos[k] = null })
+
+    const { error } = await supabase
+      .from('frentes_trabajo')
+      .update(datos)
+      .eq('id', id)
+
+    if (error) throw error
+
+    revalidatePath('/configuracion')
+    return { success: true }
+  } catch (err) {
+    return formatearError(err)
+  }
+}
+
+/**
+ * Eliminar (soft-delete) un frente de trabajo
+ */
+export async function eliminarFrente(id) {
+  try {
+    const { supabase } = await verificarAdmin()
+
+    const { error } = await supabase
+      .from('frentes_trabajo')
+      .update({ activo: false })
+      .eq('id', id)
+
+    if (error) throw error
+
+    revalidatePath('/configuracion')
+    return { success: true }
+  } catch (err) {
+    return formatearError(err)
+  }
+}
+
+// ─── TIPOS DE MAQUINARIA ──────────────────────────────────────
+
+/**
+ * Crear un tipo de maquinaria
+ */
+export async function crearTipoMaquinaria(formData) {
+  try {
+    const { supabase } = await verificarAdmin()
+
+    const { data, error } = await supabase
+      .from('tipos_maquinaria')
+      .insert([{
+        nombre: formData.nombre.trim(),
+        descripcion: formData.descripcion || null,
+      }])
+      .select()
+      .single()
+
+    if (error) throw error
+
+    revalidatePath('/configuracion')
+    return { success: true, id: data.id }
+  } catch (err) {
+    return formatearError(err)
+  }
+}
+
+/**
+ * Actualizar un tipo de maquinaria
+ */
+export async function actualizarTipoMaquinaria(id, formData) {
+  try {
+    const { supabase } = await verificarAdmin()
+
+    const datos = {
+      nombre: formData.nombre?.trim(),
+      descripcion: formData.descripcion || null,
+    }
+    Object.keys(datos).forEach(k => { if (datos[k] === '') datos[k] = null })
+
+    const { error } = await supabase
+      .from('tipos_maquinaria')
+      .update(datos)
+      .eq('id', id)
+
+    if (error) throw error
+
+    revalidatePath('/configuracion')
+    return { success: true }
+  } catch (err) {
+    return formatearError(err)
+  }
+}
+
+/**
+ * Eliminar un tipo de maquinaria
+ */
+export async function eliminarTipoMaquinaria(id) {
+  try {
+    const { supabase } = await verificarAdmin()
+
+    const { error } = await supabase
+      .from('tipos_maquinaria')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+
+    revalidatePath('/configuracion')
+    return { success: true }
+  } catch (err) {
+    return formatearError(err)
+  }
+}
+
+// ─── CONFIGURACIÓN DE UMBRALES ─────────────────────────────────
+
+/**
+ * Guardar configuración de umbrales de mantenimiento
+ */
+export async function configurarUmbrales(umbrales) {
+  try {
+    const { supabase } = await verificarAdmin()
+
+    const { error } = await supabase
+      .from('configuracion_alertas')
+      .upsert({
+        id: 1,
+        email_notifications: umbrales.email_notifications ?? true,
+        email_destino: umbrales.email_destino || null,
+        alertar_vencidos: umbrales.alertar_vencidos ?? true,
+        alertar_criticos: umbrales.alertar_criticos ?? true,
+        alertar_proximos: umbrales.alertar_proximos ?? true,
+        dias_anticipacion: umbrales.dias_anticipacion ?? 30,
+        horometro_maximo: umbrales.horometro_maximo ?? null,
+        intervalo_cambio_aceite: umbrales.intervalo_cambio_aceite ?? 300,
+        intervalo_cambio_filtros: umbrales.intervalo_cambio_filtros ?? 120,
+      })
+
+    if (error) throw error
+
+    revalidatePath('/configuracion')
+    return { success: true }
+  } catch (err) {
+    return formatearError(err)
+  }
+}
+
+// ─── ROLES DE USUARIO ─────────────────────────────────────────
+
+/**
+ * Cambiar el rol de un usuario
+ */
+export async function actualizarRolUsuario(userId, nuevoRol) {
+  try {
+    const { supabase, user } = await verificarAdmin()
+
+    if (userId === user.id) {
+      throw new Error('No puedes cambiar tu propio rol')
+    }
+
+    const { error } = await supabase
+      .from('perfiles')
+      .update({ rol: nuevoRol })
+      .eq('id', userId)
+
+    if (error) throw error
+
+    revalidatePath('/configuracion')
     return { success: true }
   } catch (err) {
     return formatearError(err)

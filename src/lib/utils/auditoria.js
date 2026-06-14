@@ -190,6 +190,18 @@ function evaluarEstadoFiltros(maquina) {
 }
 
 /**
+ * Evalúa si el checklist diario está al día (últimos 7 días)
+ */
+function evaluarChecklistDiario(maquina) {
+  if (!maquina.ultimo_checklist_diario) return { estado: 'sin_dato', puntos: 0 };
+  const hoy = new Date();
+  const hace7 = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const ultimo = new Date(maquina.ultimo_checklist_diario);
+  if (ultimo >= hace7) return { estado: 'vigente', puntos: 1 };
+  return { estado: 'vencido', puntos: 0 };
+}
+
+/**
  * Evalúa si hay mantenimientos recientes (últimos 90 días)
  */
 function evaluarMantenimientosRecientes(maquina) {
@@ -285,8 +297,9 @@ export function calcularCumplimientoMaquinaria(maquina) {
         continue;
       }
       if (item.mide === 'checklist_diario') {
-        // Simplificación: asumimos que no hay checklist implementado aún
-        detalle.push({ categoria: catId, tipo: item.tipo, peso: item.peso, estado: 'sin_dato', puntos: 0 });
+        const evalChecklist = evaluarChecklistDiario(maquina);
+        puntaje += item.peso * evalChecklist.puntos;
+        detalle.push({ categoria: catId, tipo: item.tipo, peso: item.peso, estado: evalChecklist.estado, puntos: item.peso * evalChecklist.puntos });
         continue;
       }
 
