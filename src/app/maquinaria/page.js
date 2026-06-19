@@ -11,6 +11,7 @@ import Pagination from '@/components/ui/Pagination';
 import usePaginacion from '@/hooks/usePaginacion';
 import { ESTADOS_MAQUINARIA } from '@/lib/utils/maquinaria';
 import { useRole } from '@/context/RoleContext';
+import { exportarExcel } from '@/lib/utils/exportar';
 import {
   calcularEstadoAceite,
   getEstadoAceiteConfig,
@@ -177,6 +178,44 @@ export default function MaquinariaPage() {
     doc.save(`maquinaria_${new Date().toISOString().split('T')[0]}.pdf`);
   }
 
+  async function exportarExcelMaquinaria() {
+    const columns = [
+      { key: 'codigo_interno', label: 'Código' },
+      { key: 'nombre', label: 'Nombre' },
+      { key: 'tipo_nombre', label: 'Tipo' },
+      { key: 'marca', label: 'Marca' },
+      { key: 'modelo', label: 'Modelo' },
+      { key: 'placa', label: 'Placa' },
+      { key: 'frente_str', label: 'Frente' },
+      { key: 'estado_label', label: 'Estado' },
+      { key: 'horometro_actual', label: 'Horómetro', formatter: v => v ?? 0 },
+    ]
+
+    let query = supabase
+      .from('maquinaria')
+      .select('*, tipos_maquinaria:tipos_maquinaria!tipo_maquinaria_id(nombre), frente_trabajo:frentes_trabajo!frente_trabajo_id(codigo, nombre),')
+      .eq('activo', true)
+
+    // Aplicar mismos filtros
+    const { estado, tipo } = paginacion.filtros
+    if (estado) query = query.eq('estado', estado)
+    if (tipo) query = query.eq('tipo_maquinaria_id', tipo)
+    if (paginacion.search) {
+      const term = `%${paginacion.search}%`
+      query = query.or(`codigo_interno.ilike.${term},nombre.ilike.${term},placa.ilike.${term},numero_serie.ilike.${term},marca.ilike.${term},modelo.ilike.${term}`)
+    }
+
+    const { data } = await query.order('codigo_interno', { ascending: true })
+    const exportData = (data || []).map(m => ({
+      ...m,
+      tipo_nombre: m.tipos_maquinaria?.nombre || '',
+      frente_str: m.frente_trabajo ? `${m.frente_trabajo.codigo} — ${m.frente_trabajo.nombre}` : '',
+      estado_label: ESTADOS_MAQUINARIA[m.estado]?.label || m.estado || '',
+    }))
+
+    await exportarExcel(exportData, columns, 'maquinaria', 'Maquinaria - Serviequipos')
+  }
+
   // Helpers para badges
   function renderAceiteBadge(m) {
     const estado = calcularEstadoAceite(m.horometro_actual, m.ultimo_cambio_aceite_horometro);
@@ -246,7 +285,18 @@ export default function MaquinariaPage() {
             title="Exportar a PDF"
           >
             <FileDown className="h-4 w-4" />
-            <span className="hidden sm:inline">Exportar PDF</span>
+            <span className="hidden sm:inline">PDF</span>
+          </button>
+          <button
+            onClick={exportarExcelMaquinaria}
+            disabled={paginacion.total === 0}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Exportar a Excel"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="hidden sm:inline">Excel</span>
           </button>
           {isAdmin && (
             <Link

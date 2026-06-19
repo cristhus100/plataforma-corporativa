@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import { formatValorContable } from '@/lib/utils/contabilidad';
+import { exportarExcel } from '@/lib/utils/exportar';
 import {
   AlertTriangle,
   Loader2,
@@ -170,12 +171,51 @@ export default function BalanceGeneralPage() {
     );
   }
 
+  async function exportarExcelFn() {
+    const columns = [
+      { key: 'codigo', label: 'Código' },
+      { key: 'nombre', label: 'Cuenta' },
+      { key: 'tipo', label: 'Clasificación', formatter: (v) => v.charAt(0).toUpperCase() + v.slice(1) },
+      { key: 'saldo', label: 'Saldo', formatter: (v) => `$${Number(v || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+    ]
+    const allItems = [
+      ...data.activo.map(i => ({ ...i, tipo: 'activo' })),
+      ...data.pasivo.map(i => ({ ...i, tipo: 'pasivo' })),
+      ...data.patrimonio.map(i => ({ ...i, tipo: 'patrimonio' })),
+    ]
+    const rows = allItems.map(item => {
+      const row = {}
+      columns.forEach(col => {
+        row[col.label] = col.formatter ? col.formatter(item[col.key], item) : (item[col.key] ?? '')
+      })
+      return row
+    })
+    await exportarExcel(rows, columns, 'balance_general', 'Balance General - Serviequipos')
+  }
+
+  const hayItems = data.activo.length > 0 || data.pasivo.length > 0 || data.patrimonio.length > 0
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Balance General</h1>
-        <p className="text-sm text-gray-600">Situación financiera de la empresa a una fecha determinada</p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Balance General</h1>
+          <p className="text-sm text-gray-600">Situación financiera de la empresa a una fecha determinada</p>
+        </div>
+        {consultado && (
+          <button
+            onClick={exportarExcelFn}
+            disabled={!hayItems}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 transition disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+            title="Exportar a Excel"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="hidden sm:inline">Excel</span>
+          </button>
+        )}
       </div>
 
       {/* Filter */}

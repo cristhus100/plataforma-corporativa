@@ -9,7 +9,9 @@ import { fetchPaginated } from '@/lib/supabase/paginacion'
 import Pagination from '@/components/ui/Pagination'
 import usePaginacion from '@/hooks/usePaginacion'
 import { useRole } from '@/context/RoleContext'
+import { useToast } from '@/context/ToastContext'
 import { eliminarTercero } from '@/actions/facturacion'
+import { exportarExcel } from '@/lib/utils/exportar'
 import {
   Users,
   Search,
@@ -21,6 +23,7 @@ import {
 } from 'lucide-react'
 
 export default function TercerosPage() {
+  const { addToast, confirm } = useToast();
   const supabase = createClient()
   const { isAdmin } = useRole()
   const [resumen, setResumen] = useState({ total: 0, clientes: 0, proveedores: 0 })
@@ -66,7 +69,8 @@ export default function TercerosPage() {
   })
 
   async function handleEliminar(id) {
-    if (!confirm('Seguro de eliminar este tercero?')) return
+    const ok = await confirm('Seguro de eliminar este tercero?', { title: 'Eliminar tercero' });
+    if (!ok) return;
     setEliminando(id)
     try {
       const res = await eliminarTercero(id)
@@ -74,7 +78,7 @@ export default function TercerosPage() {
       paginacion.refetch()
       setResumen(prev => ({ ...prev, total: prev.total - 1 }))
     } catch (err) {
-      alert(err.message)
+      addToast(err.message, { type: 'error' })
     } finally {
       setEliminando(null)
     }
@@ -85,6 +89,14 @@ export default function TercerosPage() {
     proveedor: 'Proveedor',
     ambos: 'Ambos',
     otro: 'Otro',
+  }
+
+  async function exportarExcelFn() {
+    const columns = [{"key":"numero_documento","label":"N° Documento"},{"key":"tipo_documento","label":"Tipo Doc."},{"key":"nombre_completo","label":"Nombre"},{"key":"tipo_tercero","label":"Tipo","formatter":"(v) => v === 'cliente' ? 'Cliente' : v === 'proveedor' ? 'Proveedor' : v"},{"key":"email","label":"Email"},{"key":"telefono","label":"Teléfono"}]
+    const data = (paginacion.data || []).map(item => ({
+      ...columns.reduce((acc, col) => ({ ...acc, [col.label]: col.formatter ? col.formatter(item[col.key], item) : (item[col.key] ?? '') }), {})
+    }))
+    await exportarExcel(data, columns, 'terceros', 'Terceros - Serviequipos')
   }
 
   return (
@@ -126,15 +138,28 @@ export default function TercerosPage() {
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar por nombre, documento, teléfono o email..."
-            value={paginacion.search}
-            onChange={(e) => paginacion.setSearch(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre, documento, teléfono o email..."
+              value={paginacion.search}
+              onChange={(e) => paginacion.setSearch(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <button
+            onClick={exportarExcelFn}
+            disabled={paginacion.total === 0}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Exportar a Excel"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="hidden sm:inline">Excel</span>
+          </button>
         </div>
         {paginacion.search && (
           <div className="mt-2 flex items-center justify-between text-sm">

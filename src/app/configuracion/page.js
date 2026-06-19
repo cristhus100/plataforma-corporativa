@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { guardarConfiguracionAlertas, crearFrente, actualizarFrente, eliminarFrente, crearTipoMaquinaria, actualizarTipoMaquinaria, eliminarTipoMaquinaria, configurarUmbrales, actualizarRolUsuario } from '@/actions'
 import { useRole } from '@/context/RoleContext'
+import { useToast } from '@/context/ToastContext'
 import CollapsibleSection from '@/components/ui/CollapsibleSection'
 import {
   Bell, Mail, Shield, AlertTriangle, XCircle, Clock, CheckCircle2, Save, Loader2,
@@ -44,6 +45,7 @@ function EmptyRow({ colSpan, message }) {
 // ─── Página principal ────────────────────────────────────────────
 
 export default function ConfiguracionPage() {
+  const { addToast, confirm } = useToast();
   const supabase = createClient()
   const { isAdmin, loading: roleLoading } = useRole()
 
@@ -182,7 +184,7 @@ export default function ConfiguracionPage() {
       setTimeout(() => setGuardadoAlertas(false), 3000)
     } catch (err) {
       console.error('Error guardando configuración:', err)
-      alert('No se pudo guardar. Verifica los permisos de administrador.')
+      addToast('No se pudo guardar. Verifica los permisos de administrador.', { type: 'error' })
     } finally {
       setGuardandoAlertas(false)
     }
@@ -242,7 +244,7 @@ export default function ConfiguracionPage() {
       setFrenteModal(false)
       fetchFrentes()
     } catch (err) {
-      alert(err.message)
+      addToast(err.message, { type: 'error' })
     } finally {
       setGuardandoFrente(false)
     }
@@ -293,7 +295,7 @@ export default function ConfiguracionPage() {
       setTipoModal(false)
       fetchTiposMaquinaria()
     } catch (err) {
-      alert(err.message)
+      addToast(err.message, { type: 'error' })
     } finally {
       setGuardandoTipo(false)
     }
@@ -314,7 +316,7 @@ export default function ConfiguracionPage() {
       setGuardadoUmbrales(true)
       setTimeout(() => setGuardadoUmbrales(false), 3000)
     } catch (err) {
-      alert(err.message)
+      addToast(err.message, { type: 'error' })
     } finally {
       setGuardandoUmbrales(false)
     }
@@ -341,14 +343,15 @@ export default function ConfiguracionPage() {
   }
 
   async function handleCambiarRol(userId, nuevoRol) {
-    if (!confirm(`¿Cambiar rol a "${nuevoRol}"?`)) return
+    const ok = await confirm(`¿Cambiar rol a "${nuevoRol}"?`, { title: 'Cambiar rol' });
+    if (!ok) return;
     setCambiandoRol(userId)
     try {
       const result = await actualizarRolUsuario(userId, nuevoRol)
       if (result.error) throw new Error(result.error)
       fetchUsuarios()
     } catch (err) {
-      alert(err.message)
+      addToast(err.message, { type: 'error' })
     } finally {
       setCambiandoRol(null)
     }

@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { crearAnuncio, actualizarAnuncio, eliminarAnuncio } from '@/actions'
 import { useRole } from '@/context/RoleContext'
+import { useToast } from '@/context/ToastContext'
 import { Megaphone, Plus, Pencil, Trash2, X, Loader2 } from 'lucide-react'
 
 const PRIORIDADES = {
@@ -30,6 +31,7 @@ function anuncioVacio() {
 }
 
 export default function AnunciosPage() {
+  const { addToast, confirm } = useToast();
   const supabase = createClient()
   const { isAdmin } = useRole()
   const [anuncios, setAnuncios] = useState([])
@@ -112,7 +114,8 @@ export default function AnunciosPage() {
   }
 
   async function handleEliminar(id) {
-    if (!confirm('¿Eliminar este anuncio?')) return
+    const ok = await confirm('¿Eliminar este anuncio?', { title: 'Eliminar anuncio' });
+    if (!ok) return;
 
     try {
       await eliminarAnuncio(id)

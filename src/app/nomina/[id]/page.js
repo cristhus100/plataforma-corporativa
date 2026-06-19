@@ -15,6 +15,7 @@ import {
   AlertTriangle, Ban, CircleCheck, CircleX,
   ChevronDown, ChevronRight, Download, Printer,
 } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 const TIPO_LABELS = {
   semanal: 'Semanal', decadual: 'Decadual', quincenal: 'Quincenal', mensual: 'Mensual',
@@ -58,6 +59,7 @@ function calcularTotales(n) {
 }
 
 export default function DetallePeriodoPage() {
+  const { addToast, confirm } = useToast();
   const params = useParams();
   const router = useRouter();
   const supabase = createClient();
@@ -117,28 +119,30 @@ export default function DetallePeriodoPage() {
   };
 
   const handleGenerar = async () => {
-    if (!confirm('¿Generar nómina para todos los trabajadores activos? Esta acción liquidará el período.')) return;
+    const ok = await confirm('¿Generar nómina para todos los trabajadores activos? Esta acción liquidará el período.', { title: 'Generar nómina' });
+    if (!ok) return;
     setGenerando(true);
     try {
       const r = await generarNomina(periodoId);
       if (r.error) throw new Error(r.error);
       cargarDatos();
     } catch (err) {
-      alert('Error: ' + err.message);
+      addToast(err.message, { type: 'error' });
     } finally {
       setGenerando(false);
     }
   };
 
   const handleCerrar = async () => {
-    if (!confirm('¿Cerrar este período? Ya no se podrán modificar las nóminas.')) return;
+    const ok = await confirm('¿Cerrar este período? Ya no se podrán modificar las nóminas.', { title: 'Cerrar período' });
+    if (!ok) return;
     setCerrando(true);
     try {
       const r = await cerrarPeriodoNomina(periodoId);
       if (r.error) throw new Error(r.error);
       cargarDatos();
     } catch (err) {
-      alert('Error: ' + err.message);
+      addToast(err.message, { type: 'error' });
     } finally {
       setCerrando(false);
     }
@@ -147,7 +151,7 @@ export default function DetallePeriodoPage() {
   const handlePagar = async (nominaId) => {
     const data = pagoForm[nominaId] || {};
     if (!data.medio_pago) {
-      alert('Seleccione un medio de pago');
+      addToast('Seleccione un medio de pago', { type: 'warning' });
       return;
     }
     setPagosLoading(prev => ({ ...prev, [nominaId]: true }));
@@ -157,7 +161,7 @@ export default function DetallePeriodoPage() {
       setPagoForm(prev => ({ ...prev, [nominaId]: {} }));
       cargarDatos();
     } catch (err) {
-      alert('Error: ' + err.message);
+      addToast(err.message, { type: 'error' });
     } finally {
       setPagosLoading(prev => ({ ...prev, [nominaId]: false }));
     }

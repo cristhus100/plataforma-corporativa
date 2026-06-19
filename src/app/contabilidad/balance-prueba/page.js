@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import { formatValorContable } from '@/lib/utils/contabilidad';
+import { exportarExcel } from '@/lib/utils/exportar';
 import {
   AlertTriangle,
   Loader2,
@@ -119,6 +120,17 @@ export default function BalancePruebaPage() {
   }
 
   const diferencia = Math.abs(totals.debitos - totals.creditos);
+
+  async function exportarExcelFn() {
+    const cols = [
+      { key: 'codigo', label: 'Código' },
+      { key: 'nombre', label: 'Cuenta' },
+      { key: 'naturaleza', label: 'Naturaleza', formatter: (v) => v === 'debito' ? 'Débito' : 'Crédito' },
+      { key: 'saldoDebito', label: 'Saldo Débito', formatter: (v) => `$${Number(v || 0).toLocaleString('es-CO')}` },
+      { key: 'saldoCredito', label: 'Saldo Crédito', formatter: (v) => `$${Number(v || 0).toLocaleString('es-CO')}` },
+    ]
+    await exportarExcel(cuentas, cols, 'balance_prueba', 'Balance de Prueba - Serviequipos')
+  }
 
   function getNaturalezaBadge(nat) {
     return nat === 'debito'
@@ -236,6 +248,17 @@ export default function BalancePruebaPage() {
                     <span className="ml-2 text-xs text-red-600 font-medium">(No cuadra)</span>
                   )}
                 </div>
+                <button
+                  onClick={exportarExcelFn}
+                  disabled={cuentas.length === 0}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Exportar a Excel"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="hidden sm:inline">Excel</span>
+                </button>
               </div>
             </div>
           )}

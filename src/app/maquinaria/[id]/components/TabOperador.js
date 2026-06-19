@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { getNombreCompleto } from '@/lib/utils/trabajador';
 import { User, Search, X, Check, UserCheck, Calendar, Loader2 } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 export default function TabOperador({ maquinaria, onUpdate, isAdmin = false }) {
+  const { addToast, confirm } = useToast();
   const supabase = createClient();
   const [trabajadores, setTrabajadores] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -72,21 +74,22 @@ export default function TabOperador({ maquinaria, onUpdate, isAdmin = false }) {
       setBuscando('');
       if (onUpdate) onUpdate();
     } catch (error) {
-      alert('Error al asignar operador: ' + error.message);
+      addToast('Error al asignar operador: ' + error.message, { type: 'error' });
     } finally {
       setAsignando(false);
     }
   };
 
   const desasignarOperador = async () => {
-    if (!confirm('¿Desasignar el operador actual?')) return;
+    const ok = await confirm('¿Desasignar el operador actual?');
+    if (!ok) return;
     setAsignando(true);
     try {
       await supabase.from('maquinaria').update({ operador_id: null, operador_asignado_desde: null }).eq('id', maquinaria.id);
       setOperador(null);
       if (onUpdate) onUpdate();
     } catch (error) {
-      alert('Error al desasignar: ' + error.message);
+      addToast('Error al desasignar: ' + error.message, { type: 'error' });
     } finally {
       setAsignando(false);
     }

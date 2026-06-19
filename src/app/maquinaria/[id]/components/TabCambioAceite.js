@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import {
   calcularEstadoAceite,
   calcularHorasDesdeCambio,
@@ -30,6 +30,7 @@ import {
 import QRCode from 'qrcode';
 
 export default function TabCambioAceite({ maquinariaId, maquinaria, onUpdate, isAdmin = false }) {
+  const supabase = createClient();
   const [lecturas, setLecturas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

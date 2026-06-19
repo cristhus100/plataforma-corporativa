@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import {
   getEstadoBadge,
@@ -31,6 +31,7 @@ const TABS = [
 ];
 
 export default function MaquinariaDetallePage() {
+  const supabase = createClient();
   const params = useParams();
   const router = useRouter();
   const { isAdmin } = useRole();

@@ -10,6 +10,7 @@ import { useRole } from '@/context/RoleContext';
 import { liquidarPrestaciones } from '@/actions/nomina';
 import StatsCard from '@/components/ui/StatsCard';
 import { formatCOP } from '@/lib/utils/nomina';
+import { exportarExcel } from '@/lib/utils/exportar'
 import {
   DollarSign, Users, FileText, Plus, X,
   Loader2, AlertTriangle, CircleCheck, CircleX,
@@ -133,6 +134,23 @@ export default function PrestacionesPage() {
   const filtradas = filtroTipo ? liquidaciones.filter(l => l.tipo_liquidacion === filtroTipo) : liquidaciones;
   const stats = filtradas.reduce((acc, l) => ({ total_calculado: acc.total_calculado + Number(l.valor_calculado || 0), total_pagado: acc.total_pagado + Number(l.valor_pagado || 0) }), { total_calculado: 0, total_pagado: 0 });
 
+  async function exportarExcelFn() {
+    const columns = [
+      { key: 'trabajador', label: 'Trabajador', formatter: (v, item) => { const t = item.trabajador; return t ? `${t.nombre || ''} ${t.primer_apellido || ''}`.trim() : '—'; } },
+      { key: 'tipo', label: 'Tipo', formatter: (v, item) => TIPO_LIQUIDACION_LABELS[item.tipo_liquidacion] || item.tipo_liquidacion },
+      { key: 'periodo', label: 'Periodo', formatter: (v, item) => `${new Date(item.periodo_inicio).toLocaleDateString('es-CO')} — ${new Date(item.periodo_fin).toLocaleDateString('es-CO')}` },
+      { key: 'salario_base', label: 'Salario Base', formatter: (v) => formatCOP(v) },
+      { key: 'valor_calculado', label: 'Valor Calc.', formatter: (v) => formatCOP(v) },
+      { key: 'valor_pagado', label: 'Valor Pag.', formatter: (v) => formatCOP(v) },
+      { key: 'saldo', label: 'Saldo', formatter: (v, item) => formatCOP(Number(item.valor_calculado || 0) - Number(item.valor_pagado || 0)) },
+      { key: 'pagado', label: 'Pagado', formatter: (v) => v ? 'Pagado' : 'Pendiente' },
+    ]
+    const data = (filtradas || []).map(item => ({
+      ...columns.reduce((acc, col) => ({ ...acc, [col.label]: col.formatter ? col.formatter(item[col.key], item) : (item[col.key] ?? '') }), {})
+    }))
+    await exportarExcel(data, columns, 'prestaciones_sociales', 'Prestaciones Sociales - Serviequipos')
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="text-center"><Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" /><p className="text-gray-600">Cargando prestaciones sociales...</p></div>
@@ -156,6 +174,17 @@ export default function PrestacionesPage() {
           <p className="text-sm text-gray-600">Liquidacion de prima, cesantias, intereses, vacaciones y retiros</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={exportarExcelFn}
+            disabled={filtradas.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Exportar a Excel"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="hidden sm:inline">Excel</span>
+          </button>
           <Link href="/nomina" className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">&larr; Volver</Link>
           {isAdmin && (
             <button onClick={() => { setMostrarForm(!mostrarForm); setErrorCrear(null); }} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition">

@@ -8,10 +8,12 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { registrarPago } from '@/actions/facturacion'
 import { useRole } from '@/context/RoleContext'
+import { useToast } from '@/context/ToastContext'
 import { formatCOP } from '@/lib/utils/facturacion'
 import { ArrowLeft, Save, Loader2, Search, Banknote } from 'lucide-react'
 
 export default function NuevoReciboPage() {
+  const { addToast } = useToast();
   const supabase = createClient()
   const router = useRouter()
   const { isAdmin, loading: roleLoading } = useRole()
@@ -61,7 +63,7 @@ export default function NuevoReciboPage() {
       setFacturasEncontradas(data || [])
     } catch (err) {
       console.error('Error:', err)
-      alert('Error al buscar facturas')
+      addToast('Error al buscar facturas', { type: 'error' })
     } finally {
       setBuscando(false)
     }

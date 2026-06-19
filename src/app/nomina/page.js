@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import StatsCard from '@/components/ui/StatsCard';
 import { formatCOP } from '@/lib/utils/nomina';
+import { exportarExcel } from '@/lib/utils/exportar';
 import {
   DollarSign,
   Clock,
@@ -151,6 +152,34 @@ export default function NominaPage() {
     }
   };
 
+  async function exportarExcelFn() {
+    const formatters = {
+      fecha_inicio: (v) => v ? new Date(v).toLocaleDateString('es-CO') : '',
+      fecha_fin: (v) => v ? new Date(v).toLocaleDateString('es-CO') : '',
+      total_devengado: (v) => `$${Number(v || 0).toLocaleString('es-CO')}`,
+      total_deducciones: (v) => `$${Number(v || 0).toLocaleString('es-CO')}`,
+    }
+    const columns = [
+      { key: 'codigo', label: 'Código' },
+      { key: 'tipo', label: 'Tipo' },
+      { key: 'fecha_inicio', label: 'Inicio' },
+      { key: 'fecha_fin', label: 'Fin' },
+      { key: 'estado', label: 'Estado' },
+      { key: 'total_devengado', label: 'Total Devengado' },
+      { key: 'total_deducciones', label: 'Deducciones' },
+    ]
+    const data = (periodos || []).map((item) => {
+      const row = {}
+      for (const col of columns) {
+        row[col.label] = formatters[col.key]
+          ? formatters[col.key](item[col.key], item)
+          : (item[col.key] ?? '')
+      }
+      return row
+    })
+    await exportarExcel(data, columns, 'periodos_nomina', 'Nómina - Serviequipos')
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -198,6 +227,17 @@ export default function NominaPage() {
             <DollarSign className="h-4 w-4" />
             <span className="hidden sm:inline">Prestaciones</span>
           </Link>
+          <button
+            onClick={exportarExcelFn}
+            disabled={periodos.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Exportar a Excel"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.707.293V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="hidden sm:inline">Excel</span>
+          </button>
           {isAdmin && (
             <Link href="/nomina/nuevo" className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition">
               <Plus className="h-4 w-4" />

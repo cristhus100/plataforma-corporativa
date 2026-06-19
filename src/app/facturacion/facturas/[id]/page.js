@@ -7,6 +7,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRole } from '@/context/RoleContext'
+import { useToast } from '@/context/ToastContext'
 import { anularFactura, registrarPago, crearNotaCredito, crearNotaDebito } from '@/actions/facturacion'
 import { formatCOP, getEstadoFacturaLabel, getEstadoFacturaColor } from '@/lib/utils/facturacion'
 import {
@@ -26,6 +27,7 @@ import {
 } from 'lucide-react'
 
 export default function FacturaDetallePage() {
+  const { addToast } = useToast();
   const params = useParams()
   const router = useRouter()
   const supabase = createClient()
@@ -116,14 +118,14 @@ export default function FacturaDetallePage() {
       setAccion(null)
       cargarFactura()
     } catch (err) {
-      alert(err.message)
+      addToast(err.message, { type: 'error' })
     } finally {
       setAccionLoading(false)
     }
   }
 
   async function handleAnular() {
-    if (!anularMotivo.trim()) return alert('Indique el motivo de anulaci&oacute;n')
+    if (!anularMotivo.trim()) return addToast('Indique el motivo de anulación', { type: 'warning' })
     setAccionLoading(true)
     try {
       const result = await anularFactura(params.id, anularMotivo)
@@ -132,7 +134,7 @@ export default function FacturaDetallePage() {
       setAnularMotivo('')
       cargarFactura()
     } catch (err) {
-      alert(err.message)
+      addToast(err.message, { type: 'error' })
     } finally {
       setAccionLoading(false)
     }
@@ -154,7 +156,7 @@ export default function FacturaDetallePage() {
       setAccion(null)
       cargarFactura()
     } catch (err) {
-      alert(err.message)
+      addToast(err.message, { type: 'error' })
     } finally {
       setAccionLoading(false)
     }

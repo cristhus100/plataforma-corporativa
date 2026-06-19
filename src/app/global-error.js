@@ -1,6 +1,6 @@
 'use client'
 
-export default function GlobalError({ error, unstable_retry }) {
+export default function GlobalError({ error, reset }) {
   return (
     <html>
       <body className="bg-gray-100">
@@ -18,7 +18,7 @@ export default function GlobalError({ error, unstable_retry }) {
               Ocurrió un error grave en la aplicación. Por favor intenta de nuevo.
             </p>
             <button
-              onClick={() => unstable_retry()}
+              onClick={() => reset()}
               className="px-6 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition"
             >
               Intentar de nuevo

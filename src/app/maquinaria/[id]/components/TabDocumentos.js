@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Upload, FileText, Download, Trash2, Calendar, AlertTriangle, X, Plus } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 export default function TabDocumentos({ maquinariaId, isAdmin = false }) {
+  const { addToast, confirm } = useToast();
   const supabase = createClient();
   const [documentos, setDocumentos] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
@@ -69,7 +71,7 @@ export default function TabDocumentos({ maquinariaId, isAdmin = false }) {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        alert('El archivo no puede superar los 10MB');
+        addToast('El archivo no puede superar los 10MB', { type: 'warning' });
         return;
       }
       setFormData({ ...formData, archivo: file });
@@ -79,7 +81,7 @@ export default function TabDocumentos({ maquinariaId, isAdmin = false }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.archivo || !formData.tipo_documento_id) {
-      alert('Selecciona un tipo de documento y un archivo');
+      addToast('Selecciona un tipo de documento y un archivo', { type: 'warning' });
       return;
     }
 
@@ -115,13 +117,13 @@ export default function TabDocumentos({ maquinariaId, isAdmin = false }) {
         throw dbError;
       }
 
-      alert('Documento subido correctamente');
+      addToast('Documento subido correctamente', { type: 'success' });
       setShowModal(false);
       setFormData({ tipo_documento_id: '', fecha_emision: '', fecha_vencimiento: '', numero_documento: '', observaciones: '', archivo: null, noVence: false });
       cargarDatos();
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al subir documento: ' + error.message);
+      addToast('Error al subir documento: ' + error.message, { type: 'error' });
     } finally {
       setUploading(false);
     }
@@ -136,12 +138,13 @@ export default function TabDocumentos({ maquinariaId, isAdmin = false }) {
       if (error) throw error;
       window.open(data.signedUrl, '_blank');
     } catch (error) {
-      alert('Error al descargar: ' + error.message);
+      addToast('Error al descargar: ' + error.message, { type: 'error' });
     }
   };
 
   const handleEliminar = async (doc) => {
-    if (!confirm('¿Eliminar este documento?')) return;
+    const ok = await confirm('¿Eliminar este documento?');
+    if (!ok) return;
     try {
       if (doc.ruta_archivo) {
         await supabase.storage.from('documentos-maquinaria').remove([doc.ruta_archivo]);
@@ -150,7 +153,7 @@ export default function TabDocumentos({ maquinariaId, isAdmin = false }) {
       if (error) throw error;
       cargarDatos();
     } catch (error) {
-      alert('Error al eliminar: ' + error.message);
+      addToast('Error al eliminar: ' + error.message, { type: 'error' });
     }
   };
 

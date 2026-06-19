@@ -28,7 +28,7 @@ export async function crearTrabajador(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(trabajadorSchema, formData)
+    const validacion = await validate(trabajadorSchema, formData)
     if (!validacion.success) throw new Error(validacion.error)
     const datos = {
       ...validacion.data,
@@ -58,7 +58,7 @@ export async function actualizarTrabajador(id, formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(trabajadorSchema, formData)
+    const validacion = await validate(trabajadorSchema, formData)
     if (!validacion.success) throw new Error(validacion.error)
     const datos = { ...validacion.data }
     Object.keys(datos).forEach(k => { if (datos[k] === '' || datos[k] === undefined) delete datos[k] })
@@ -128,7 +128,7 @@ export async function crearMaquinaria(formData) {
     const dataToValidate = { ...formData }
     delete dataToValidate._fotoBase64
     delete dataToValidate._fotoNombre
-    const validacion = validate(maquinariaSchema, dataToValidate)
+    const validacion = await validate(maquinariaSchema, dataToValidate)
     if (!validacion.success) throw new Error(validacion.error)
     let datosValidados = validacion.data
 
@@ -170,7 +170,7 @@ export async function actualizarMaquinaria(id, formData) {
     const dataToValidate = { ...formData }
     delete dataToValidate._fotoBase64
     delete dataToValidate._fotoNombre
-    const validacion = validate(maquinariaSchema, dataToValidate)
+    const validacion = await validate(maquinariaSchema, dataToValidate)
     if (!validacion.success) throw new Error(validacion.error)
     const datos = { ...validacion.data }
     Object.keys(datos).forEach(k => { if (datos[k] === '' || datos[k] === null) delete datos[k] })
@@ -222,7 +222,7 @@ export async function crearVehiculo(formData) {
     const dataToValidate = { ...formData }
     delete dataToValidate._fotoBase64
     delete dataToValidate._fotoNombre
-    const validacion = validate(vehiculoSchema, dataToValidate)
+    const validacion = await validate(vehiculoSchema, dataToValidate)
     if (!validacion.success) throw new Error(validacion.error)
     let datosValidados = validacion.data
 
@@ -265,7 +265,7 @@ export async function actualizarVehiculo(id, formData) {
     const dataToValidate = { ...formData }
     delete dataToValidate._fotoBase64
     delete dataToValidate._fotoNombre
-    const validacion = validate(vehiculoSchema, dataToValidate)
+    const validacion = await validate(vehiculoSchema, dataToValidate)
     if (!validacion.success) throw new Error(validacion.error)
     const datos = { ...validacion.data }
     Object.keys(datos).forEach(k => { if (datos[k] === '' || datos[k] === null) delete datos[k] })
@@ -313,7 +313,7 @@ export async function crearAnuncio(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(anuncioSchema, formData)
+    const validacion = await validate(anuncioSchema, formData)
     if (!validacion.success) throw new Error(validacion.error)
     const datos = validacion.data
 
@@ -344,7 +344,7 @@ export async function actualizarAnuncio(id, formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(anuncioSchema, formData)
+    const validacion = await validate(anuncioSchema, formData)
     if (!validacion.success) throw new Error(validacion.error)
     const datos = validacion.data
 
@@ -395,7 +395,7 @@ export async function guardarConfiguracionAlertas(config) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(
+    const validacion = await validate(
       z.object({
         email_notifications: z.boolean().optional(),
         email_destino: z.string().email().optional().nullable(),
@@ -440,7 +440,7 @@ export async function crearAsignacionesTurno(asignaciones) {
 
     // Validar cada asignación individual
     for (const a of asignaciones) {
-      const v = validate(asignacionTurnoSchema, a)
+      const v = await validate(asignacionTurnoSchema, a)
       if (!v.success) throw new Error(v.error)
     }
 
@@ -521,7 +521,7 @@ export async function registrarAsistenciaTurno(fecha, trabajadorId, tipoTurnoId,
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(asistenciaTurnoSchema, {
+    const validacion = await validate(asistenciaTurnoSchema, {
       fecha,
       trabajador_id: trabajadorId,
       tipo_turno_id: tipoTurnoId,
@@ -558,7 +558,7 @@ export async function registrarAsistenciaMasiva(registros) {
 
     // Validar cada registro
     for (const r of registros) {
-      const v = validate(asistenciaTurnoSchema, r)
+      const v = await validate(asistenciaTurnoSchema, r)
       if (!v.success) throw new Error(v.error)
     }
 
@@ -610,7 +610,7 @@ export async function crearFrente(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(frenteSchema, formData)
+    const validacion = await validate(frenteSchema, formData)
     if (!validacion.success) throw new Error(validacion.error)
     const datos = validacion.data
 
@@ -643,7 +643,7 @@ export async function actualizarFrente(id, formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(frenteSchema, formData)
+    const validacion = await validate(frenteSchema, formData)
     if (!validacion.success) throw new Error(validacion.error)
     const datos = {
       codigo: validacion.data.codigo?.toUpperCase(),
@@ -699,7 +699,7 @@ export async function crearTipoMaquinaria(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(
+    const validacion = await validate(
       z.object({ nombre: z.string().min(1, 'Nombre es requerido').trim(), descripcion: z.string().optional().nullable() }).passthrough(),
       formData
     )
@@ -731,7 +731,7 @@ export async function actualizarTipoMaquinaria(id, formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(
+    const validacion = await validate(
       z.object({ nombre: z.string().min(1).trim().optional(), descripcion: z.string().optional().nullable() }).passthrough(),
       formData
     )
@@ -782,7 +782,7 @@ export async function configurarUmbrales(umbrales) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(
+    const validacion = await validate(
       z.object({
         email_notifications: z.boolean().optional(),
         email_destino: z.string().email().optional().nullable(),
@@ -835,7 +835,7 @@ export async function actualizarRolUsuario(userId, nuevoRol) {
       throw new Error('No puedes cambiar tu propio rol')
     }
 
-    const validacion = validate(
+    const validacion = await validate(
       z.string().min(1, 'Rol es requerido'),
       nuevoRol
     )

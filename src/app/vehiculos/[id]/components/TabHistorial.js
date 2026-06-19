@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
+import { useToast } from '@/context/ToastContext';
 import { formatearFecha, formatearMoneda } from '@/lib/utils/maquinaria';
 import {
   Wrench,
@@ -29,6 +30,8 @@ const SUB_TABS = [
 ];
 
 export default function TabHistorial({ vehiculoId, vehiculo, isAdmin = false }) {
+  const supabase = createClient();
+  const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState('preventivos');
 
   // Preventivos
@@ -168,7 +171,7 @@ export default function TabHistorial({ vehiculoId, vehiculo, isAdmin = false }) 
       setTimeout(() => setMensajeExito(''), 3000);
       cargarFn();
     } catch (err) {
-      alert('Error al guardar: ' + err.message);
+      addToast('Error al guardar: ' + err.message, { type: 'error' });
     } finally {
       setSaving(false);
     }

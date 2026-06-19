@@ -12,7 +12,7 @@ export async function crearTercero(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(terceroSchema, formData)
+    const validacion = await validate(terceroSchema, formData)
     if (!validacion.success) throw new Error(validacion.error)
     const datos = validacion.data
 
@@ -57,7 +57,7 @@ export async function actualizarTercero(id, formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(terceroSchema, formData)
+    const validacion = await validate(terceroSchema, formData)
     if (!validacion.success) throw new Error(validacion.error)
     const datos = { ...validacion.data }
     Object.keys(datos).forEach(k => { if (datos[k] === '' || datos[k] === null) delete datos[k] })
@@ -103,7 +103,7 @@ export async function crearFactura(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(facturaSchema, formData)
+    const validacion = await validate(facturaSchema, formData)
     if (!validacion.success) throw new Error(validacion.error)
     const datos = validacion.data
 
@@ -225,7 +225,7 @@ export async function registrarPago(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(reciboCajaSchema, formData)
+    const validacion = await validate(reciboCajaSchema, formData)
     if (!validacion.success) throw new Error(validacion.error)
     const datos = validacion.data
 
@@ -296,7 +296,7 @@ export async function crearNotaCredito(data) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(notaCreditoSchema, data)
+    const validacion = await validate(notaCreditoSchema, data)
     if (!validacion.success) throw new Error(validacion.error)
     const d = validacion.data
 
@@ -349,7 +349,7 @@ export async function crearNotaDebito(data) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(notaDebitoSchema, data)
+    const validacion = await validate(notaDebitoSchema, data)
     if (!validacion.success) throw new Error(validacion.error)
     const d = validacion.data
 

@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import {
   AlertTriangle,
   AlertCircle,
@@ -51,6 +51,7 @@ const ESTADOS = {
 }
 
 export default function AlertasPage() {
+  const supabase = createClient()
   const [modo, setModo] = useState('documentos') // 'documentos' | 'maquinaria' | 'vehiculos'
 
   // Estado para documentos

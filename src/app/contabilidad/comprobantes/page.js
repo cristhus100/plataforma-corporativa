@@ -18,6 +18,7 @@ import {
   Loader2,
   FileText,
 } from 'lucide-react';
+import { exportarExcel } from '@/lib/utils/exportar';
 
 export default function ComprobantesPage() {
   const supabase = createClient();
@@ -90,6 +91,19 @@ export default function ComprobantesPage() {
 
   const hayFiltrosActivos = paginacion.search || paginacion.filtros.tipo || paginacion.filtros.estado || paginacion.filtros.fecha_desde || paginacion.filtros.fecha_hasta;
 
+  async function exportarExcelFn() {
+    const columns = [
+      { key: 'numero_comprobante', label: 'N°' },
+      { key: 'fecha', label: 'Fecha', formatter: (v) => v ? new Date(v).toLocaleDateString('es-CO') : '' },
+      { key: 'tipo_comprobantes', label: 'Tipo', formatter: (v) => v?.codigo || '—' },
+      { key: 'concepto', label: 'Concepto' },
+      { key: 'total_debito', label: 'Débito', formatter: (v) => `$${Number(v || 0).toLocaleString('es-CO')}` },
+      { key: 'total_credito', label: 'Crédito', formatter: (v) => `$${Number(v || 0).toLocaleString('es-CO')}` },
+      { key: 'estado', label: 'Estado', formatter: (v) => v === 'activo' ? 'Activo' : 'Anulado' },
+    ];
+    await exportarExcel(paginacion.data, columns, 'comprobantes', 'Comprobantes Contables - Serviequipos');
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -98,15 +112,28 @@ export default function ComprobantesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Comprobantes Contables</h1>
           <p className="text-sm text-gray-600">Gestión de comprobantes y asientos contables</p>
         </div>
-        {isAdmin && (
-          <Link
-            href="/contabilidad/comprobante/nuevo"
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition"
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportarExcelFn}
+            disabled={paginacion.total === 0}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Exportar a Excel"
           >
-            <Plus className="h-4 w-4" />
-            Nuevo Comprobante
-          </Link>
-        )}
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="hidden sm:inline">Excel</span>
+          </button>
+          {isAdmin && (
+            <Link
+              href="/contabilidad/comprobante/nuevo"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition"
+            >
+              <Plus className="h-4 w-4" />
+              Nuevo Comprobante
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Filters */}

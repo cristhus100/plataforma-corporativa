@@ -12,7 +12,7 @@ export async function crearComprobante(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(comprobanteSchema, formData)
+    const validacion = await validate(comprobanteSchema, formData)
     if (!validacion.success) throw new Error(validacion.error)
     const datos = validacion.data
 
@@ -122,7 +122,7 @@ export async function crearCuenta(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const validacion = validate(cuentaSchema, formData)
+    const validacion = await validate(cuentaSchema, formData)
     if (!validacion.success) throw new Error(validacion.error)
     const d = validacion.data
 

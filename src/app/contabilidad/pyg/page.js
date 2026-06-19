@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import { formatValorContable } from '@/lib/utils/contabilidad';
+import { exportarExcel } from '@/lib/utils/exportar';
 import {
   AlertTriangle,
   Loader2,
@@ -121,6 +122,23 @@ export default function PyGPage() {
 
   const resultado = totales.ingresos - totales.gastos;
 
+  async function exportarExcelFn() {
+    const columns = [
+      { key: 'codigo', label: 'Código' },
+      { key: 'nombre', label: 'Cuenta' },
+      { key: 'tipo', label: 'Tipo' },
+      { key: 'saldo', label: 'Saldo', formatter: (v) => `$${Number(v || 0).toLocaleString('es-CO')}` },
+    ];
+    const combined = [
+      ...data.ingresos.filter(i => i.saldo > 0).map(i => ({ ...i, tipo: 'Ingreso' })),
+      ...data.gastos.filter(g => g.saldo > 0).map(g => ({ ...g, tipo: 'Gasto' })),
+    ];
+    const excelData = combined.map((item) =>
+      columns.reduce((acc, col) => ({ ...acc, [col.label]: col.formatter ? col.formatter(item[col.key], item) : (item[col.key] ?? '') }), {})
+    );
+    await exportarExcel(excelData, columns, 'pyg', 'Estado de Resultados - Serviequipos');
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -161,6 +179,17 @@ export default function PyGPage() {
               <LineChart className="h-4 w-4" />
             )}
             Generar PyG
+          </button>
+          <button
+            onClick={exportarExcelFn}
+            disabled={!consultado || (data.ingresos.length === 0 && data.gastos.length === 0)}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Exportar a Excel"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="hidden sm:inline">Excel</span>
           </button>
         </div>
       </div>

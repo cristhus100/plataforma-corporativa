@@ -16,6 +16,7 @@ import {
   Eye,
   ArrowRight,
 } from 'lucide-react'
+import { exportarExcel } from '@/lib/utils/exportar'
 
 export default function CarteraPage() {
   const supabase = createClient()
@@ -72,6 +73,26 @@ export default function CarteraPage() {
     const num = (f.numero_factura || '').toLowerCase()
     return cliente.includes(term) || num.includes(term)
   })
+
+  async function exportarExcelFn() {
+    const columns = [
+      { key: 'numero_factura', label: 'Factura' },
+      { key: 'cliente_label', label: 'Cliente', formatter: (_v, item) => item.terceros?.nombre_comercial || item.terceros?.nombre_completo || '—' },
+      { key: 'fecha_vencimiento', label: 'Vencimiento', formatter: (v) => v ? new Date(v + 'T12:00:00').toLocaleDateString('es-CO') : '—' },
+      { key: 'total', label: 'Total', formatter: (v) => `$${Number(v || 0).toLocaleString('es-CO')}` },
+      { key: 'estado', label: 'Estado', formatter: (_v, item) => {
+        const venc = new Date(item.fecha_vencimiento + 'T12:00:00')
+        const diff = Math.max(0, Math.floor((new Date() - venc) / (1000 * 60 * 60 * 24)))
+        const labels = { pendiente: 'Pendiente', pagada: 'Pagada', vencida: 'Vencida', anulada: 'Anulada', parcial: 'Parcial' }
+        return labels[item.estado === 'pendiente' && diff > 0 ? 'vencida' : item.estado] || item.estado
+      }},
+      { key: 'dias_mora', label: 'Días Mora', formatter: (_v, item) => {
+        const venc = new Date(item.fecha_vencimiento + 'T12:00:00')
+        return Math.max(0, Math.floor((new Date() - venc) / (1000 * 60 * 60 * 24)))
+      }},
+    ]
+    await exportarExcel(facturasFiltradas, columns, 'cartera', 'Cartera - Serviequipos')
+  }
 
   function getEstadoBadge(estado) {
     const colors = {
@@ -136,6 +157,17 @@ export default function CarteraPage() {
           <h1 className="text-2xl font-bold text-gray-900">Cartera</h1>
           <p className="text-sm text-gray-600">An&aacute;lisis de cartera por antig&uuml;edad de saldos</p>
         </div>
+        <button
+          onClick={exportarExcelFn}
+          disabled={facturas.length === 0}
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Exportar a Excel"
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span className="hidden sm:inline">Excel</span>
+        </button>
       </div>
 
       {/* Empty State */}

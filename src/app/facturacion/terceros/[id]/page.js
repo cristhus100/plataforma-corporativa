@@ -7,6 +7,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRole } from '@/context/RoleContext'
+import { useToast } from '@/context/ToastContext'
 import { eliminarTercero } from '@/actions/facturacion'
 import { formatCOP } from '@/lib/utils/facturacion'
 import {
@@ -26,6 +27,7 @@ import {
 } from 'lucide-react'
 
 export default function TerceroDetallePage() {
+  const { addToast } = useToast();
   const params = useParams()
   const router = useRouter()
   const supabase = createClient()
@@ -71,7 +73,7 @@ export default function TerceroDetallePage() {
       if (res.error) throw new Error(res.error)
       router.push('/facturacion/terceros')
     } catch (err) {
-      alert(err.message)
+      addToast(err.message, { type: 'error' })
       setDeleting(false)
       setShowDeleteConfirm(false)
     }

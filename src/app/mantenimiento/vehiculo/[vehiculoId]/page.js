@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import {
   calcularEstadoAceite,
   calcularHorasDesdeCambio,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 
 export default function RegistroVehiculoPage() {
+  const supabase = createClient();
   const params = useParams();
   const vehiculoId = params.vehiculoId;
 
