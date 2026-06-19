@@ -12,6 +12,7 @@ import {
   CircleCheck, CircleX, Filter, X,
 } from 'lucide-react';
 import { exportarExcel } from '@/lib/utils/exportar'
+import { useToast } from '@/context/ToastContext';
 
 const ESTADO_BADGES = {
   pendiente: { badge: 'border-yellow-300 bg-yellow-50 text-yellow-700', dot: 'bg-yellow-500', label: 'Pendiente' },
@@ -30,6 +31,7 @@ function EstadoBadge({ estado }) {
 export default function NovedadesPage() {
   const supabase = createClient();
   const { isAdmin } = useRole();
+  const { addToast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -82,6 +84,7 @@ export default function NovedadesPage() {
       setNovedades(novRes.data || []);
     } catch (err) {
       console.error('Error:', err);
+      try { addToast('Error al cargar novedades', { type: 'error' }) } catch(e) {}
       setError(err.message || 'Error al cargar datos');
     } finally {
       setLoading(false);

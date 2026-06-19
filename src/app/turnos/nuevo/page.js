@@ -15,10 +15,12 @@ import { getFrentesTrabajo } from '@/lib/supabase/auditoria';
 import { crearAsignacionesTurno } from '@/actions';
 import { getNombreCompleto, TURNOS } from '@/lib/utils/turnos';
 import { Users, ArrowLeft, Plus, Trash2, AlertCircle, Check } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 export default function NuevaAsignacionPage() {
   const router = useRouter();
   const supabase = createClient();
+  const { addToast } = useToast();
 
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -68,6 +70,7 @@ export default function NuevaAsignacionPage() {
         setAsignaciones([{ trabajador_id: '', tipo_turno_id: tipos[0]?.id || '', fecha_inicio: hoy, fecha_fin: '', observaciones: '' }]);
       } catch (err) {
         console.error('Error cargando datos:', err);
+        try { addToast('Error al cargar los datos', { type: 'error' }) } catch(e) {}
         setError('Error al cargar datos');
       } finally {
         setCargando(false);
@@ -166,6 +169,7 @@ export default function NuevaAsignacionPage() {
       }, 1500);
     } catch (err) {
       console.error('Error creando asignaciones:', err);
+      try { addToast('Error al crear las asignaciones', { type: 'error' }) } catch(e) {}
       setError(err.message || 'Error al crear las asignaciones');
     } finally {
       setGuardando(false);

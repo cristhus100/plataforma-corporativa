@@ -23,6 +23,7 @@ import {
   diasDesdeHoy,
   getEstadoProgramacion,
 } from '@/lib/utils/ordenes_mantenimiento';
+import { useToast } from '@/context/ToastContext';
 
 const TABS = [
   { id: 'general', label: 'Información General', icon: '📋' },
@@ -34,6 +35,7 @@ export default function OrdenDetallePage() {
   const router = useRouter();
   const supabase = createClient();
   const { isAdmin } = useRole();
+  const { addToast } = useToast();
   const [orden, setOrden] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('general');
@@ -64,6 +66,7 @@ export default function OrdenDetallePage() {
       setOrden(data);
     } catch (err) {
       console.error('Error cargando orden:', err);
+      try { addToast('Error al cargar la orden', { type: 'error' }) } catch(e) {}
       setError(err.message);
     } finally {
       setLoading(false);
@@ -89,6 +92,7 @@ export default function OrdenDetallePage() {
       setMostrarModal(false);
     } catch (err) {
       console.error('Error cambiando estado:', err);
+      try { addToast('Error al cambiar el estado de la orden', { type: 'error' }) } catch(e) {}
     } finally {
       setCambiando(false);
     }

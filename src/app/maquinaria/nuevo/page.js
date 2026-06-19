@@ -8,11 +8,13 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { crearMaquinaria } from '@/actions'
 import { useRole } from '@/context/RoleContext'
+import { useToast } from '@/context/ToastContext'
 
 export default function NuevaMaquinariaPage() {
   const supabase = createClient()
   const router = useRouter()
   const { isAdmin, loading: roleLoading } = useRole()
+  const { addToast } = useToast()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [tiposMaquinaria, setTiposMaquinaria] = useState([])
@@ -172,6 +174,7 @@ export default function NuevaMaquinariaPage() {
       if (result.success) router.push('/maquinaria')
     } catch (err) {
       console.error('Error:', err)
+      try { addToast('Error al crear la maquinaria', { type: 'error' }) } catch(e) {}
       setError(err.message || 'Error al crear la maquinaria')
       setLoading(false)
     }

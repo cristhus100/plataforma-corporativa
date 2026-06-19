@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
+import { useToast } from '@/context/ToastContext';
 import StatsCard from '@/components/ui/StatsCard';
 import { formatCOP } from '@/lib/utils/nomina';
 import { exportarExcel } from '@/lib/utils/exportar';
@@ -76,6 +77,7 @@ function formatFecha(f) {
 export default function NominaPage() {
   const supabase = createClient();
   const { isAdmin } = useRole();
+  const { addToast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -146,6 +148,7 @@ export default function NominaPage() {
       });
     } catch (err) {
       console.error('Error:', err);
+      try { addToast('Error al cargar datos de nómina', { type: 'error' }); } catch(e) {}
       setError(err.message || 'Error al cargar datos');
     } finally {
       setLoading(false);

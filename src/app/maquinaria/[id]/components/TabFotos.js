@@ -40,6 +40,7 @@ export default function TabFotos({ maquinariaId, isAdmin = false }) {
       setFotos(data || []);
     } catch (error) {
       console.error('Error cargando fotos:', error);
+      try { addToast('Error al cargar fotos', { type: 'error' }) } catch(e) {}
     } finally {
       setLoading(false);
     }
@@ -82,7 +83,7 @@ export default function TabFotos({ maquinariaId, isAdmin = false }) {
       cargarFotos();
     } catch (error) {
       console.error('Error subiendo foto:', error);
-      addToast('Error al subir foto: ' + error.message, { type: 'error' });
+      try { addToast('Error al subir foto: ' + error.message, { type: 'error' }) } catch(e) {}
     } finally {
       setUploading(false);
     }

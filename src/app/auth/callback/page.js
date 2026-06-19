@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, Check, AlertTriangle, Eye, EyeOff } from 'lucide-react'
+import { useToast } from '@/context/ToastContext'
 
 export default function AuthCallbackPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { addToast } = useToast()
 
   const [mode, setMode] = useState('loading') // loading | recovery | success | error
   const [password, setPassword] = useState('')
@@ -32,6 +34,7 @@ export default function AuthCallbackPage() {
       }).then(({ error }) => {
         if (error) {
           console.error('Error al establecer sesión de recuperación:', error)
+          try { addToast('Error al restablecer la contraseña', { type: 'error' }) } catch(e) {}
           setMode('error')
           setErrorMsg('El enlace de recuperación es inválido o ha expirado.')
         } else {

@@ -28,8 +28,10 @@ import {
   Wind,
 } from 'lucide-react';
 import QRCode from 'qrcode';
+import { useToast } from '@/context/ToastContext';
 
 export default function TabCambioAceite({ maquinariaId, maquinaria, onUpdate, isAdmin = false }) {
+  const { addToast } = useToast();
   const supabase = createClient();
   const [lecturas, setLecturas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -93,6 +95,7 @@ export default function TabCambioAceite({ maquinariaId, maquinaria, onUpdate, is
       setLecturas(data || []);
     } catch (err) {
       console.error('Error cargando lecturas:', err);
+      try { addToast('Error al cargar lecturas de horómetro', { type: 'error' }) } catch(e) {}
       setError(err.message);
     } finally {
       setLoading(false);

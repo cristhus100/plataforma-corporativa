@@ -19,10 +19,12 @@ import {
   Loader2,
   BookOpen,
 } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 export default function PUCPage() {
   const supabase = createClient();
   const { isAdmin } = useRole();
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
@@ -61,6 +63,7 @@ export default function PUCPage() {
         setCuentasList(data || []);
       } catch (err) {
         console.error('Error loading PUC:', err);
+        try { addToast('Error al cargar el plan de cuentas', { type: 'error' }) } catch(e) {}
         setError(err.message);
       } finally {
         setLoading(false);

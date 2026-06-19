@@ -7,12 +7,14 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRole } from '@/context/RoleContext'
+import { useToast } from '@/context/ToastContext'
 
 export default function EditarMaquinariaPage() {
   const supabase = createClient()
   const router = useRouter()
   const params = useParams()
   const { isAdmin, loading: roleLoading } = useRole()
+  const { addToast } = useToast()
 
   const [cargando, setCargando] = useState(true)
 
@@ -113,6 +115,7 @@ export default function EditarMaquinariaPage() {
       })
     } catch (err) {
       console.error('Error cargando maquinaria:', err)
+      try { addToast('Error al cargar los datos de la maquinaria', { type: 'error' }) } catch(e) {}
       setError('No se pudo cargar la información del equipo')
     } finally {
       setCargando(false)
@@ -158,6 +161,7 @@ export default function EditarMaquinariaPage() {
       router.push(`/maquinaria/${params.id}`)
     } catch (err) {
       console.error('Error:', err)
+      try { addToast('Error al actualizar la maquinaria', { type: 'error' }) } catch(e) {}
       setError(err.message || 'Error al actualizar la maquinaria')
       setGuardando(false)
     }

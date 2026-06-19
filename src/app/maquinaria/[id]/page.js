@@ -20,6 +20,7 @@ import TabHistorial from './components/TabHistorial';
 import TabDocumentos from './components/TabDocumentos';
 import TabFotos from './components/TabFotos';
 import TabOperador from './components/TabOperador';
+import { useToast } from '@/context/ToastContext';
 
 const TABS = [
   { id: 'general', label: 'Información General', icon: '📋' },
@@ -35,6 +36,7 @@ export default function MaquinariaDetallePage() {
   const params = useParams();
   const router = useRouter();
   const { isAdmin } = useRole();
+  const { addToast } = useToast();
   const [maquinaria, setMaquinaria] = useState(null);
   const [tipoMaquinaria, setTipoMaquinaria] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -72,6 +74,7 @@ export default function MaquinariaDetallePage() {
       }
     } catch (error) {
       console.error('Error cargando maquinaria:', error);
+      try { addToast('Error al cargar la maquinaria', { type: 'error' }) } catch(e) {}
     } finally {
       setLoading(false);
     }

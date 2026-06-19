@@ -19,6 +19,7 @@ import {
   formatTime,
   ESTADOS_ASISTENCIA,
 } from '@/lib/utils/turnos';
+import { useToast } from '@/context/ToastContext';
 import {
   ArrowLeft,
   Calendar,
@@ -36,6 +37,7 @@ import {
 
 export default function AsistenciaPage() {
   const supabase = createClient();
+  const { addToast } = useToast();
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
@@ -96,7 +98,8 @@ export default function AsistenciaPage() {
       }
     } catch (err) {
       console.error('Error:', err);
-      setError('Error al cargar datos');
+	      try { addToast('Error al cargar datos de asistencia', { type: 'error' }) } catch(e) {}
+	      setError('Error al cargar datos');
     } finally {
       setCargando(false);
     }
@@ -167,7 +170,8 @@ export default function AsistenciaPage() {
       cargarDatos();
     } catch (err) {
       console.error('Error:', err);
-      setError(err.message || 'Error al guardar la asistencia');
+	      try { addToast('Error al guardar la asistencia', { type: 'error' }) } catch(e) {}
+	      setError(err.message || 'Error al guardar la asistencia');
     } finally {
       setGuardando(false);
     }

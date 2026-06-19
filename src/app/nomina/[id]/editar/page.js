@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import { formatCOP } from '@/lib/utils/nomina';
+import { useToast } from '@/context/ToastContext';
 import { Loader2, AlertTriangle, ArrowLeft, Save } from 'lucide-react';
 
 export default function EditarNominasPage() {
@@ -15,6 +16,7 @@ export default function EditarNominasPage() {
   const router = useRouter();
   const supabase = createClient();
   const { isAdmin, loading: roleLoading } = useRole();
+  const { addToast } = useToast();
   const periodoId = params.id;
 
   const [loading, setLoading] = useState(true);
@@ -57,6 +59,7 @@ export default function EditarNominasPage() {
       setNominas(noms || []);
     } catch (err) {
       console.error('Error:', err);
+      try { addToast('Error al cargar datos de la nómina', { type: 'error' }) } catch(e) {}
       setError(err.message);
     } finally {
       setLoading(false);
@@ -128,6 +131,7 @@ export default function EditarNominasPage() {
       cargarDatos();
     } catch (err) {
       console.error('Error guardando:', err);
+      try { addToast('Error al guardar la nómina', { type: 'error' }) } catch(e) {}
       setError(err.message || 'Error al guardar');
     } finally {
       setGuardando(false);

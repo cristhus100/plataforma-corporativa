@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import dynamicImport from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
+import { useToast } from '@/context/ToastContext'
 import { Search, Truck, BatteryFull, BatteryLow, Navigation, MapPin, RefreshCw, Clock, Radio, Wifi, WifiOff, X } from 'lucide-react'
 
 // Leaflet solo se importa del lado del cliente
@@ -31,6 +32,7 @@ function getStatusIcon(estado) {
 }
 
 export default function UbicacionPage() {
+  const { addToast } = useToast()
   const supabase = createClient()
   const [maquinaria, setMaquinaria] = useState([])
   const [loading, setLoading] = useState(true)
@@ -121,6 +123,7 @@ export default function UbicacionPage() {
       setUltimaActualizacion(new Date())
     } catch (err) {
       console.error('Error cargando posiciones:', err)
+      try { addToast('Error al cargar posiciones', { type: 'error' }) } catch(e) {}
     } finally {
       setLoading(false)
     }

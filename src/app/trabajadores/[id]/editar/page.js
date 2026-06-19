@@ -7,12 +7,14 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
+import { useToast } from '@/context/ToastContext';
 
 export default function EditarTrabajadorPage() {
   const router = useRouter();
   const params = useParams();
   const supabase = createClient();
   const { isAdmin, loading: roleLoading } = useRole();
+  const { addToast } = useToast();
   const trabajadorId = params.id;
 
   // Redirect si no es admin
@@ -159,6 +161,7 @@ export default function EditarTrabajadorPage() {
         }
       } catch (err) {
         console.error('Error cargando trabajador:', err);
+        try { addToast('Error al cargar datos del trabajador', { type: 'error' }) } catch(e) {}
         setError('No se pudo cargar la información del trabajador');
       } finally {
         setCargando(false);
@@ -314,6 +317,7 @@ export default function EditarTrabajadorPage() {
       router.push(`/trabajadores/${trabajadorId}`);
     } catch (err) {
       console.error('Error actualizando trabajador:', err);
+      try { addToast('Error al guardar los cambios', { type: 'error' }) } catch(e) {}
       setError(err.message || 'Error al guardar los cambios');
       setGuardando(false);
     }

@@ -131,6 +131,7 @@ export default function ConfiguracionPage() {
       setAlertas(data.alertas || [])
     } catch (err) {
       console.error('Error fetching alertas:', err)
+      try { addToast('Error al cargar alertas', { type: 'error' }) } catch(e) {}
     } finally {
       setLoadingAlertas(false)
     }
@@ -184,7 +185,7 @@ export default function ConfiguracionPage() {
       setTimeout(() => setGuardadoAlertas(false), 3000)
     } catch (err) {
       console.error('Error guardando configuración:', err)
-      addToast('No se pudo guardar. Verifica los permisos de administrador.', { type: 'error' })
+      try { addToast('No se pudo guardar. Verifica los permisos de administrador.', { type: 'error' }) } catch(e) {}
     } finally {
       setGuardandoAlertas(false)
     }
@@ -337,6 +338,7 @@ export default function ConfiguracionPage() {
       setUsuarios(perfiles || [])
     } catch (err) {
       console.error('Error cargando usuarios:', err)
+      try { addToast('Error al cargar usuarios', { type: 'error' }) } catch(e) {}
     } finally {
       setLoadingUsuarios(false)
     }

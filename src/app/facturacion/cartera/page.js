@@ -17,8 +17,10 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import { exportarExcel } from '@/lib/utils/exportar'
+import { useToast } from '@/context/ToastContext'
 
 export default function CarteraPage() {
+  const { addToast } = useToast()
   const supabase = createClient()
   const { isAdmin } = useRole()
   const [loading, setLoading] = useState(true)
@@ -60,6 +62,7 @@ export default function CarteraPage() {
       setFacturas(facturasConSaldo)
     } catch (err) {
       console.error('Error:', err)
+      try { addToast('Error al cargar la cartera', { type: 'error' }) } catch(e) {}
       setError('Error al cargar la cartera')
     } finally {
       setLoading(false)

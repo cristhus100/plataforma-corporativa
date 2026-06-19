@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import { anularComprobante } from '@/actions/contabilidad';
 import { formatValorContable, getNaturalezaLabel, getNaturalezaColor } from '@/lib/utils/contabilidad';
+import { useToast } from '@/context/ToastContext';
 import {
   AlertTriangle,
   Loader2,
@@ -21,6 +22,7 @@ export default function ComprobanteDetailPage() {
   const params = useParams();
   const supabase = createClient();
   const { isAdmin } = useRole();
+  const { addToast } = useToast();
   const [comprobante, setComprobante] = useState(null);
   const [asientos, setAsientos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +70,7 @@ export default function ComprobanteDetailPage() {
       setAsientos(asientosData || []);
     } catch (err) {
       console.error('Error loading comprobante:', err);
+      try { addToast('Error al cargar datos del comprobante', { type: 'error' }) } catch(e) {}
       setError(err.message);
     } finally {
       setLoading(false);

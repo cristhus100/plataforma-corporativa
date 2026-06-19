@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useToast } from '@/context/ToastContext';
 import {
   calcularEstadoAceite,
   calcularHorasDesdeCambio,
@@ -30,6 +31,7 @@ import {
 import QRCode from 'qrcode';
 
 export default function TabMantenimiento({ vehiculoId, vehiculo, onUpdate, isAdmin = false }) {
+  const { addToast } = useToast();
   const supabase = createClient();
   const [lecturas, setLecturas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -83,6 +85,7 @@ export default function TabMantenimiento({ vehiculoId, vehiculo, onUpdate, isAdm
       setLecturas(data || []);
     } catch (err) {
       console.error('Error cargando lecturas:', err);
+      try { addToast('Error al cargar los registros de mantenimiento', { type: 'error' }); } catch(e) {};
       setError(err.message);
     } finally {
       setLoading(false);

@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import { ArrowLeft, Save, Loader2, AlertTriangle, Car } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 import { ESTADOS_VEHICULO_LIST as ESTADOS_VEHICULO } from '@/lib/utils/vehiculo';
 
@@ -16,6 +17,7 @@ export default function EditarVehiculoPage() {
   const router = useRouter();
   const supabase = createClient();
   const { isAdmin, loading: roleLoading } = useRole();
+  const { addToast } = useToast();
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
@@ -60,6 +62,7 @@ export default function EditarVehiculoPage() {
       });
     } catch (err) {
       console.error('Error:', err);
+      try { addToast('Error al cargar datos del vehículo', { type: 'error' }) } catch(e) {}
       setError(err.message);
     } finally {
       setCargando(false);

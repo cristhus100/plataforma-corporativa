@@ -105,7 +105,7 @@ export default function AlertasPage() {
     } catch (e) {
       setDescartadas(prev => [...prev, id])
       console.error('Error al descartar alerta:', e)
-      addToast('Error al descartar alerta', { type: 'error' })
+      try { addToast('Error al descartar alerta', { type: 'error' }) } catch(e) {}
     }
   }
 
@@ -142,7 +142,7 @@ export default function AlertasPage() {
 
     } catch (err) {
   console.error('Error cargando alertas:', err)
-      addToast('Error al cargar alertas de documentos', { type: 'error' })
+      try { addToast('Error al cargar alertas de documentos', { type: 'error' }) } catch(e) {}
   } finally {
   setLoading(false)
   }
@@ -161,7 +161,7 @@ export default function AlertasPage() {
       setAlertasAceite(data || [])
     } catch (err) {
       console.error('Error cargando alertas de aceite:', err)
-      addToast('Error al cargar alertas de aceite', { type: 'error' })
+      try { addToast('Error al cargar alertas de aceite', { type: 'error' }) } catch(e) {}
     } finally {
       setLoadingAceite(false)
     }
@@ -214,7 +214,7 @@ export default function AlertasPage() {
       setAlertasVehiculos(data || [])
     } catch (err) {
       console.error('Error cargando alertas de vehículos:', err)
-      addToast('Error al cargar alertas de vehículos', { type: 'error' })
+      try { addToast('Error al cargar alertas de vehículos', { type: 'error' }) } catch(e) {}
     } finally {
       setLoadingVehiculos(false)
     }
@@ -232,7 +232,7 @@ export default function AlertasPage() {
       setAlertasFiltroAire(data || [])
     } catch (err) {
       console.error('Error cargando alertas de filtro de aire:', err)
-      addToast('Error al cargar alertas de filtro de aire', { type: 'error' })
+      try { addToast('Error al cargar alertas de filtro de aire', { type: 'error' }) } catch(e) {}
     } finally {
       setLoadingFiltroAire(false)
     }

@@ -14,10 +14,12 @@ import {
 } from '@/lib/supabase/turnos';
 import { getNombreCompleto, TURNOS } from '@/lib/utils/turnos';
 import { ArrowLeft, Save, AlertCircle, Check } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 export default function EditarAsignacionPage() {
   const params = useParams();
   const router = useRouter();
+  const { addToast } = useToast();
 
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -61,6 +63,7 @@ export default function EditarAsignacionPage() {
         });
       } catch (err) {
         console.error('Error:', err);
+        try { addToast('Error al cargar los datos', { type: 'error' }) } catch(e) {}
         setError('Error al cargar los datos');
       } finally {
         setCargando(false);
@@ -107,6 +110,7 @@ export default function EditarAsignacionPage() {
       }, 1000);
     } catch (err) {
       console.error('Error:', err);
+      try { addToast('Error al actualizar la asignación', { type: 'error' }) } catch(e) {}
       setError(err.message || 'Error al actualizar la asignación');
     } finally {
       setGuardando(false);

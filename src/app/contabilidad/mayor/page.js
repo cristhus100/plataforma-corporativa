@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import { formatValorContable, calcularSaldoCuenta } from '@/lib/utils/contabilidad';
 import { exportarExcel } from '@/lib/utils/exportar';
+import { useToast } from '@/context/ToastContext';
 import {
   Search,
   AlertTriangle,
@@ -18,6 +19,7 @@ import {
 export default function MayorPage() {
   const supabase = createClient();
   const { isAdmin } = useRole();
+  const { addToast } = useToast();
   const [cuentas, setCuentas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
@@ -43,6 +45,7 @@ export default function MayorPage() {
         setCuentas(data || []);
       } catch (err) {
         console.error('Error loading cuentas:', err);
+        try { addToast('Error al cargar cuentas contables', { type: 'error' }) } catch(e) {}
         setError(err.message);
       } finally {
         setLoading(false);
@@ -98,6 +101,7 @@ export default function MayorPage() {
       setAsientos(data || []);
     } catch (err) {
       console.error('Error consulting mayor:', err);
+      try { addToast('Error al consultar movimientos del mayor', { type: 'error' }) } catch(e) {}
       setError(err.message);
     } finally {
       setLoadingData(false);

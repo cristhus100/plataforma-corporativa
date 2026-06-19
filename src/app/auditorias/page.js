@@ -15,6 +15,7 @@ import {
   CATEGORIAS_ORDER,
 } from '@/lib/utils/auditoria';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/context/ToastContext';
 import {
   ClipboardCheck,
   Building2,
@@ -214,6 +215,7 @@ function TablaMaquinaria({ maquinaria }) {
 export default function AuditoriasPage() {
   const supabase = createClient();
   const { user } = useRole();
+  const { addToast } = useToast();
   const router = useRouter();
 
   const [frentes, setFrentes] = useState([]);
@@ -258,6 +260,7 @@ export default function AuditoriasPage() {
       } catch (err) {
         if (!mounted) return;
         console.error('Error cargando frentes:', err);
+        try { addToast('Error al cargar frentes de trabajo', { type: 'error' }) } catch(e) {}
       } finally {
         if (mounted) setLoadingFrentes(false);
       }
@@ -283,6 +286,7 @@ export default function AuditoriasPage() {
     } catch (err) {
       if (!mountedRef.current) return;
       console.error('Error cargando auditoría:', err);
+      try { addToast('Error al cargar datos de auditoría', { type: 'error' }) } catch(e) {}
       setError(err.message || 'Error al cargar los datos de auditoría');
     } finally {
       if (mountedRef.current) setLoading(false);

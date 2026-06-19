@@ -15,10 +15,12 @@ import {
   CheckCircle2,
   XCircle,
 } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 export default function BalanceGeneralPage() {
   const supabase = createClient();
   const { isAdmin } = useRole();
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [fechaCorte, setFechaCorte] = useState(new Date().toISOString().split('T')[0]);
@@ -113,6 +115,7 @@ export default function BalanceGeneralPage() {
       setConsultado(true);
     } catch (err) {
       console.error('Error loading balance general:', err);
+      try { addToast('Error al cargar el balance general', { type: 'error' }) } catch(e) {}
       setError(err.message);
     } finally {
       setLoading(false);

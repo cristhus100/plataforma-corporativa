@@ -17,9 +17,11 @@ import {
   FileText,
   CheckCircle,
 } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 export default function NuevoComprobantePage() {
   const supabase = createClient();
+  const { addToast } = useToast();
   const router = useRouter();
   const { isAdmin, loading: roleLoading } = useRole();
   const [tipos, setTipos] = useState([]);
@@ -62,6 +64,7 @@ export default function NuevoComprobantePage() {
         if (tercerosRes.data) setTerceros(tercerosRes.data);
       } catch (err) {
         console.error('Error loading catalogs:', err);
+        try { addToast('Error al cargar datos del formulario', { type: 'error' }) } catch(e) {}
         setError(err.message);
       } finally {
         setLoading(false);

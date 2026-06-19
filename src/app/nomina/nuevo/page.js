@@ -8,10 +8,12 @@ import Link from 'next/link';
 import { useRole } from '@/context/RoleContext';
 import { crearPeriodoNomina } from '@/actions/nomina';
 import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 export default function NuevoPeriodoPage() {
   const router = useRouter();
   const { isAdmin, loading: roleLoading } = useRole();
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -66,6 +68,7 @@ export default function NuevoPeriodoPage() {
       }
     } catch (err) {
       console.error('Error:', err);
+      try { addToast('Error al crear per&iacute;odo de n&oacute;mina', { type: 'error' }) } catch(e) {}
       setError(err.message || 'Error al crear per&iacute;odo de n&oacute;mina');
     } finally {
       setLoading(false);

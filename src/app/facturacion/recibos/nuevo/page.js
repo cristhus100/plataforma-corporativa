@@ -63,7 +63,7 @@ export default function NuevoReciboPage() {
       setFacturasEncontradas(data || [])
     } catch (err) {
       console.error('Error:', err)
-      addToast('Error al buscar facturas', { type: 'error' })
+      try { addToast('Error al buscar facturas', { type: 'error' }) } catch(e) {}
     } finally {
       setBuscando(false)
     }

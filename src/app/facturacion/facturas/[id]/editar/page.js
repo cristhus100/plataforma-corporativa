@@ -9,12 +9,14 @@ import { createClient } from '@/lib/supabase/client'
 import { useRole } from '@/context/RoleContext'
 import { formatCOP } from '@/lib/utils/facturacion'
 import { ArrowLeft, Save, Loader2, Plus, Trash2 } from 'lucide-react'
+import { useToast } from '@/context/ToastContext'
 
 export default function EditarFacturaPage() {
   const supabase = createClient()
   const router = useRouter()
   const params = useParams()
   const { isAdmin, loading: roleLoading } = useRole()
+  const { addToast } = useToast()
   const [cargando, setCargando] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -87,6 +89,7 @@ export default function EditarFacturaPage() {
       })))
     } catch (err) {
       console.error('Error:', err)
+      try { addToast('Error al cargar la factura', { type: 'error' }) } catch(e) {}
       setError(err.message || 'Error al cargar la factura')
     } finally {
       setCargando(false)

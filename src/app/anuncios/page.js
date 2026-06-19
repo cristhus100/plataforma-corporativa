@@ -60,6 +60,7 @@ export default function AnunciosPage() {
       setAnuncios(data || [])
     } catch (err) {
       console.error('Error cargando anuncios:', err)
+      try { addToast('Error al cargar anuncios', { type: 'error' }) } catch(e) {}
     } finally {
       setLoading(false)
     }

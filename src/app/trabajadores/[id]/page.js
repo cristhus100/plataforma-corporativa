@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { getNombreCompleto, ESTADOS_TRABAJADOR } from '@/lib/utils/trabajador';
 import { useRole } from '@/context/RoleContext';
 import TabDocumentos from './components/TabDocumentos';
+import { useToast } from '@/context/ToastContext';
 
 const TABS = [
   { id: 'informacion', label: 'Información Personal' },
@@ -22,6 +23,7 @@ export default function DetalleTrabajadorPage() {
   const router = useRouter();
   const supabase = createClient();
   const { isAdmin } = useRole();
+  const { addToast } = useToast();
   const trabajadorId = params.id;
 
   const [trabajador, setTrabajador] = useState(null);
@@ -59,6 +61,7 @@ export default function DetalleTrabajadorPage() {
       setTrabajador(data);
     } catch (err) {
       console.error('Error cargando trabajador:', err);
+      try { addToast('Error al cargar datos del trabajador', { type: 'error' }) } catch(e) {}
       setError(err.message);
     } finally {
       setLoading(false);
@@ -104,6 +107,7 @@ export default function DetalleTrabajadorPage() {
       router.refresh();
     } catch (err) {
       console.error('Error al eliminar:', err);
+      try { addToast('Error al eliminar trabajador', { type: 'error' }) } catch(e) {}
       setErrorEliminar('No se pudo eliminar: ' + err.message);
       setEliminando(false);
     }
@@ -202,7 +206,7 @@ export default function DetalleTrabajadorPage() {
           >
             <div className="flex items-center gap-3 mb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                <span className="text-lg">⚠️</span>
+                <span className="text-lg">&#9888;&#65039;</span>
               </div>
               <h2 className="text-lg font-semibold text-gray-900">Eliminar Empleado</h2>
             </div>
@@ -218,7 +222,7 @@ export default function DetalleTrabajadorPage() {
             </div>
 
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
-              <p className="text-sm font-medium text-orange-800 mb-2">⚠️ Esta acción NO se puede deshacer. Se eliminarán:</p>
+              <p className="text-sm font-medium text-orange-800 mb-2">&#9888;&#65039; Esta acción NO se puede deshacer. Se eliminarán:</p>
               <ul className="text-sm text-orange-700 list-disc list-inside space-y-1">
                 <li>Datos personales y laborales</li>
                 <li>Documentos cargados</li>
@@ -279,7 +283,7 @@ export default function DetalleTrabajadorPage() {
                 href="/trabajadores"
                 className="text-gray-500 hover:text-gray-900 text-sm"
               >
-                ← Volver
+                &larr; Volver
               </Link>
             </div>
             <div className="flex items-center gap-3 mb-2">
@@ -492,6 +496,7 @@ function TabLaboral({ trabajador, antiguedad, formatearFecha, formatearMoneda, c
 // =====================================
 function TabHistorial({ trabajadorId }) {
   const supabase = createClient();
+  const { addToast } = useToast();
   const [historial, setHistorial] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -512,6 +517,7 @@ function TabHistorial({ trabajadorId }) {
       setHistorial(data || []);
     } catch (err) {
       console.error('Error cargando historial:', err);
+      try { addToast('Error al cargar historial del trabajador', { type: 'error' }) } catch(e) {}
     } finally {
       setLoading(false);
     }

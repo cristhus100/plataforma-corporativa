@@ -32,11 +32,13 @@ import {
   X,
   History,
 } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 export default function DetalleAsignacionPage() {
   const params = useParams();
   const router = useRouter();
   const supabase = createClient();
+  const { addToast } = useToast();
 
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -82,6 +84,7 @@ export default function DetalleAsignacionPage() {
         setAsistenciaReciente(asistencia || []);
       } catch (err) {
         console.error('Error:', err);
+        try { addToast('Error al cargar la asignación', { type: 'error' }) } catch(e) {}
         setError('Error al cargar la asignación');
       } finally {
         setCargando(false);
@@ -97,6 +100,7 @@ export default function DetalleAsignacionPage() {
       router.push('/turnos');
     } catch (err) {
       console.error('Error:', err);
+      try { addToast('Error al eliminar la asignación', { type: 'error' }) } catch(e) {}
       setError('Error al eliminar la asignación');
       setEliminando(false);
     }
@@ -108,6 +112,7 @@ export default function DetalleAsignacionPage() {
       setAsignacion(prev => ({ ...prev, estado: nuevoEstado }));
     } catch (err) {
       console.error('Error:', err);
+      try { addToast('Error al actualizar el estado', { type: 'error' }) } catch(e) {}
       setError('Error al actualizar el estado');
     }
   };

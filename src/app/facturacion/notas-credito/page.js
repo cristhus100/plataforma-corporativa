@@ -17,10 +17,12 @@ import {
   Loader2,
   Save,
 } from 'lucide-react'
+import { useToast } from '@/context/ToastContext'
 
 export default function NotasCreditoPage() {
   const supabase = createClient()
   const { isAdmin } = useRole()
+  const { addToast } = useToast()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [notas, setNotas] = useState([])
@@ -64,6 +66,7 @@ export default function NotasCreditoPage() {
       setNotas(data || [])
     } catch (err) {
       console.error('Error:', err)
+      try { addToast('Error al cargar las notas de crédito', { type: 'error' }) } catch(e) {}
       setError('Error al cargar las notas cr&eacute;dito')
     } finally {
       setLoading(false)
@@ -82,6 +85,7 @@ export default function NotasCreditoPage() {
       if (tiposRes.data) setTiposDocumento(tiposRes.data)
     } catch (err) {
       console.error('Error catalogos:', err)
+      try { addToast('Error al cargar catálogos', { type: 'error' }) } catch(e) {}
     }
   }
 

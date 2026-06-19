@@ -62,6 +62,7 @@ export default function TabDocumentos({ trabajadorId, isAdmin = false }) {
       setDocumentos(docs || []);
     } catch (error) {
       console.error('Error cargando documentos:', error);
+      try { addToast('Error al cargar documentos', { type: 'error' }) } catch(e) {}
     } finally {
       setLoading(false);
     }
@@ -137,7 +138,7 @@ export default function TabDocumentos({ trabajadorId, isAdmin = false }) {
       cargarDatos();
     } catch (error) {
       console.error('Error:', error);
-      addToast('Error al subir documento: ' + error.message, { type: 'error' });
+      try { addToast('Error al subir documento: ' + error.message, { type: 'error' }) } catch(e) {}
     } finally {
       setUploading(false);
     }

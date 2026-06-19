@@ -8,11 +8,13 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { crearTrabajador } from '@/actions';
 import { useRole } from '@/context/RoleContext';
+import { useToast } from '@/context/ToastContext';
 
 export default function NuevoTrabajadorPage() {
   const supabase = createClient();
   const router = useRouter();
   const { isAdmin, loading: roleLoading } = useRole();
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [cargos, setCargos] = useState([]);
@@ -112,6 +114,7 @@ export default function NuevoTrabajadorPage() {
       }
     } catch (err) {
       console.error('Error:', err);
+      try { addToast('Error al crear trabajador', { type: 'error' }) } catch(e) {}
       setError(err.message || 'Error al crear trabajador');
       setLoading(false);
     }

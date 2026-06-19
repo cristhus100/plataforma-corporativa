@@ -8,8 +8,10 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { formatCOP, getTipoContratoLabel } from '@/lib/utils/nomina';
 import { Printer, Loader2, AlertTriangle, ArrowLeft, CircleCheck } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 export default function ReciboPage() {
+  const { addToast } = useToast();
   const params = useParams();
   const supabase = createClient();
   const nominaId = params.nominaId;
@@ -51,6 +53,7 @@ export default function ReciboPage() {
       setDetalles(dets || []);
     } catch (err) {
       console.error('Error:', err);
+      try { addToast('Error al cargar los datos de la nómina', { type: 'error' }) } catch(e) {}
       setError(err.message);
     } finally {
       setLoading(false);

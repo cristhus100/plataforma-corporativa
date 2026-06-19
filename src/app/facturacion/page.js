@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRole } from '@/context/RoleContext'
 import StatsCard from '@/components/ui/StatsCard'
 import { formatCOP } from '@/lib/utils/facturacion'
+import { useToast } from '@/context/ToastContext'
 import {
   DollarSign,
   Receipt,
@@ -25,6 +26,7 @@ import {
 export default function FacturacionDashboardPage() {
   const supabase = createClient()
   const { isAdmin } = useRole()
+  const { addToast } = useToast()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [stats, setStats] = useState({
@@ -111,6 +113,7 @@ export default function FacturacionDashboardPage() {
       setUltimasFacturas(ultimasRes.data || [])
     } catch (err) {
       console.error('Error cargando dashboard:', err)
+      try { addToast('Error al cargar datos del dashboard', { type: 'error' }) } catch(e) {}
       setError('Error al cargar los datos del dashboard')
     } finally {
       setLoading(false)

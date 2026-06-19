@@ -9,12 +9,14 @@ import { createClient } from '@/lib/supabase/client'
 import { actualizarTercero } from '@/actions/facturacion'
 import { useRole } from '@/context/RoleContext'
 import { ArrowLeft, Save, Loader2 } from 'lucide-react'
+import { useToast } from '@/context/ToastContext'
 
 export default function EditarTerceroPage() {
   const supabase = createClient()
   const router = useRouter()
   const params = useParams()
   const { isAdmin, loading: roleLoading } = useRole()
+  const { addToast } = useToast()
   const [cargando, setCargando] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -80,6 +82,7 @@ export default function EditarTerceroPage() {
       })
     } catch (err) {
       console.error('Error:', err)
+      try { addToast('Error al cargar datos del tercero', { type: 'error' }) } catch(e) {}
       setError(err.message || 'Error al cargar el tercero')
     } finally {
       setCargando(false)

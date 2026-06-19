@@ -11,6 +11,7 @@ import { Car, AlertTriangle, Trash2 } from 'lucide-react';
 import TabDocumentos from './components/TabDocumentos';
 import TabMantenimiento from './components/TabMantenimiento';
 import TabHistorial from './components/TabHistorial';
+import { useToast } from '@/context/ToastContext';
 
 import {
   getEstadoLabel, getEstadoBadge, getEstadoIcon,
@@ -35,6 +36,7 @@ export default function VehiculoDetallePage() {
   const [showEliminar, setShowEliminar] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const [errorEliminar, setErrorEliminar] = useState(null);
+  const { addToast } = useToast();
 
   useEffect(() => {
     if (params.id) cargarVehiculo();
@@ -48,6 +50,7 @@ export default function VehiculoDetallePage() {
       setVehiculo(data);
     } catch (err) {
       console.error('Error:', err);
+      try { addToast('Error al cargar datos del vehículo', { type: 'error' }) } catch(e) {}
     } finally {
       setLoading(false);
     }

@@ -7,11 +7,13 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRole } from '@/context/RoleContext'
+import { useToast } from '@/context/ToastContext'
 
 export default function NuevaOrdenPage() {
   const supabase = createClient()
   const router = useRouter()
   const { isAdmin, loading: roleLoading } = useRole()
+  const { addToast } = useToast()
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -148,6 +150,7 @@ export default function NuevaOrdenPage() {
       router.push(`/mantenimiento/ordenes/${data.id}`);
     } catch (err) {
       console.error('Error:', err);
+      try { addToast('Error al crear la orden de mantenimiento', { type: 'error' }) } catch(e) {}
       setError(err.message || 'Error al crear la orden');
       setLoading(false);
     }

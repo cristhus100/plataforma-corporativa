@@ -15,10 +15,12 @@ import {
   TrendingUp,
   TrendingDown,
 } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 export default function PyGPage() {
   const supabase = createClient();
   const { isAdmin } = useRole();
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [fechaDesde, setFechaDesde] = useState(
@@ -114,6 +116,7 @@ export default function PyGPage() {
       setConsultado(true);
     } catch (err) {
       console.error('Error loading PyG:', err);
+      try { addToast('Error al cargar datos', { type: 'error' }) } catch(e) {}
       setError(err.message);
     } finally {
       setLoading(false);

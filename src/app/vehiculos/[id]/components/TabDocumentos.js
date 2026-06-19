@@ -68,6 +68,7 @@ export default function TabDocumentos({ vehiculoId, isAdmin = false }) {
       setDocumentos(docsData);
     } catch (error) {
       console.error('Error cargando documentos:', error?.message || error);
+      try { addToast('Error al cargar documentos', { type: 'error' }) } catch(e) {}
     } finally {
       setLoading(false);
     }

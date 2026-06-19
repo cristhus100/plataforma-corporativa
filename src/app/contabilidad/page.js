@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import StatsCard from '@/components/ui/StatsCard';
 import { useRole } from '@/context/RoleContext';
+import { useToast } from '@/context/ToastContext';
 import { formatValorContable } from '@/lib/utils/contabilidad';
 import {
   FileText,
@@ -33,6 +34,7 @@ const QUICK_LINKS = [
 export default function ContabilidadDashboard() {
   const supabase = createClient();
   const { isAdmin } = useRole();
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState({
@@ -94,6 +96,7 @@ export default function ContabilidadDashboard() {
         setUltimosComprobantes(ultimosRes.data || []);
       } catch (err) {
         console.error('Error loading dashboard:', err);
+        try { addToast('Error al cargar datos del dashboard', { type: 'error' }) } catch(e) {}
         setError(err.message);
       } finally {
         setLoading(false);

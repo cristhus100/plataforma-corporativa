@@ -19,9 +19,11 @@ import {
   navegarSemana,
 } from '@/lib/utils/turnos';
 import { ChevronLeft, ChevronRight, Plus, Calendar, Clock, Users, Filter } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 export default function TurnosPage() {
   const supabase = createClient();
+  const { addToast } = useToast();
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
 
@@ -81,6 +83,7 @@ export default function TurnosPage() {
       }
     } catch (err) {
       console.error('Error cargando datos:', err);
+      try { addToast('Error al cargar los datos de turnos', { type: 'error' }); } catch(e) {}
       setError('Error al cargar los datos de turnos');
     } finally {
       setCargando(false);

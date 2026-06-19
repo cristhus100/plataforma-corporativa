@@ -7,12 +7,14 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRole } from '@/context/RoleContext'
+import { useToast } from '@/context/ToastContext'
 
 export default function EditarOrdenPage() {
   const supabase = createClient()
   const router = useRouter()
   const params = useParams()
   const { isAdmin, loading: roleLoading } = useRole()
+  const { addToast } = useToast()
 
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
@@ -96,6 +98,7 @@ export default function EditarOrdenPage() {
       });
     } catch (err) {
       console.error('Error cargando orden:', err);
+      try { addToast('Error al cargar datos de la orden', { type: 'error' }) } catch(e) {}
       setError('No se pudo cargar la orden');
     } finally {
       setCargando(false);
@@ -146,6 +149,7 @@ export default function EditarOrdenPage() {
       router.push(`/mantenimiento/ordenes/${params.id}`);
     } catch (err) {
       console.error('Error:', err);
+      try { addToast('Error al actualizar la orden', { type: 'error' }) } catch(e) {}
       setError(err.message || 'Error al actualizar la orden');
       setGuardando(false);
     }

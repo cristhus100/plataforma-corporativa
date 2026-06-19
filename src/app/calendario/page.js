@@ -101,7 +101,7 @@ export default function CalendarioPage() {
       setEventos([...eventosTemp, ...anualesProyectados])
     } catch (err) {
       console.error('Error cargando eventos:', err)
-      addToast('Error al cargar eventos del calendario', { type: 'error' })
+      try { addToast('Error al cargar eventos del calendario', { type: 'error' }) } catch(e) {}
     } finally {
       setCargandoEventos(false)
       setLoading(false)
