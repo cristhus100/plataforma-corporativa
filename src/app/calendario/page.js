@@ -36,7 +36,7 @@ export default function CalendarioPage() {
 
   // Re-proyectar eventos anuales cuando cambia el año
   useEffect(() => {
-    if (eventosAnuales.length > 0 || !loading) {
+    if (Object.keys(eventosAnuales).length > 0 || !loading) {
       proyectarEventosAnuales(año)
     }
   }, [año])
@@ -192,6 +192,9 @@ export default function CalendarioPage() {
     setMes(nuevoMes)
     setAño(nuevoAño)
     setDiaSeleccionado(null)
+    if (nuevoAño !== año && Object.keys(eventosAnuales).length > 0) {
+      proyectarEventosAnuales(nuevoAño)
+    }
   }
 
   function getEventosDelDia(dia) {
@@ -355,7 +358,7 @@ export default function CalendarioPage() {
                     return (
                       <div key={idx} className="flex items-center gap-2 text-sm">
                         <span className="text-xs text-gray-400 w-8 flex-shrink-0">{d.getDate()}</span>
-                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 {(TIPO_EVENTO[evt.tipo] || TIPO_EVENTO.documento).color}" />
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${(TIPO_EVENTO[evt.tipo] || TIPO_EVENTO.documento).color}`} />
                         <span className="text-gray-600 truncate">{evt.titulo}</span>
                       </div>
                     )

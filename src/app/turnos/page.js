@@ -8,8 +8,8 @@ import { createClient } from '@/lib/supabase/client';
 import {
   getTiposTurno,
   getAsignacionesTurno,
-  getSantaRosaFrenteId,
 } from '@/lib/supabase/turnos';
+import { getFrentesTrabajo } from '@/lib/supabase/auditoria';
 import {
   getTurnoInfo,
   getNombreCompleto,
@@ -37,6 +37,7 @@ export default function TurnosPage() {
 
   const [tiposTurno, setTiposTurno] = useState([]);
   const [asignaciones, setAsignaciones] = useState([]);
+  const [frentes, setFrentes] = useState([]);
   const [frenteId, setFrenteId] = useState(null);
   const [filtroTurno, setFiltroTurno] = useState('todos');
   const [filtroEstado, setFiltroEstado] = useState('todos');
@@ -49,19 +50,35 @@ export default function TurnosPage() {
       setCargando(true);
       setError(null);
 
-      const santaRosaId = await getSantaRosaFrenteId();
-      setFrenteId(santaRosaId);
-
-      const [tipos, asignacionesData] = await Promise.all([
+      const [tipos, frentesData] = await Promise.all([
         getTiposTurno(),
-        getAsignacionesTurno({
-          frenteId: santaRosaId,
-          estado: 'activo',
-        }),
+        getFrentesTrabajo(),
       ]);
-
       setTiposTurno(tipos);
-      setAsignaciones(asignacionesData || []);
+      setFrentes(frentesData || []);
+
+      // Obtener frente desde localStorage o primero disponible
+      const savedFrenteId = localStorage.getItem('turnosFrenteId');
+      const frenteIdVal = savedFrenteId
+        ? parseInt(savedFrenteId, 10)
+        : (frentesData[0]?.id || null);
+
+      if (frenteIdVal && frentesData.some(f => f.id === frenteIdVal)) {
+        setFrenteId(frenteIdVal);
+      } else if (frentesData.length > 0) {
+        setFrenteId(frentesData[0].id);
+        localStorage.setItem('turnosFrenteId', String(frentesData[0].id));
+      }
+
+      if (frenteIdVal) {
+        const asignacionesData = await getAsignacionesTurno({
+          frenteId: frenteIdVal,
+          estado: 'activo',
+        });
+        setAsignaciones(asignacionesData || []);
+      } else {
+        setAsignaciones([]);
+      }
     } catch (err) {
       console.error('Error cargando datos:', err);
       setError('Error al cargar los datos de turnos');
@@ -111,10 +128,32 @@ export default function TurnosPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Gestión de Turnos</h1>
           <p className="text-gray-600 mt-1">
-            Frente Santa Rosa — Administración de turnos A, B y C
+            {frenteId && frentes.length > 0
+              ? `${frentes.find(f => f.id === frenteId)?.nombre || ''} — Administración de turnos A, B y C`
+              : 'Administración de turnos A, B y C'}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
+          {frentes.length > 1 && (
+            <select
+              value={frenteId || ''}
+              onChange={(e) => {
+                const newId = parseInt(e.target.value, 10);
+                localStorage.setItem('turnosFrenteId', String(newId));
+                setFrenteId(newId);
+                setCargando(true);
+                getAsignacionesTurno({ frenteId: newId, estado: 'activo' })
+                  .then(data => setAsignaciones(data || []))
+                  .catch(err => setError('Error al cargar asignaciones'))
+                  .finally(() => setCargando(false));
+              }}
+              className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            >
+              {frentes.map(f => (
+                <option key={f.id} value={f.id}>{f.nombre} ({f.codigo})</option>
+              ))}
+            </select>
+          )}
           <Link
             href="/turnos/asistencia"
             className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm font-medium flex items-center gap-2"

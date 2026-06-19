@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { verificarAdmin, formatearError } from './helpers'
+import { verificarAdmin, formatearError, validate } from './helpers'
+import { comprobanteSchema, cuentaSchema } from '@/lib/validaciones/contabilidad'
 
 /**
  * Crear un comprobante contable con sus asientos
@@ -10,6 +11,10 @@ import { verificarAdmin, formatearError } from './helpers'
 export async function crearComprobante(formData) {
   try {
     const { supabase } = await verificarAdmin()
+
+    const validacion = validate(comprobanteSchema, formData)
+    if (!validacion.success) throw new Error(validacion.error)
+    const datos = validacion.data
 
     const lineas = JSON.parse(formData.lineas || '[]')
     if (lineas.length === 0) throw new Error('El comprobante debe tener al menos una línea')
@@ -48,11 +53,11 @@ export async function crearComprobante(formData) {
     const { data: comprobante, error: errComp } = await supabase
       .from('comprobantes')
       .insert([{
-        tipo_comprobante_id: Number(formData.tipo_comprobante_id),
+        tipo_comprobante_id: Number(datos.tipo_comprobante_id),
         numero_comprobante: numeroComprobante,
-        fecha: formData.fecha || new Date().toISOString(),
-        concepto: formData.concepto,
-        origen: formData.origen || 'manual',
+        fecha: datos.fecha || new Date().toISOString(),
+        concepto: datos.concepto,
+        origen: datos.origen || 'manual',
         total_debito: totalDebito,
         total_credito: totalCredito,
         creado_por: (await supabase.auth.getUser()).data.user?.id,
@@ -67,7 +72,7 @@ export async function crearComprobante(formData) {
       comprobante_id: comprobante.id,
       cuenta_id: Number(linea.cuenta_id),
       tercero_id: linea.tercero_id ? Number(linea.tercero_id) : null,
-      descripcion: linea.descripcion || formData.concepto,
+      descripcion: linea.descripcion || datos.concepto,
       naturaleza: linea.naturaleza,
       valor: parseFloat(linea.valor) || 0,
     }))
@@ -117,18 +122,22 @@ export async function crearCuenta(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
+    const validacion = validate(cuentaSchema, formData)
+    if (!validacion.success) throw new Error(validacion.error)
+    const d = validacion.data
+
     const datos = {
-      codigo: formData.codigo?.trim(),
-      nombre: formData.nombre?.trim(),
-      tipo: formData.tipo,
-      naturaleza: formData.naturaleza,
-      nivel: Number(formData.nivel),
-      codigo_padre: formData.codigo_padre || null,
-      activa: formData.activa !== false,
-      acepta_movimiento: formData.acepta_movimiento !== false,
-      descripcion: formData.descripcion || null,
-      pide_tercero: formData.pide_tercero === true,
-      pide_centro_costo: formData.pide_centro_costo === true,
+      codigo: d.codigo,
+      nombre: d.nombre,
+      tipo: d.tipo,
+      naturaleza: d.naturaleza,
+      nivel: d.nivel,
+      codigo_padre: d.codigo_padre || null,
+      activa: d.activa !== false,
+      acepta_movimiento: d.acepta_movimiento !== false,
+      descripcion: d.descripcion || null,
+      pide_tercero: d.pide_tercero === true,
+      pide_centro_costo: d.pide_centro_costo === true,
     }
 
     const { data, error } = await supabase

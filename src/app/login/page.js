@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Image from 'next/image'
 import { login, signup } from './actions'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
@@ -137,6 +138,13 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              {isLogin && (
+                <div className="mt-1.5 text-right">
+                  <Link href="/forgot-password" className="text-xs text-gray-500 hover:text-[#1A1A1A] hover:underline">
+                    ¿Olvidaste tu contraseña?
+                  </Link>
+                </div>
+              )}
             </div>
 
             {error && (

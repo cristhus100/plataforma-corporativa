@@ -29,3 +29,23 @@ export async function formatearError(err) {
   if (err instanceof Error) return { error: err.message }
   return { error: 'Error inesperado del servidor' }
 }
+
+/**
+ * Valida datos contra un esquema Zod y retorna resultado estructurado.
+ * @template T
+ * @param {import('zod').ZodSchema<T>} schema
+ * @param {unknown} data
+ * @returns {{ success: true, data: T } | { success: false, error: string }}
+ */
+export function validate(schema, data) {
+  const result = schema.safeParse(data)
+  if (result.success) return { success: true, data: result.data }
+
+  const messages = result.error.issues.map(
+    issue => `${issue.path.join('.')}: ${issue.message}`
+  )
+  return {
+    success: false,
+    error: `Validación fallida: ${messages.join('; ')}`,
+  }
+}

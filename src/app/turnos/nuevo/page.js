@@ -8,10 +8,10 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import {
   getTiposTurno,
-  getSantaRosaFrenteId,
   getEmpleadosActivos,
   tieneAsignacionSolapada,
 } from '@/lib/supabase/turnos';
+import { getFrentesTrabajo } from '@/lib/supabase/auditoria';
 import { crearAsignacionesTurno } from '@/actions';
 import { getNombreCompleto, TURNOS } from '@/lib/utils/turnos';
 import { Users, ArrowLeft, Plus, Trash2, AlertCircle, Check } from 'lucide-react';
@@ -27,6 +27,7 @@ export default function NuevaAsignacionPage() {
 
   const [tiposTurno, setTiposTurno] = useState([]);
   const [empleados, setEmpleados] = useState([]);
+  const [frentes, setFrentes] = useState([]);
   const [frenteId, setFrenteId] = useState(null);
 
   // Formulario
@@ -39,15 +40,28 @@ export default function NuevaAsignacionPage() {
   useEffect(() => {
     async function cargarDatos() {
       try {
-        const [tipos, empleadosData, santaRosaId] = await Promise.all([
+        const [tipos, empleadosData, frentesData] = await Promise.all([
           getTiposTurno(),
           getEmpleadosActivos(),
-          getSantaRosaFrenteId(),
+          getFrentesTrabajo(),
         ]);
 
         setTiposTurno(tipos);
         setEmpleados(empleadosData || []);
-        setFrenteId(santaRosaId);
+        setFrentes(frentesData || []);
+
+        // Obtener frente desde localStorage o primero disponible
+        const savedFrenteId = localStorage.getItem('turnosFrenteId');
+        const frenteIdVal = savedFrenteId
+          ? parseInt(savedFrenteId, 10)
+          : (frentesData[0]?.id || null);
+
+        if (frenteIdVal && frentesData.some(f => f.id === frenteIdVal)) {
+          setFrenteId(frenteIdVal);
+        } else if (frentesData.length > 0) {
+          setFrenteId(frentesData[0].id);
+          localStorage.setItem('turnosFrenteId', String(frentesData[0].id));
+        }
 
         // Fecha por defecto
         const hoy = new Date().toISOString().split('T')[0];
@@ -185,8 +199,26 @@ export default function NuevaAsignacionPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Nueva Asignación de Turno</h1>
           <p className="text-gray-600 mt-1">
-            Asigna empleados a turnos A, B o C — Frente Santa Rosa
+            Asigna empleados a turnos A, B o C
           </p>
+          {frentes.length > 0 && (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-xs text-gray-500">Frente:</span>
+              <select
+                value={frenteId || ''}
+                onChange={(e) => {
+                  const newId = parseInt(e.target.value, 10);
+                  localStorage.setItem('turnosFrenteId', String(newId));
+                  setFrenteId(newId);
+                }}
+                className="text-xs border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              >
+                {frentes.map(f => (
+                  <option key={f.id} value={f.id}>{f.nombre} ({f.codigo})</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <Link
           href="/turnos"

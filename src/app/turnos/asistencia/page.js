@@ -7,11 +7,11 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import {
   getTiposTurno,
-  getSantaRosaFrenteId,
   getAsignacionesTurno,
   getAsistenciaPorFecha,
   registrarAsistenciaMasiva,
 } from '@/lib/supabase/turnos';
+import { getFrentesTrabajo } from '@/lib/supabase/auditoria';
 import {
   getNombreCompleto,
   getTurnoInfo,
@@ -47,6 +47,7 @@ export default function AsistenciaPage() {
   const [filtroTurno, setFiltroTurno] = useState('todos');
 
   const [tiposTurno, setTiposTurno] = useState([]);
+  const [frentes, setFrentes] = useState([]);
   const [frenteId, setFrenteId] = useState(null);
   const [asignaciones, setAsignaciones] = useState([]);
   const [registrosAsistencia, setRegistrosAsistencia] = useState({}); // key: `${trabajador_id}-${tipo_turno_id}`
@@ -57,29 +58,42 @@ export default function AsistenciaPage() {
       setCargando(true);
       setError(null);
 
-      const santaRosaId = await getSantaRosaFrenteId();
-      setFrenteId(santaRosaId);
-
-      const [tipos, asigs, asistencias] = await Promise.all([
+      const [tipos, frentesData] = await Promise.all([
         getTiposTurno(),
-        getAsignacionesTurno({
-          frenteId: santaRosaId,
-          estado: 'activo',
-          fecha,
-        }),
-        getAsistenciaPorFecha(fecha, { frenteId: santaRosaId }),
+        getFrentesTrabajo(),
       ]);
-
       setTiposTurno(tipos);
-      setAsignaciones(asigs || []);
+      setFrentes(frentesData || []);
 
-      // Indexar registros de asistencia existentes
-      const registrosIndex = {};
-      (asistencias || []).forEach(r => {
-        const key = `${r.trabajador_id}-${r.tipo_turno_id}`;
-        registrosIndex[key] = r;
-      });
-      setRegistrosAsistencia(registrosIndex);
+      // Obtener frente desde localStorage o primero disponible
+      const savedFrenteId = localStorage.getItem('turnosFrenteId');
+      const frenteIdVal = savedFrenteId
+        ? parseInt(savedFrenteId, 10)
+        : (frentesData[0]?.id || null);
+
+      if (frenteIdVal && frentesData.some(f => f.id === frenteIdVal)) {
+        setFrenteId(frenteIdVal);
+      } else if (frentesData.length > 0) {
+        setFrenteId(frentesData[0].id);
+        localStorage.setItem('turnosFrenteId', String(frentesData[0].id));
+      }
+
+      if (frenteIdVal) {
+        const [asigs, asistencias] = await Promise.all([
+          getAsignacionesTurno({ frenteId: frenteIdVal, estado: 'activo', fecha }),
+          getAsistenciaPorFecha(fecha, { frenteId: frenteIdVal }),
+        ]);
+
+        setAsignaciones(asigs || []);
+
+        // Indexar registros de asistencia existentes
+        const registrosIndex = {};
+        (asistencias || []).forEach(r => {
+          const key = `${r.trabajador_id}-${r.tipo_turno_id}`;
+          registrosIndex[key] = r;
+        });
+        setRegistrosAsistencia(registrosIndex);
+      }
     } catch (err) {
       console.error('Error:', err);
       setError('Error al cargar datos');
@@ -179,8 +193,30 @@ export default function AsistenciaPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Registro de Asistencia</h1>
             <p className="text-gray-600 mt-1">
-              Marca la asistencia diaria de los empleados — Frente Santa Rosa
+              Marca la asistencia diaria de los empleados
+              {frenteId && frentes.length > 0
+                ? ` — ${frentes.find(f => f.id === frenteId)?.nombre || ''}`
+                : ''}
             </p>
+            {frentes.length > 1 && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-xs text-gray-500">Frente:</span>
+                <select
+                  value={frenteId || ''}
+                  onChange={(e) => {
+                    const newId = parseInt(e.target.value, 10);
+                    localStorage.setItem('turnosFrenteId', String(newId));
+                    setFrenteId(newId);
+                    cargarDatos();
+                  }}
+                  className="text-xs border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                >
+                  {frentes.map(f => (
+                    <option key={f.id} value={f.id}>{f.nombre} ({f.codigo})</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3">

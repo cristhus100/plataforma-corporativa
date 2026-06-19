@@ -39,6 +39,22 @@ export async function signup(formData) {
   return { success: 'Revisa tu correo para confirmar la cuenta. Si ya está confirmado, inicia sesión.' }
 }
 
+export async function resetPassword(formData) {
+  const supabase = await createClient()
+
+  const email = formData.get('email')
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+  })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return { success: 'Revisa tu correo. Te hemos enviado un enlace para restablecer tu contraseña.' }
+}
+
 export async function logout() {
   const supabase = await createClient()
   await supabase.auth.signOut()

@@ -10,7 +10,14 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { verificarAdmin, formatearError } from './helpers'
+import { verificarAdmin, formatearError, validate } from './helpers'
+import { z } from 'zod'
+import { trabajadorSchema } from '@/lib/validaciones/trabajador'
+import { maquinariaSchema } from '@/lib/validaciones/maquinaria'
+import { vehiculoSchema } from '@/lib/validaciones/vehiculo'
+import { anuncioSchema } from '@/lib/validaciones/anuncio'
+import { frenteSchema } from '@/lib/validaciones/frente'
+import { asignacionTurnoSchema, asistenciaTurnoSchema, asistenciaMasivaSchema } from '@/lib/validaciones/turnos'
 
 // ─── TRABAJADORES ────────────────────────────────────────────
 
@@ -21,35 +28,11 @@ export async function crearTrabajador(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
+    const validacion = validate(trabajadorSchema, formData)
+    if (!validacion.success) throw new Error(validacion.error)
     const datos = {
-      tipo_documento: formData.tipo_documento || 'CC',
-      cedula: formData.cedula,
-      primer_apellido: formData.primer_apellido,
-      segundo_apellido: formData.segundo_apellido || null,
-      nombre: formData.nombre,
-      fecha_nacimiento: formData.fecha_nacimiento || null,
-      lugar_nacimiento: formData.lugar_nacimiento || null,
-      genero: formData.genero || null,
-      estado_civil: formData.estado_civil || null,
-      rh: formData.rh || null,
-      telefono: formData.telefono,
-      email: formData.email || null,
-      direccion: formData.direccion || null,
-      ciudad: formData.ciudad || null,
-      departamento: formData.departamento || null,
-      cargo_id: formData.cargo_id ? Number(formData.cargo_id) : null,
-      departamento_id: formData.departamento_id ? Number(formData.departamento_id) : null,
-      frente_trabajo_id: formData.frente_trabajo_id ? Number(formData.frente_trabajo_id) : null,
-      fecha_ingreso: formData.fecha_ingreso || null,
-      tipo_contrato: formData.tipo_contrato || null,
-      salario: formData.salario ? parseFloat(formData.salario) : null,
-      eps: formData.eps || null,
-      arl: formData.arl || null,
-      fondo_pension: formData.fondo_pension || null,
-      caja_compensacion: formData.caja_compensacion || null,
-      contacto_emergencia_nombre: formData.contacto_emergencia_nombre || null,
-      contacto_emergencia_telefono: formData.contacto_emergencia_telefono || null,
-      contacto_emergencia_parentesco: formData.contacto_emergencia_parentesco || null,
+      ...validacion.data,
+      tipo_documento: validacion.data.tipo_documento || 'CC',
       activo: true,
     }
 
@@ -75,14 +58,10 @@ export async function actualizarTrabajador(id, formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const datos = {}
-    for (const [key, value] of Object.entries(formData)) {
-      if (value !== undefined && value !== '') {
-        datos[key] = value
-      }
-    }
-    // Limpiar campos vacíos
-    Object.keys(datos).forEach(k => { if (datos[k] === '') datos[k] = null })
+    const validacion = validate(trabajadorSchema, formData)
+    if (!validacion.success) throw new Error(validacion.error)
+    const datos = { ...validacion.data }
+    Object.keys(datos).forEach(k => { if (datos[k] === '' || datos[k] === undefined) delete datos[k] })
 
     const { error } = await supabase
       .from('trabajadores')
@@ -145,38 +124,27 @@ export async function crearMaquinaria(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
+    // Validar datos (limpiando campos temporales _foto*)
+    const dataToValidate = { ...formData }
+    delete dataToValidate._fotoBase64
+    delete dataToValidate._fotoNombre
+    const validacion = validate(maquinariaSchema, dataToValidate)
+    if (!validacion.success) throw new Error(validacion.error)
+    let datosValidados = validacion.data
+
     let fotoUrl = null
     if (formData._fotoBase64 && formData._fotoNombre) {
       const ext = formData._fotoNombre.split('.').pop()
-      const fileName = `${formData.codigo_interno || 'maq'}-${Date.now()}.${ext}`
+      const fileName = `${datosValidados.codigo_interno || 'maq'}-${Date.now()}.${ext}`
       fotoUrl = await subirFotoStorage(supabase, 'fotos-maquinaria', fileName, formData._fotoBase64)
     }
 
     const dataToInsert = {
-      codigo_interno: formData.codigo_interno,
-      nombre: formData.nombre,
-      tipo_maquinaria_id: parseInt(formData.tipo_maquinaria_id),
-      marca: formData.marca || null,
-      modelo: formData.modelo || null,
-      anio: formData.anio ? parseInt(formData.anio) : null,
-      numero_serie: formData.numero_serie || null,
-      numero_motor: formData.numero_motor || null,
-      numero_chasis: formData.numero_chasis || null,
-      placa: formData.placa || null,
-      estado: formData.estado || 'operativa',
-      ubicacion_actual: formData.ubicacion_actual || null,
-      frente_trabajo_id: formData.frente_trabajo_id ? parseInt(formData.frente_trabajo_id) : null,
-      horometro_actual: formData.horometro_actual ? parseFloat(formData.horometro_actual) : null,
-      kilometraje_actual: formData.kilometraje_actual ? parseFloat(formData.kilometraje_actual) : null,
-      fecha_adquisicion: formData.fecha_adquisicion || null,
-      valor_adquisicion: formData.valor_adquisicion ? parseFloat(formData.valor_adquisicion) : null,
-      proveedor: formData.proveedor || null,
-      observaciones: formData.observaciones || null,
+      ...datosValidados,
+      estado: datosValidados.estado || 'operativa',
       foto_url: fotoUrl,
       activo: true,
     }
-
-    Object.keys(dataToInsert).forEach(k => { if (dataToInsert[k] === '') dataToInsert[k] = null })
 
     const { data, error } = await supabase
       .from('maquinaria')
@@ -199,16 +167,13 @@ export async function actualizarMaquinaria(id, formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const datos = { ...formData }
-    // Limpiar campos numéricos
-    if (datos.tipo_maquinaria_id) datos.tipo_maquinaria_id = parseInt(datos.tipo_maquinaria_id)
-    if (datos.anio) datos.anio = parseInt(datos.anio)
-    if (datos.horometro_actual) datos.horometro_actual = parseFloat(datos.horometro_actual)
-    if (datos.kilometraje_actual) datos.kilometraje_actual = parseFloat(datos.kilometraje_actual)
-    if (datos.valor_adquisicion) datos.valor_adquisicion = parseFloat(datos.valor_adquisicion)
-    if (datos.frente_trabajo_id) datos.frente_trabajo_id = parseInt(datos.frente_trabajo_id)
-
-    Object.keys(datos).forEach(k => { if (datos[k] === '') datos[k] = null })
+    const dataToValidate = { ...formData }
+    delete dataToValidate._fotoBase64
+    delete dataToValidate._fotoNombre
+    const validacion = validate(maquinariaSchema, dataToValidate)
+    if (!validacion.success) throw new Error(validacion.error)
+    const datos = { ...validacion.data }
+    Object.keys(datos).forEach(k => { if (datos[k] === '' || datos[k] === null) delete datos[k] })
 
     const { error } = await supabase
       .from('maquinaria')
@@ -253,29 +218,28 @@ export async function crearVehiculo(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
+    // Validar datos (limpiando campos temporales _foto*)
+    const dataToValidate = { ...formData }
+    delete dataToValidate._fotoBase64
+    delete dataToValidate._fotoNombre
+    const validacion = validate(vehiculoSchema, dataToValidate)
+    if (!validacion.success) throw new Error(validacion.error)
+    let datosValidados = validacion.data
+
     let fotoUrl = null
     if (formData._fotoBase64 && formData._fotoNombre) {
       const ext = formData._fotoNombre.split('.').pop()
-      const fileName = `${formData.placa || 'veh'}-${Date.now()}.${ext}`
+      const fileName = `${datosValidados.placa || 'veh'}-${Date.now()}.${ext}`
       fotoUrl = await subirFotoStorage(supabase, 'fotos-maquinaria', fileName, formData._fotoBase64)
     }
 
     const payload = {
-      placa: (formData.placa || '').trim().toUpperCase(),
-      nombre: formData.nombre,
-      marca: formData.marca || null,
-      modelo: formData.modelo || null,
-      anio: formData.anio ? parseInt(formData.anio) : null,
-      color: formData.color || null,
-      tipo: formData.tipo || 'particular',
-      numero_motor: formData.numero_motor || null,
-      numero_chasis: formData.numero_chasis || null,
-      estado: formData.estado || 'operativo',
-      kilometraje_actual: formData.kilometraje_actual ? parseFloat(formData.kilometraje_actual) : null,
+      ...datosValidados,
+      placa: (datosValidados.placa || '').toUpperCase(),
+      estado: datosValidados.estado || 'operativo',
       foto_url: fotoUrl,
       activo: true,
     }
-    Object.keys(payload).forEach(k => { if (payload[k] === '') payload[k] = null })
 
     const { data, error } = await supabase
       .from('vehiculos')
@@ -298,10 +262,13 @@ export async function actualizarVehiculo(id, formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const datos = { ...formData }
-    if (datos.anio) datos.anio = parseInt(datos.anio)
-    if (datos.kilometraje_actual) datos.kilometraje_actual = parseFloat(datos.kilometraje_actual)
-    Object.keys(datos).forEach(k => { if (datos[k] === '') datos[k] = null })
+    const dataToValidate = { ...formData }
+    delete dataToValidate._fotoBase64
+    delete dataToValidate._fotoNombre
+    const validacion = validate(vehiculoSchema, dataToValidate)
+    if (!validacion.success) throw new Error(validacion.error)
+    const datos = { ...validacion.data }
+    Object.keys(datos).forEach(k => { if (datos[k] === '' || datos[k] === null) delete datos[k] })
 
     const { error } = await supabase
       .from('vehiculos')
@@ -346,13 +313,17 @@ export async function crearAnuncio(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
+    const validacion = validate(anuncioSchema, formData)
+    if (!validacion.success) throw new Error(validacion.error)
+    const datos = validacion.data
+
     const { error } = await supabase
       .from('comunicados')
       .insert([{
-        titulo: formData.titulo.trim(),
-        contenido: formData.contenido.trim(),
-        tipo: formData.tipo,
-        prioridad: formData.prioridad,
+        titulo: datos.titulo,
+        contenido: datos.contenido,
+        tipo: datos.tipo || 'general',
+        prioridad: datos.prioridad || 'media',
         fecha_publicacion: new Date().toISOString(),
         activo: true,
       }])
@@ -373,13 +344,17 @@ export async function actualizarAnuncio(id, formData) {
   try {
     const { supabase } = await verificarAdmin()
 
+    const validacion = validate(anuncioSchema, formData)
+    if (!validacion.success) throw new Error(validacion.error)
+    const datos = validacion.data
+
     const { error } = await supabase
       .from('comunicados')
       .update({
-        titulo: formData.titulo.trim(),
-        contenido: formData.contenido.trim(),
-        tipo: formData.tipo,
-        prioridad: formData.prioridad,
+        titulo: datos.titulo,
+        contenido: datos.contenido,
+        tipo: datos.tipo,
+        prioridad: datos.prioridad,
       })
       .eq('id', id)
 
@@ -420,6 +395,19 @@ export async function guardarConfiguracionAlertas(config) {
   try {
     const { supabase } = await verificarAdmin()
 
+    const validacion = validate(
+      z.object({
+        email_notifications: z.boolean().optional(),
+        email_destino: z.string().email().optional().nullable(),
+        alertar_vencidos: z.boolean().optional(),
+        alertar_criticos: z.boolean().optional(),
+        alertar_proximos: z.boolean().optional(),
+        dias_anticipacion: z.coerce.number().int().nonnegative().optional(),
+      }).passthrough(),
+      config
+    )
+    if (!validacion.success) throw new Error(validacion.error)
+
     const { error } = await supabase
       .from('configuracion_alertas')
       .upsert({
@@ -449,6 +437,12 @@ export async function guardarConfiguracionAlertas(config) {
 export async function crearAsignacionesTurno(asignaciones) {
   try {
     const { supabase } = await verificarAdmin()
+
+    // Validar cada asignación individual
+    for (const a of asignaciones) {
+      const v = validate(asignacionTurnoSchema, a)
+      if (!v.success) throw new Error(v.error)
+    }
 
     const data = asignaciones.map(a => ({
       trabajador_id: Number(a.trabajador_id),
@@ -527,6 +521,14 @@ export async function registrarAsistenciaTurno(fecha, trabajadorId, tipoTurnoId,
   try {
     const { supabase } = await verificarAdmin()
 
+    const validacion = validate(asistenciaTurnoSchema, {
+      fecha,
+      trabajador_id: trabajadorId,
+      tipo_turno_id: tipoTurnoId,
+      estado,
+    })
+    if (!validacion.success) throw new Error(validacion.error)
+
     const { error } = await supabase
       .from('registro_asistencia_turno')
       .upsert({
@@ -553,6 +555,12 @@ export async function registrarAsistenciaTurno(fecha, trabajadorId, tipoTurnoId,
 export async function registrarAsistenciaMasiva(registros) {
   try {
     const { supabase } = await verificarAdmin()
+
+    // Validar cada registro
+    for (const r of registros) {
+      const v = validate(asistenciaTurnoSchema, r)
+      if (!v.success) throw new Error(v.error)
+    }
 
     const { error } = await supabase
       .from('registro_asistencia_turno')
@@ -602,14 +610,18 @@ export async function crearFrente(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
+    const validacion = validate(frenteSchema, formData)
+    if (!validacion.success) throw new Error(validacion.error)
+    const datos = validacion.data
+
     const { data, error } = await supabase
       .from('frentes_trabajo')
       .insert([{
-        codigo: formData.codigo.toUpperCase().trim(),
-        nombre: formData.nombre.trim(),
-        ubicacion: formData.ubicacion || null,
-        ciudad: formData.ciudad || null,
-        departamento: formData.departamento || null,
+        codigo: datos.codigo.toUpperCase(),
+        nombre: datos.nombre,
+        ubicacion: datos.ubicacion || null,
+        ciudad: datos.ciudad || null,
+        departamento: datos.departamento || null,
         activo: true,
       }])
       .select()
@@ -631,12 +643,14 @@ export async function actualizarFrente(id, formData) {
   try {
     const { supabase } = await verificarAdmin()
 
+    const validacion = validate(frenteSchema, formData)
+    if (!validacion.success) throw new Error(validacion.error)
     const datos = {
-      codigo: formData.codigo?.toUpperCase().trim(),
-      nombre: formData.nombre?.trim(),
-      ubicacion: formData.ubicacion || null,
-      ciudad: formData.ciudad || null,
-      departamento: formData.departamento || null,
+      codigo: validacion.data.codigo?.toUpperCase(),
+      nombre: validacion.data.nombre,
+      ubicacion: validacion.data.ubicacion || null,
+      ciudad: validacion.data.ciudad || null,
+      departamento: validacion.data.departamento || null,
       activo: formData.activo !== undefined ? formData.activo : true,
     }
     Object.keys(datos).forEach(k => { if (datos[k] === '' || datos[k] === undefined) datos[k] = null })
@@ -685,11 +699,18 @@ export async function crearTipoMaquinaria(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
+    const validacion = validate(
+      z.object({ nombre: z.string().min(1, 'Nombre es requerido').trim(), descripcion: z.string().optional().nullable() }).passthrough(),
+      formData
+    )
+    if (!validacion.success) throw new Error(validacion.error)
+    const datos = validacion.data
+
     const { data, error } = await supabase
       .from('tipos_maquinaria')
       .insert([{
-        nombre: formData.nombre.trim(),
-        descripcion: formData.descripcion || null,
+        nombre: datos.nombre,
+        descripcion: datos.descripcion || null,
       }])
       .select()
       .single()
@@ -710,11 +731,12 @@ export async function actualizarTipoMaquinaria(id, formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const datos = {
-      nombre: formData.nombre?.trim(),
-      descripcion: formData.descripcion || null,
-    }
-    Object.keys(datos).forEach(k => { if (datos[k] === '') datos[k] = null })
+    const validacion = validate(
+      z.object({ nombre: z.string().min(1).trim().optional(), descripcion: z.string().optional().nullable() }).passthrough(),
+      formData
+    )
+    if (!validacion.success) throw new Error(validacion.error)
+    const datos = validacion.data
 
     const { error } = await supabase
       .from('tipos_maquinaria')
@@ -760,6 +782,22 @@ export async function configurarUmbrales(umbrales) {
   try {
     const { supabase } = await verificarAdmin()
 
+    const validacion = validate(
+      z.object({
+        email_notifications: z.boolean().optional(),
+        email_destino: z.string().email().optional().nullable(),
+        alertar_vencidos: z.boolean().optional(),
+        alertar_criticos: z.boolean().optional(),
+        alertar_proximos: z.boolean().optional(),
+        dias_anticipacion: z.coerce.number().int().nonnegative().optional(),
+        horometro_maximo: z.coerce.number().nonnegative().optional().nullable(),
+        intervalo_cambio_aceite: z.coerce.number().nonnegative().optional(),
+        intervalo_cambio_filtros: z.coerce.number().nonnegative().optional(),
+      }).passthrough(),
+      umbrales
+    )
+    if (!validacion.success) throw new Error(validacion.error)
+
     const { error } = await supabase
       .from('configuracion_alertas')
       .upsert({
@@ -797,9 +835,15 @@ export async function actualizarRolUsuario(userId, nuevoRol) {
       throw new Error('No puedes cambiar tu propio rol')
     }
 
+    const validacion = validate(
+      z.string().min(1, 'Rol es requerido'),
+      nuevoRol
+    )
+    if (!validacion.success) throw new Error(validacion.error)
+
     const { error } = await supabase
       .from('perfiles')
-      .update({ rol: nuevoRol })
+      .update({ rol: validacion.data })
       .eq('id', userId)
 
     if (error) throw error

@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { verificarAdmin, formatearError } from './helpers'
+import { verificarAdmin, formatearError, validate } from './helpers'
+import { periodoNominaSchema, novedadNominaSchema, pagoNominaSchema, prestacionSchema } from '@/lib/validaciones/nomina'
 import { liquidarNomina, generarCodigoPeriodo, generarCodigoNomina } from '@/lib/utils/nomina'
 
 /**
@@ -12,23 +13,27 @@ export async function crearPeriodoNomina(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
-    const codigo = generarCodigoPeriodo(formData.ano, formData.mes, formData.numero_periodo)
+    const validacion = validate(periodoNominaSchema, formData)
+    if (!validacion.success) throw new Error(validacion.error)
+    const datos = validacion.data
+
+    const codigo = generarCodigoPeriodo(datos.ano, datos.mes, datos.numero_periodo)
 
     const { data, error } = await supabase
       .from('periodos_nomina')
       .insert([{
         codigo,
-        nombre: formData.nombre?.trim() || `${formData.tipo || 'Quincenal'} ${formData.mes}/${formData.ano}`,
-        tipo: formData.tipo || 'quincenal',
-        ano: Number(formData.ano),
-        mes: Number(formData.mes),
-        numero_periodo: Number(formData.numero_periodo),
-        fecha_inicio: formData.fecha_inicio,
-        fecha_fin: formData.fecha_fin,
-        fecha_pago: formData.fecha_pago || null,
+        nombre: datos.nombre || `${datos.tipo || 'Quincenal'} ${datos.mes}/${datos.ano}`,
+        tipo: datos.tipo || 'quincenal',
+        ano: datos.ano,
+        mes: datos.mes,
+        numero_periodo: datos.numero_periodo,
+        fecha_inicio: datos.fecha_inicio,
+        fecha_fin: datos.fecha_fin,
+        fecha_pago: datos.fecha_pago || null,
         estado: 'abierto',
         creado_por: (await supabase.auth.getUser()).data.user?.id,
-        observaciones: formData.observaciones || null,
+        observaciones: datos.observaciones || null,
       }])
       .select()
       .single()
@@ -269,11 +274,15 @@ export async function pagarNomina(nominaId, dataPago) {
   try {
     const { supabase } = await verificarAdmin()
 
+    const validacion = validate(pagoNominaSchema, dataPago)
+    if (!validacion.success) throw new Error(validacion.error)
+    const d = validacion.data
+
     const updates = {
       pagado: true,
-      fecha_pago: dataPago.fecha_pago || new Date().toISOString(),
-      medio_pago: dataPago.medio_pago,
-      numero_comprobante: dataPago.numero_comprobante || null,
+      fecha_pago: d.fecha_pago || new Date().toISOString(),
+      medio_pago: d.medio_pago,
+      numero_comprobante: d.numero_comprobante || null,
     }
 
     const { error } = await supabase
@@ -298,17 +307,21 @@ export async function agregarNovedad(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
+    const validacion = validate(novedadNominaSchema, formData)
+    if (!validacion.success) throw new Error(validacion.error)
+    const d = validacion.data
+
     const { data, error } = await supabase
       .from('novedades_nomina')
       .insert([{
-        trabajador_id: Number(formData.trabajador_id),
-        tipo_novedad_id: Number(formData.tipo_novedad_id),
-        periodo_nomina_id: formData.periodo_nomina_id ? Number(formData.periodo_nomina_id) : null,
-        fecha_inicio: formData.fecha_inicio,
-        fecha_fin: formData.fecha_fin || null,
-        dias: formData.dias ? Number(formData.dias) : null,
-        valor: parseFloat(formData.valor) || 0,
-        descripcion: formData.descripcion || null,
+        trabajador_id: d.trabajador_id,
+        tipo_novedad_id: d.tipo_novedad_id,
+        periodo_nomina_id: d.periodo_nomina_id || null,
+        fecha_inicio: d.fecha_inicio,
+        fecha_fin: d.fecha_fin || null,
+        dias: d.dias || null,
+        valor: d.valor || 0,
+        descripcion: d.descripcion || null,
         estado: 'pendiente',
         creado_por: (await supabase.auth.getUser()).data.user?.id,
       }])
@@ -331,21 +344,25 @@ export async function liquidarPrestaciones(formData) {
   try {
     const { supabase } = await verificarAdmin()
 
+    const validacion = validate(prestacionSchema, formData)
+    if (!validacion.success) throw new Error(validacion.error)
+    const d = validacion.data
+
     const { data, error } = await supabase
       .from('liquidacion_prestaciones')
       .insert([{
-        trabajador_id: Number(formData.trabajador_id),
-        tipo_liquidacion: formData.tipo_liquidacion,
-        periodo_inicio: formData.periodo_inicio,
-        periodo_fin: formData.periodo_fin,
-        salario_base: parseFloat(formData.salario_base) || 0,
-        auxilio_transporte_base: parseFloat(formData.auxilio_transporte_base) || 0,
-        dias_trabajados: Number(formData.dias_trabajados),
-        valor_calculado: parseFloat(formData.valor_calculado) || 0,
-        valor_pagado: parseFloat(formData.valor_pagado) || 0,
-        fecha_pago: formData.fecha_pago || null,
-        pagado: formData.valor_pagado > 0,
-        observaciones: formData.observaciones || null,
+        trabajador_id: d.trabajador_id,
+        tipo_liquidacion: d.tipo_liquidacion,
+        periodo_inicio: d.periodo_inicio,
+        periodo_fin: d.periodo_fin,
+        salario_base: d.salario_base,
+        auxilio_transporte_base: d.auxilio_transporte_base || 0,
+        dias_trabajados: d.dias_trabajados,
+        valor_calculado: d.valor_calculado,
+        valor_pagado: d.valor_pagado || 0,
+        fecha_pago: d.fecha_pago || null,
+        pagado: (d.valor_pagado || 0) > 0,
+        observaciones: d.observaciones || null,
       }])
       .select()
       .single()

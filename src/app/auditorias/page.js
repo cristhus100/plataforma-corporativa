@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import { getFrentesTrabajo, getDatosAuditoria } from '@/lib/supabase/auditoria';
@@ -225,39 +225,38 @@ export default function AuditoriasPage() {
   const [loading, setLoading] = useState(false);
   const [loadingFrentes, setLoadingFrentes] = useState(true);
   const [error, setError] = useState(null);
+  const mountedRef = useRef(true);
 
-  // Cargar solo Santa Rosa + auditoría
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  // Cargar frentes al montar
   useEffect(() => {
     let mounted = true;
     async function load() {
       try {
         const data = await getFrentesTrabajo();
-        const santaRosa = (data || []).filter(f => f.codigo === 'FT-SR');
         if (!mounted) return;
-        setFrentes(santaRosa);
+        setFrentes(data || []);
 
-        if (santaRosa.length > 0) {
-          const srId = String(santaRosa[0].id);
-          setSelectedFrenteId(srId);
-          setLoading(true);
-          try {
-            const datos = await getDatosAuditoria(santaRosa[0].id);
-            if (!mounted) return;
-            setFrente(datos.frente);
-            const empScore = (datos.empleados || []).map(emp => ({ ...emp, _cumplimiento: calcularCumplimientoEmpleado(emp) }));
-            setEmpleados(empScore);
-            const maqScore = (datos.maquinaria || []).map(maq => ({ ...maq, _cumplimiento: calcularCumplimientoMaquinaria(maq) }));
-            setMaquinaria(maqScore);
-            setCumplimiento(calcularCumplimientoGlobal(empScore, maqScore));
-          } catch (err) {
-            if (!mounted) return;
-            console.error('Error cargando auditoría:', err);
-            setError(err.message || 'Error al cargar los datos de auditoría');
-          } finally {
-            if (mounted) setLoading(false);
-          }
+        // Determinar frente inicial: desde URL o primero disponible
+        const urlParams = new URLSearchParams(window.location.search);
+        const frenteParam = urlParams.get('frente');
+        let frenteInicial = '';
+
+        if (frenteParam && data.some(f => f.id === parseInt(frenteParam, 10))) {
+          frenteInicial = frenteParam;
+        } else if (data.length > 0) {
+          frenteInicial = String(data[0].id);
+        }
+
+        if (frenteInicial) {
+          setSelectedFrenteId(frenteInicial);
         }
       } catch (err) {
+        if (!mounted) return;
         console.error('Error cargando frentes:', err);
       } finally {
         if (mounted) setLoadingFrentes(false);
@@ -266,6 +265,36 @@ export default function AuditoriasPage() {
     load();
     return () => { mounted = false; };
   }, []);
+
+  // Cargar datos del frente seleccionado
+  async function cargarDatosFrente(frenteId) {
+    if (!frenteId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const datos = await getDatosAuditoria(frenteId);
+      if (!mountedRef.current) return;
+      setFrente(datos.frente);
+      const empScore = (datos.empleados || []).map(emp => ({ ...emp, _cumplimiento: calcularCumplimientoEmpleado(emp) }));
+      setEmpleados(empScore);
+      const maqScore = (datos.maquinaria || []).map(maq => ({ ...maq, _cumplimiento: calcularCumplimientoMaquinaria(maq) }));
+      setMaquinaria(maqScore);
+      setCumplimiento(calcularCumplimientoGlobal(empScore, maqScore));
+    } catch (err) {
+      if (!mountedRef.current) return;
+      console.error('Error cargando auditoría:', err);
+      setError(err.message || 'Error al cargar los datos de auditoría');
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
+  }
+
+  // Al cambiar el frente seleccionado, cargar datos
+  useEffect(() => {
+    if (selectedFrenteId) {
+      cargarDatosFrente(parseInt(selectedFrenteId, 10));
+    }
+  }, [selectedFrenteId]);
 
   if (loadingFrentes) {
     return (
@@ -288,15 +317,24 @@ export default function AuditoriasPage() {
         </div>
       </div>
 
-      {/* SELECTOR DE FRENTE (solo Santa Rosa) */}
+      {/* SELECTOR DE FRENTE */}
       <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-3 flex-1">
-            <Building2 className="h-5 w-5 text-gray-900" />
-            <div>
-              <span className="text-sm font-semibold text-gray-900">Santa Rosa</span>
-              <span className="ml-2 text-xs font-mono text-gray-400 bg-gray-100 px-2 py-0.5 rounded">FT-SR</span>
-            </div>
+          <Building2 className="h-5 w-5 text-gray-900" />
+          <div className="flex-1">
+            {frentes.length === 0 ? (
+              <span className="text-sm text-gray-400">No hay frentes de trabajo activos</span>
+            ) : (
+              <select
+                value={selectedFrenteId}
+                onChange={(e) => setSelectedFrenteId(e.target.value)}
+                className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900 w-full max-w-xs"
+              >
+                {frentes.map(f => (
+                  <option key={f.id} value={f.id}>{f.nombre} ({f.codigo})</option>
+                ))}
+              </select>
+            )}
           </div>
           {selectedFrenteId && (
             <span className="text-xs text-gray-400">{empleados.length} empleados · {maquinaria.length} equipos</span>

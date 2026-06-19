@@ -198,6 +198,15 @@ export default function Header({ onToggleSidebar }) {
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowUserMenu(false)} />
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
+                  <Link
+                    href="/perfil"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    <User size={16} />
+                    Mi Perfil
+                  </Link>
+                  {isAdmin && <div className="border-t border-gray-100 my-1" />}
                   {isAdmin && (
                     <Link
                       href="/configuracion"

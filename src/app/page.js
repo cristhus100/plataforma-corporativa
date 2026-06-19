@@ -99,6 +99,8 @@ export default function Dashboard() {
         facturasFinRes,
         planCuentasRes,
         nominasFinRes,
+        alertasTrabRes,
+        alertasVehRes,
       ] = await Promise.all([
         supabase.from('trabajadores').select('*', { count: 'exact', head: true }),
         supabase.from('maquinaria').select('estado').eq('activo', true),
@@ -116,6 +118,8 @@ export default function Dashboard() {
         supabase.from('facturas').select('total, estado').eq('activo', true),
         supabase.from('plan_cuentas').select('id', { count: 'exact', head: true }).eq('activa', true),
         supabase.from('nominas').select('id').eq('pagado', false).eq('activo', true),
+        supabase.from('alertas_trabajadores').select('*').in('estado_alerta', ['VENCIDO', 'CRITICO']).order('dias_para_vencer', { ascending: true }).limit(5),
+        supabase.from('alertas_vehiculos').select('*').in('estado_alerta', ['VENCIDO', 'CRITICO']).order('dias_para_vencer', { ascending: true }).limit(5),
       ])
 
       // Maquinaria por estado
@@ -287,6 +291,8 @@ export default function Dashboard() {
         timeline: timelineLimit,
         proximasOrdenes: ordenesRes.data || [],
         cumplimientoFrentes: frentesValidos,
+        alertasDocumentos: alertasTrabRes.data || [],
+        alertasVehiculos: alertasVehRes.data || [],
       })
     } catch (error) {
       console.error('Error cargando dashboard:', error)
@@ -340,7 +346,76 @@ export default function Dashboard() {
   </Link>
 </div>
 
-{/* Charts Row */}
+      {/* Alertas Críticas */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-500" /> Alertas Críticas
+          </h2>
+          <Link href="/alertas" className="text-sm text-blue-600 hover:text-blue-700 font-medium">Ver todas</Link>
+        </div>
+        {loading ? (
+          <p className="text-gray-400 text-center py-4">Cargando...</p>
+        ) : dashboardData.alertasDocumentos.length === 0 && dashboardData.alertasVehiculos.length === 0 ? (
+          <div className="text-center py-6">
+            <CheckCircle2 className="mx-auto h-8 w-8 text-green-400" />
+            <p className="text-gray-400 mt-2 text-sm">Sin alertas críticas</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {dashboardData.alertasDocumentos.map((a, idx) => (
+              <div
+                key={`at-${idx}`}
+                className={`flex items-start gap-3 p-3 rounded-lg border ${
+                  a.estado_alerta === 'VENCIDO' ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'
+                }`}
+              >
+                {a.estado_alerta === 'VENCIDO' ? (
+                  <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {a.nombre_entidad || a.nombre_equipo || 'Sin nombre'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {a.tipo_documento || 'Documento'} · {a.dias_para_vencer < 0
+                      ? `Vencido hace ${Math.abs(a.dias_para_vencer)} días`
+                      : `Vence en ${a.dias_para_vencer} días`}
+                  </p>
+                </div>
+              </div>
+            ))}
+            {dashboardData.alertasVehiculos.map((a, idx) => (
+              <div
+                key={`av-${idx}`}
+                className={`flex items-start gap-3 p-3 rounded-lg border ${
+                  a.estado_alerta === 'VENCIDO' ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'
+                }`}
+              >
+                {a.estado_alerta === 'VENCIDO' ? (
+                  <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {a.nombre_vehiculo || a.nombre_entidad || 'Sin nombre'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {a.nombre_alerta || 'Documento'} · {a.dias_para_vencer < 0
+                      ? `Vencido hace ${Math.abs(a.dias_para_vencer)} días`
+                      : `Vence en ${a.dias_para_vencer} días`}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Doughnut Chart - Maquinaria */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
