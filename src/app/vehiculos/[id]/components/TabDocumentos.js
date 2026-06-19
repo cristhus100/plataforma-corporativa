@@ -6,7 +6,7 @@ import { Upload, FileText, Download, Trash2, Calendar, AlertTriangle, X, Plus } 
 import { useToast } from '@/context/ToastContext';
 
 export default function TabDocumentos({ vehiculoId, isAdmin = false }) {
-  const { addToast, confirm } = useToast();
+  const { addToast } = useToast();
   const supabase = createClient();
   const [documentos, setDocumentos] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
@@ -156,9 +156,6 @@ export default function TabDocumentos({ vehiculoId, isAdmin = false }) {
   };
 
   const handleEliminar = async (doc) => {
-    const ok = await confirm('¿Eliminar este documento?');
-    if (!ok) return;
-
     try {
       if (doc.archivo_url) {
         await supabase.storage
@@ -173,6 +170,7 @@ export default function TabDocumentos({ vehiculoId, isAdmin = false }) {
 
       if (error) throw error;
 
+      addToast('Documento eliminado', { type: 'success' });
       cargarDatos();
     } catch (error) {
       addToast('Error al eliminar: ' + error.message, { type: 'error' });

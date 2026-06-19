@@ -178,7 +178,7 @@ export default function FacturaDetallePage() {
       setAccion(null)
       cargarFactura()
     } catch (err) {
-      alert(err.message)
+      addToast(err.message, { type: 'error' })
     } finally {
       setAccionLoading(false)
     }

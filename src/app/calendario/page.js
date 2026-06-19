@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { useToast } from '@/context/ToastContext'
 import { ChevronLeft, ChevronRight, CalendarDays, AlertTriangle, Gift, Briefcase, Truck, FileText } from 'lucide-react'
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -20,6 +21,7 @@ const TIPO_EVENTO = {
 
 export default function CalendarioPage() {
   const supabase = createClient()
+  const { addToast } = useToast()
   const [loading, setLoading] = useState(true)
   const [hoy] = useState(new Date())
   const [mes, setMes] = useState(hoy.getMonth())
@@ -49,6 +51,7 @@ export default function CalendarioPage() {
       const { data: docs } = await supabase
         .from('documentos_trabajadores')
         .select('*, trabajador:trabajadores!trabajador_id(nombre,primer_apellido), tipo:tipos_documentos_trabajador!tipo_documento_id(nombre)')
+        .limit(500)
 
       const eventosTemp = []
       ;(docs || []).forEach((d) => {
@@ -98,6 +101,7 @@ export default function CalendarioPage() {
       setEventos([...eventosTemp, ...anualesProyectados])
     } catch (err) {
       console.error('Error cargando eventos:', err)
+      addToast('Error al cargar eventos del calendario', { type: 'error' })
     } finally {
       setCargandoEventos(false)
       setLoading(false)

@@ -143,14 +143,13 @@ export default function TabDocumentos({ maquinariaId, isAdmin = false }) {
   };
 
   const handleEliminar = async (doc) => {
-    const ok = await confirm('¿Eliminar este documento?');
-    if (!ok) return;
     try {
       if (doc.ruta_archivo) {
         await supabase.storage.from('documentos-maquinaria').remove([doc.ruta_archivo]);
       }
       const { error } = await supabase.from('documentos_maquinaria').delete().eq('id', doc.id);
       if (error) throw error;
+      addToast('Documento eliminado', { type: 'success' });
       cargarDatos();
     } catch (error) {
       addToast('Error al eliminar: ' + error.message, { type: 'error' });

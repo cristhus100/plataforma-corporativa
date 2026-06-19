@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 
 export default function TercerosPage() {
-  const { addToast, confirm } = useToast();
+  const { addToast } = useToast();
   const supabase = createClient()
   const { isAdmin } = useRole()
   const [resumen, setResumen] = useState({ total: 0, clientes: 0, proveedores: 0 })
@@ -69,12 +69,11 @@ export default function TercerosPage() {
   })
 
   async function handleEliminar(id) {
-    const ok = await confirm('Seguro de eliminar este tercero?', { title: 'Eliminar tercero' });
-    if (!ok) return;
     setEliminando(id)
     try {
       const res = await eliminarTercero(id)
       if (res.error) throw new Error(res.error)
+      addToast('Tercero eliminado', { type: 'success' })
       paginacion.refetch()
       setResumen(prev => ({ ...prev, total: prev.total - 1 }))
     } catch (err) {

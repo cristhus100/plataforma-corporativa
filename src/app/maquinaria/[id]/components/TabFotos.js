@@ -6,7 +6,7 @@ import { Camera, X, Upload, Star, Trash2, ImageOff, Loader2 } from 'lucide-react
 import { useToast } from '@/context/ToastContext';
 
 export default function TabFotos({ maquinariaId, isAdmin = false }) {
-  const { addToast, confirm } = useToast();
+  const { addToast } = useToast();
   const supabase = createClient();
   const [fotos, setFotos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -89,13 +89,12 @@ export default function TabFotos({ maquinariaId, isAdmin = false }) {
   };
 
   const handleEliminar = async (foto) => {
-    const ok = await confirm('¿Eliminar esta foto?');
-    if (!ok) return;
     try {
       if (foto.ruta_archivo) {
         await supabase.storage.from('fotos-maquinaria').remove([foto.ruta_archivo]);
       }
       await supabase.from('fotos_maquinaria').delete().eq('id', foto.id);
+      addToast('Foto eliminada', { type: 'success' });
       cargarFotos();
     } catch (error) {
       addToast('Error al eliminar foto: ' + error.message, { type: 'error' });

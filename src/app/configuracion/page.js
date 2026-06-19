@@ -45,7 +45,7 @@ function EmptyRow({ colSpan, message }) {
 // ─── Página principal ────────────────────────────────────────────
 
 export default function ConfiguracionPage() {
-  const { addToast, confirm } = useToast();
+  const { addToast } = useToast();
   const supabase = createClient()
   const { isAdmin, loading: roleLoading } = useRole()
 
@@ -343,12 +343,11 @@ export default function ConfiguracionPage() {
   }
 
   async function handleCambiarRol(userId, nuevoRol) {
-    const ok = await confirm(`¿Cambiar rol a "${nuevoRol}"?`, { title: 'Cambiar rol' });
-    if (!ok) return;
     setCambiandoRol(userId)
     try {
       const result = await actualizarRolUsuario(userId, nuevoRol)
       if (result.error) throw new Error(result.error)
+      addToast(`Rol cambiado a "${nuevoRol}"`, { type: 'success' })
       fetchUsuarios()
     } catch (err) {
       addToast(err.message, { type: 'error' })

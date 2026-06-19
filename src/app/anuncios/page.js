@@ -31,7 +31,7 @@ function anuncioVacio() {
 }
 
 export default function AnunciosPage() {
-  const { addToast, confirm } = useToast();
+  const { addToast } = useToast();
   const supabase = createClient()
   const { isAdmin } = useRole()
   const [anuncios, setAnuncios] = useState([])
@@ -114,14 +114,12 @@ export default function AnunciosPage() {
   }
 
   async function handleEliminar(id) {
-    const ok = await confirm('¿Eliminar este anuncio?', { title: 'Eliminar anuncio' });
-    if (!ok) return;
-
     try {
       await eliminarAnuncio(id)
+      addToast('Anuncio eliminado', { type: 'success' })
       cargarAnuncios()
     } catch (err) {
-      console.error('Error eliminando:', err)
+      addToast('Error al eliminar: ' + err.message, { type: 'error' })
     }
   }
 

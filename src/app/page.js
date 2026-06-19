@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { getDatosAuditoria } from '@/lib/supabase/auditoria'
 import { calcularCumplimientoEmpleado, calcularCumplimientoMaquinaria, calcularCumplimientoGlobal } from '@/lib/utils/auditoria'
+import { useToast } from '@/context/ToastContext'
 import StatsCard from '@/components/ui/StatsCard'
 import { Users, Wrench, MapPin, AlertTriangle, CheckCircle2, Clock, XCircle, History, UserPlus, FileUp, Truck, Car, Wind, Settings, ClipboardList, ClipboardCheck, Calendar, ArrowRight, Receipt, Calculator, DollarSign, Landmark } from 'lucide-react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -62,7 +63,9 @@ function MiniProgressRing({ pct, size = 48, strokeWidth = 4 }) {
 
 export default function Dashboard() {
   const supabase = createClient()
+  const { addToast } = useToast()
   const [loading, setLoading] = useState(true)
+  const fetchedRef = useRef(false)
   const [dashboardData, setDashboardData] = useState({
     stats: { trabajadores: 0, maquinaria: 0, vehiculos: 0, ubicacion: 0 },
     maquinariaPorEstado: [],
@@ -77,7 +80,10 @@ export default function Dashboard() {
   })
 
   useEffect(() => {
-    fetchDashboardData()
+    if (!fetchedRef.current) {
+      fetchedRef.current = true
+      fetchDashboardData()
+    }
   }, [])
 
   async function fetchDashboardData() {
@@ -253,8 +259,8 @@ export default function Dashboard() {
           }
         } catch (err) {
           console.error(`Error en auditoría para frente ${frente.codigo}:`, err)
+          return { ...frente, pct: 0, categorias: {} }
         }
-        return { ...frente, pct: 0, categorias: {} }
       }))
 
       cumplimientoFrentes.push(...resultadosFrentes)
@@ -296,6 +302,7 @@ export default function Dashboard() {
       })
     } catch (error) {
       console.error('Error cargando dashboard:', error)
+      addToast('Error al cargar el dashboard', { type: 'error' })
     } finally {
       setLoading(false)
     }

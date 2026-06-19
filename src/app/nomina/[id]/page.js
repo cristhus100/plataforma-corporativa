@@ -119,12 +119,11 @@ export default function DetallePeriodoPage() {
   };
 
   const handleGenerar = async () => {
-    const ok = await confirm('¿Generar nómina para todos los trabajadores activos? Esta acción liquidará el período.', { title: 'Generar nómina' });
-    if (!ok) return;
     setGenerando(true);
     try {
       const r = await generarNomina(periodoId);
       if (r.error) throw new Error(r.error);
+      addToast('Nomina generada correctamente', { type: 'success' });
       cargarDatos();
     } catch (err) {
       addToast(err.message, { type: 'error' });
@@ -134,12 +133,11 @@ export default function DetallePeriodoPage() {
   };
 
   const handleCerrar = async () => {
-    const ok = await confirm('¿Cerrar este período? Ya no se podrán modificar las nóminas.', { title: 'Cerrar período' });
-    if (!ok) return;
     setCerrando(true);
     try {
       const r = await cerrarPeriodoNomina(periodoId);
       if (r.error) throw new Error(r.error);
+      addToast('Periodo cerrado correctamente', { type: 'success' });
       cargarDatos();
     } catch (err) {
       addToast(err.message, { type: 'error' });

@@ -2,8 +2,9 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useToast } from '@/context/ToastContext'
 import {
   AlertTriangle,
   AlertCircle,
@@ -52,6 +53,8 @@ const ESTADOS = {
 
 export default function AlertasPage() {
   const supabase = createClient()
+  const { addToast } = useToast()
+  const fetchedRef = useRef(false)
   const [modo, setModo] = useState('documentos') // 'documentos' | 'maquinaria' | 'vehiculos'
 
   // Estado para documentos
@@ -102,6 +105,7 @@ export default function AlertasPage() {
     } catch (e) {
       setDescartadas(prev => [...prev, id])
       console.error('Error al descartar alerta:', e)
+      addToast('Error al descartar alerta', { type: 'error' })
     }
   }
 
@@ -137,7 +141,8 @@ export default function AlertasPage() {
   setAlertas(data || [])
 
     } catch (err) {
-  console.error('Error cargando alertas:', err.message, err.details, err.hint, err.code)
+  console.error('Error cargando alertas:', err)
+      addToast('Error al cargar alertas de documentos', { type: 'error' })
   } finally {
   setLoading(false)
   }
@@ -156,6 +161,7 @@ export default function AlertasPage() {
       setAlertasAceite(data || [])
     } catch (err) {
       console.error('Error cargando alertas de aceite:', err)
+      addToast('Error al cargar alertas de aceite', { type: 'error' })
     } finally {
       setLoadingAceite(false)
     }
@@ -208,6 +214,7 @@ export default function AlertasPage() {
       setAlertasVehiculos(data || [])
     } catch (err) {
       console.error('Error cargando alertas de vehículos:', err)
+      addToast('Error al cargar alertas de vehículos', { type: 'error' })
     } finally {
       setLoadingVehiculos(false)
     }
@@ -225,6 +232,7 @@ export default function AlertasPage() {
       setAlertasFiltroAire(data || [])
     } catch (err) {
       console.error('Error cargando alertas de filtro de aire:', err)
+      addToast('Error al cargar alertas de filtro de aire', { type: 'error' })
     } finally {
       setLoadingFiltroAire(false)
     }

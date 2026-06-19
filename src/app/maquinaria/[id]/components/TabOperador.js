@@ -7,7 +7,7 @@ import { User, Search, X, Check, UserCheck, Calendar, Loader2 } from 'lucide-rea
 import { useToast } from '@/context/ToastContext';
 
 export default function TabOperador({ maquinaria, onUpdate, isAdmin = false }) {
-  const { addToast, confirm } = useToast();
+  const { addToast } = useToast();
   const supabase = createClient();
   const [trabajadores, setTrabajadores] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -81,12 +81,11 @@ export default function TabOperador({ maquinaria, onUpdate, isAdmin = false }) {
   };
 
   const desasignarOperador = async () => {
-    const ok = await confirm('¿Desasignar el operador actual?');
-    if (!ok) return;
     setAsignando(true);
     try {
       await supabase.from('maquinaria').update({ operador_id: null, operador_asignado_desde: null }).eq('id', maquinaria.id);
       setOperador(null);
+      addToast('Operador desasignado', { type: 'success' });
       if (onUpdate) onUpdate();
     } catch (error) {
       addToast('Error al desasignar: ' + error.message, { type: 'error' });
