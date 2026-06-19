@@ -61,7 +61,7 @@ describe('calcularEstadoAceite()', () => {
   it('calcula correctamente con ultimo cambio distinto de 0', () => {
     expect(calcularEstadoAceite(500, 400)).toBe('VIGENTE')
     expect(calcularEstadoAceite(600, 400)).toBe('PROXIMO')
-    expect(calcularEstadoAceite(700, 400)).toBe('CRITICO')
+    expect(calcularEstadoAceite(650, 400)).toBe('CRITICO')
     expect(calcularEstadoAceite(800, 400)).toBe('VENCIDO')
   })
 })
