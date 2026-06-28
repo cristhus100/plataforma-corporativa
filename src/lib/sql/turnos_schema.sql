@@ -173,60 +173,71 @@ ALTER TABLE asignaciones_turno ENABLE ROW LEVEL SECURITY;
 ALTER TABLE registro_asistencia_turno ENABLE ROW LEVEL SECURITY;
 
 -- tipos_turno: todos pueden leer, solo admin escribe
+DROP POLICY IF EXISTS "Tipos turno read all" ON tipos_turno;
 CREATE POLICY "Tipos turno read all"
   ON tipos_turno FOR SELECT
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Tipos turno admin write" ON tipos_turno;
 CREATE POLICY "Tipos turno admin write"
   ON tipos_turno FOR INSERT
   TO authenticated
   WITH CHECK (es_admin());
 
+DROP POLICY IF EXISTS "Tipos turno admin update" ON tipos_turno;
 CREATE POLICY "Tipos turno admin update"
   ON tipos_turno FOR UPDATE
   TO authenticated
   USING (es_admin())
   WITH CHECK (es_admin());
 
+DROP POLICY IF EXISTS "Tipos turno admin delete" ON tipos_turno;
 CREATE POLICY "Tipos turno admin delete"
   ON tipos_turno FOR DELETE
   TO authenticated
   USING (es_admin());
 
 -- asignaciones_turno: todos pueden leer, solo admin escribe
+DROP POLICY IF EXISTS "Asignaciones turno read all" ON asignaciones_turno;
 CREATE POLICY "Asignaciones turno read all"
   ON asignaciones_turno FOR SELECT
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Asignaciones turno admin write" ON asignaciones_turno;
 CREATE POLICY "Asignaciones turno admin write"
   ON asignaciones_turno FOR INSERT
   TO authenticated
   WITH CHECK (es_admin());
 
+DROP POLICY IF EXISTS "Asignaciones turno admin update" ON asignaciones_turno;
 CREATE POLICY "Asignaciones turno admin update"
   ON asignaciones_turno FOR UPDATE
   TO authenticated
   USING (es_admin())
   WITH CHECK (es_admin());
 
+DROP POLICY IF EXISTS "Asignaciones turno admin delete" ON asignaciones_turno;
 CREATE POLICY "Asignaciones turno admin delete"
   ON asignaciones_turno FOR DELETE
   TO authenticated
   USING (es_admin());
 
 -- registro_asistencia_turno: todos pueden leer y escribir
+DROP POLICY IF EXISTS "Asistencia read all" ON registro_asistencia_turno;
 CREATE POLICY "Asistencia read all"
   ON registro_asistencia_turno FOR SELECT
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Asistencia insert" ON registro_asistencia_turno;
 CREATE POLICY "Asistencia insert"
   ON registro_asistencia_turno FOR INSERT
   TO authenticated
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Asistencia update" ON registro_asistencia_turno;
 CREATE POLICY "Asistencia update"
   ON registro_asistencia_turno FOR UPDATE
   TO authenticated

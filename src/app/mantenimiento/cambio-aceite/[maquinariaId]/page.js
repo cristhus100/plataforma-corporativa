@@ -11,6 +11,7 @@ import {
   getEstadoAceiteConfig,
   calcularEstadoFiltroAire,
 } from '@/lib/utils/aceite';
+import { useUmbrales } from '@/hooks/useUmbrales';
 import {
   Fuel,
   CheckCircle2,
@@ -34,6 +35,7 @@ export default function RegistroHorometroPage() {
   const supabase = createClient();
   const params = useParams();
   const maquinariaId = params.maquinariaId;
+  const umbrales = useUmbrales();
 
   const [maquinaria, setMaquinaria] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -168,7 +170,7 @@ export default function RegistroHorometroPage() {
       if (errUpdate) throw errUpdate;
 
       // 3. Calcular estado de alerta
-      const estado = calcularEstadoAceite(hFinal, maquinaria.ultimo_cambio_aceite_horometro);
+      const estado = calcularEstadoAceite(hFinal, maquinaria.ultimo_cambio_aceite_horometro, umbrales.aceite);
       const horasDesdeCambio = calcularHorasDesdeCambio(hFinal, maquinaria.ultimo_cambio_aceite_horometro);
       const estadoFiltroAire = calcularEstadoFiltroAire(formData.condicion_filtro_aire);
       const configFiltroAire = getEstadoAceiteConfig(estadoFiltroAire);
@@ -357,7 +359,7 @@ export default function RegistroHorometroPage() {
   }
 
   // Formulario
-  const estadoAceite = calcularEstadoAceite(maquinaria.horometro_actual, maquinaria.ultimo_cambio_aceite_horometro);
+  const estadoAceite = calcularEstadoAceite(maquinaria.horometro_actual, maquinaria.ultimo_cambio_aceite_horometro, umbrales.aceite);
   const horasDesdeCambio = calcularHorasDesdeCambio(maquinaria.horometro_actual, maquinaria.ultimo_cambio_aceite_horometro);
   const configAceite = getEstadoAceiteConfig(estadoAceite);
 

@@ -115,7 +115,7 @@ export default function BalancePruebaPage() {
       setConsultado(true);
     } catch (err) {
       console.error('Error loading balance:', err);
-      try { addToast('Error al cargar el balance de prueba', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar el balance de prueba', { type: 'error' })
       setError(err.message);
     } finally {
       setLoading(false);

@@ -161,7 +161,7 @@ export default function EditarTrabajadorPage() {
         }
       } catch (err) {
         console.error('Error cargando trabajador:', err);
-        try { addToast('Error al cargar datos del trabajador', { type: 'error' }) } catch(e) {}
+        addToast('Error al cargar datos del trabajador', { type: 'error' })
         setError('No se pudo cargar la información del trabajador');
       } finally {
         setCargando(false);
@@ -317,7 +317,7 @@ export default function EditarTrabajadorPage() {
       router.push(`/trabajadores/${trabajadorId}`);
     } catch (err) {
       console.error('Error actualizando trabajador:', err);
-      try { addToast('Error al guardar los cambios', { type: 'error' }) } catch(e) {}
+      addToast('Error al guardar los cambios', { type: 'error' })
       setError(err.message || 'Error al guardar los cambios');
       setGuardando(false);
     }

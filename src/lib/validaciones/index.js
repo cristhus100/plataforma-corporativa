@@ -8,4 +8,5 @@ export { asignacionTurnoSchema, asistenciaTurnoSchema, asistenciaMasivaSchema } 
 export { anuncioSchema } from './anuncio'
 export { frenteSchema } from './frente'
 export { checklistAuditoriaSchema } from './auditoria'
+export { ordenMantenimientoSchema, cambioEstadoOrdenSchema } from './orden_mantenimiento'
 export { placaSchema, emailSchema, telefonoSchema, requiredString, limpiarFormData } from './common'

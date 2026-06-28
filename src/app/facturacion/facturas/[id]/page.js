@@ -103,7 +103,7 @@ export default function FacturaDetallePage() {
       }))
     } catch (err) {
       console.error('Error:', err)
-      try { addToast('Error al cargar la factura', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar la factura', { type: 'error' })
       setError(err.message || 'Error al cargar la factura')
     } finally {
       setLoading(false)

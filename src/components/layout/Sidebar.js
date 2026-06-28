@@ -66,7 +66,7 @@ export default function Sidebar({ isOpen, onClose }) {
         style={{ borderColor: '#2D2D2D' }}
       >
         <div className="flex items-center gap-3">
-          <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-white flex-shrink-0 shadow-lg">
+          <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 shadow-lg" style={{ backgroundColor: '#FFFFFF' }}>
             <Image
               src="/logo-serviequipos.jpg"
               alt="Serviequipos"

@@ -54,13 +54,12 @@ export default function AnunciosPage() {
         .select('*')
         .eq('activo', true)
         .order('fecha_publicacion', { ascending: false })
-        .limit(100)
 
       if (error) throw error
       setAnuncios(data || [])
     } catch (err) {
       console.error('Error cargando anuncios:', err)
-      try { addToast('Error al cargar anuncios', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar anuncios', { type: 'error' })
     } finally {
       setLoading(false)
     }

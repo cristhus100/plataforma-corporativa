@@ -66,7 +66,7 @@ export default function NotasCreditoPage() {
       setNotas(data || [])
     } catch (err) {
       console.error('Error:', err)
-      try { addToast('Error al cargar las notas de crédito', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar las notas de crédito', { type: 'error' })
       setError('Error al cargar las notas cr&eacute;dito')
     } finally {
       setLoading(false)
@@ -85,7 +85,7 @@ export default function NotasCreditoPage() {
       if (tiposRes.data) setTiposDocumento(tiposRes.data)
     } catch (err) {
       console.error('Error catalogos:', err)
-      try { addToast('Error al cargar catálogos', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar catálogos', { type: 'error' })
     }
   }
 

@@ -84,7 +84,7 @@ export default function DetalleAsignacionPage() {
         setAsistenciaReciente(asistencia || []);
       } catch (err) {
         console.error('Error:', err);
-        try { addToast('Error al cargar la asignación', { type: 'error' }) } catch(e) {}
+        addToast('Error al cargar la asignación', { type: 'error' })
         setError('Error al cargar la asignación');
       } finally {
         setCargando(false);
@@ -100,7 +100,7 @@ export default function DetalleAsignacionPage() {
       router.push('/turnos');
     } catch (err) {
       console.error('Error:', err);
-      try { addToast('Error al eliminar la asignación', { type: 'error' }) } catch(e) {}
+      addToast('Error al eliminar la asignación', { type: 'error' })
       setError('Error al eliminar la asignación');
       setEliminando(false);
     }
@@ -112,7 +112,7 @@ export default function DetalleAsignacionPage() {
       setAsignacion(prev => ({ ...prev, estado: nuevoEstado }));
     } catch (err) {
       console.error('Error:', err);
-      try { addToast('Error al actualizar el estado', { type: 'error' }) } catch(e) {}
+      addToast('Error al actualizar el estado', { type: 'error' })
       setError('Error al actualizar el estado');
     }
   };
@@ -283,7 +283,7 @@ export default function DetalleAsignacionPage() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Frente</label>
-                  <p className="text-sm text-gray-900 mt-1">{asignacion.frente?.nombre || 'Santa Rosa'}</p>
+                  <p className="text-sm text-gray-900 mt-1">{asignacion.frente?.nombre || 'Sin frente'}</p>
                 </div>
               </div>
 

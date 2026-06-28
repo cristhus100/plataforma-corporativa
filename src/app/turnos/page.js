@@ -10,6 +10,7 @@ import {
   getAsignacionesTurno,
 } from '@/lib/supabase/turnos';
 import { getFrentesTrabajo } from '@/lib/supabase/auditoria';
+import { TableSkeleton } from '@/components/ui/LoadingSkeleton';
 import {
   getTurnoInfo,
   getNombreCompleto,
@@ -83,7 +84,7 @@ export default function TurnosPage() {
       }
     } catch (err) {
       console.error('Error cargando datos:', err);
-      try { addToast('Error al cargar los datos de turnos', { type: 'error' }); } catch(e) {}
+      addToast('Error al cargar los datos de turnos', { type: 'error' })
       setError('Error al cargar los datos de turnos');
     } finally {
       setCargando(false);
@@ -187,12 +188,7 @@ export default function TurnosPage() {
       )}
 
       {cargando ? (
-        <div className="flex items-center justify-center min-h-[40vh]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-            <p className="text-gray-600">Cargando turnos...</p>
-          </div>
-        </div>
+        <TableSkeleton rows={8} cols={6} />
       ) : (
         <>
           {/* Navegación semanal */}

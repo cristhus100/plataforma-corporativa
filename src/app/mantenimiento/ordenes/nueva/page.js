@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRole } from '@/context/RoleContext'
+import { crearOrdenMantenimiento } from '@/actions'
 import { useToast } from '@/context/ToastContext'
 
 export default function NuevaOrdenPage() {
@@ -122,35 +123,15 @@ export default function NuevaOrdenPage() {
         throw new Error('Título y fecha programada son obligatorios');
       }
 
-      const dataToInsert = {
-        titulo: form.titulo,
-        descripcion: form.descripcion || null,
-        tipo: form.tipo,
-        prioridad: form.prioridad,
-        estado: 'pendiente',
-        maquinaria_id: form.maquinaria_id ? parseInt(form.maquinaria_id) : null,
-        vehiculo_id: form.vehiculo_id ? parseInt(form.vehiculo_id) : null,
-        frente_trabajo_id: form.frente_trabajo_id ? parseInt(form.frente_trabajo_id) : null,
-        responsable_id: form.responsable_id ? parseInt(form.responsable_id) : null,
-        fecha_programada: form.fecha_programada,
-        fecha_inicio: form.fecha_inicio || null,
-        horometro_actual: form.horometro_actual ? parseFloat(form.horometro_actual) : null,
-        costo_estimado: form.costo_estimado ? parseInt(form.costo_estimado) : null,
-        observaciones: form.observaciones || null,
-      };
+      const result = await crearOrdenMantenimiento(form);
 
-      const { data, error: insertError } = await supabase
-        .from('ordenes_mantenimiento')
-        .insert([dataToInsert])
-        .select()
-        .single();
+      if (result.error) throw new Error(result.error);
 
-      if (insertError) throw insertError;
-
-      router.push(`/mantenimiento/ordenes/${data.id}`);
+      addToast('Orden de mantenimiento creada exitosamente', { type: 'success' });
+      router.push(`/mantenimiento/ordenes/${result.id}`);
     } catch (err) {
       console.error('Error:', err);
-      try { addToast('Error al crear la orden de mantenimiento', { type: 'error' }) } catch(e) {}
+      addToast('Error al crear la orden de mantenimiento', { type: 'error' });
       setError(err.message || 'Error al crear la orden');
       setLoading(false);
     }

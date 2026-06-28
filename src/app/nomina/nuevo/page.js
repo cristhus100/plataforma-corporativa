@@ -68,7 +68,7 @@ export default function NuevoPeriodoPage() {
       }
     } catch (err) {
       console.error('Error:', err);
-      try { addToast('Error al crear per&iacute;odo de n&oacute;mina', { type: 'error' }) } catch(e) {}
+      addToast('Error al crear período de nómina', { type: 'error' })
       setError(err.message || 'Error al crear per&iacute;odo de n&oacute;mina');
     } finally {
       setLoading(false);

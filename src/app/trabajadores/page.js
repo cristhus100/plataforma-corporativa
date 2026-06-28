@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { fetchPaginated } from '@/lib/supabase/paginacion';
 import StatsCard from '@/components/ui/StatsCard';
 import Pagination from '@/components/ui/Pagination';
+import { TableSkeleton } from '@/components/ui/LoadingSkeleton';
 import usePaginacion from '@/hooks/usePaginacion';
 import { getNombreCompleto, getEstadoTrabajador } from '@/lib/utils/trabajador';
 import { useRole } from '@/context/RoleContext';
@@ -279,7 +280,7 @@ export default function TrabajadoresPage() {
       {/* Tabla */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
         {paginacion.loading ? (
-          <div className="p-12 text-center text-gray-500">Cargando trabajadores...</div>
+          <TableSkeleton rows={8} cols={6} />
         ) : paginacion.error ? (
           <div className="p-12 text-center">
             <p className="text-red-600">Error: {paginacion.error}</p>

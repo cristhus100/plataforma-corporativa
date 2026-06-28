@@ -112,7 +112,7 @@ export default function DetallePeriodoPage() {
       setNominas(noms || []);
     } catch (err) {
       console.error('Error:', err);
-      try { addToast('Error al cargar datos', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar datos', { type: 'error' })
       setError(err.message);
     } finally {
       setLoading(false);

@@ -103,27 +103,43 @@ ALTER TABLE comprobantes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE asientos_contables ENABLE ROW LEVEL SECURITY;
 
 -- Plan cuentas: lectura todos, escritura admin
+DROP POLICY IF EXISTS "Plan cuentas read all" ON plan_cuentas;
 CREATE POLICY "Plan cuentas read all" ON plan_cuentas FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Plan cuentas admin write" ON plan_cuentas;
 CREATE POLICY "Plan cuentas admin write" ON plan_cuentas FOR INSERT TO authenticated WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Plan cuentas admin update" ON plan_cuentas;
 CREATE POLICY "Plan cuentas admin update" ON plan_cuentas FOR UPDATE TO authenticated USING (es_admin()) WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Plan cuentas admin delete" ON plan_cuentas;
 CREATE POLICY "Plan cuentas admin delete" ON plan_cuentas FOR DELETE TO authenticated USING (es_admin());
 
 -- Tipo comprobantes: lectura todos, escritura admin
+DROP POLICY IF EXISTS "Tipo comprobantes read all" ON tipo_comprobantes;
 CREATE POLICY "Tipo comprobantes read all" ON tipo_comprobantes FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Tipo comprobantes admin write" ON tipo_comprobantes;
 CREATE POLICY "Tipo comprobantes admin write" ON tipo_comprobantes FOR INSERT TO authenticated WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Tipo comprobantes admin update" ON tipo_comprobantes;
 CREATE POLICY "Tipo comprobantes admin update" ON tipo_comprobantes FOR UPDATE TO authenticated USING (es_admin()) WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Tipo comprobantes admin delete" ON tipo_comprobantes;
 CREATE POLICY "Tipo comprobantes admin delete" ON tipo_comprobantes FOR DELETE TO authenticated USING (es_admin());
 
 -- Comprobantes: lectura todos, escritura admin
+DROP POLICY IF EXISTS "Comprobantes read all" ON comprobantes;
 CREATE POLICY "Comprobantes read all" ON comprobantes FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Comprobantes admin write" ON comprobantes;
 CREATE POLICY "Comprobantes admin write" ON comprobantes FOR INSERT TO authenticated WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Comprobantes admin update" ON comprobantes;
 CREATE POLICY "Comprobantes admin update" ON comprobantes FOR UPDATE TO authenticated USING (es_admin()) WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Comprobantes admin delete" ON comprobantes;
 CREATE POLICY "Comprobantes admin delete" ON comprobantes FOR DELETE TO authenticated USING (es_admin());
 
 -- Asientos: lectura todos, escritura admin
+DROP POLICY IF EXISTS "Asientos read all" ON asientos_contables;
 CREATE POLICY "Asientos read all" ON asientos_contables FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Asientos admin write" ON asientos_contables;
 CREATE POLICY "Asientos admin write" ON asientos_contables FOR INSERT TO authenticated WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Asientos admin update" ON asientos_contables;
 CREATE POLICY "Asientos admin update" ON asientos_contables FOR UPDATE TO authenticated USING (es_admin()) WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Asientos admin delete" ON asientos_contables;
 CREATE POLICY "Asientos admin delete" ON asientos_contables FOR DELETE TO authenticated USING (es_admin());
 
 -- ============================================================

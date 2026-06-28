@@ -12,6 +12,7 @@ import {
   tieneAsignacionSolapada,
 } from '@/lib/supabase/turnos';
 import { getFrentesTrabajo } from '@/lib/supabase/auditoria';
+import { FormSkeleton } from '@/components/ui/LoadingSkeleton';
 import { crearAsignacionesTurno } from '@/actions';
 import { getNombreCompleto, TURNOS } from '@/lib/utils/turnos';
 import { Users, ArrowLeft, Plus, Trash2, AlertCircle, Check } from 'lucide-react';
@@ -70,7 +71,7 @@ export default function NuevaAsignacionPage() {
         setAsignaciones([{ trabajador_id: '', tipo_turno_id: tipos[0]?.id || '', fecha_inicio: hoy, fecha_fin: '', observaciones: '' }]);
       } catch (err) {
         console.error('Error cargando datos:', err);
-        try { addToast('Error al cargar los datos', { type: 'error' }) } catch(e) {}
+        addToast('Error al cargar los datos', { type: 'error' })
         setError('Error al cargar datos');
       } finally {
         setCargando(false);
@@ -169,7 +170,7 @@ export default function NuevaAsignacionPage() {
       }, 1500);
     } catch (err) {
       console.error('Error creando asignaciones:', err);
-      try { addToast('Error al crear las asignaciones', { type: 'error' }) } catch(e) {}
+      addToast('Error al crear las asignaciones', { type: 'error' })
       setError(err.message || 'Error al crear las asignaciones');
     } finally {
       setGuardando(false);
@@ -180,14 +181,7 @@ export default function NuevaAsignacionPage() {
   const selectClass = "w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 text-sm bg-white";
 
   if (cargando) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando...</p>
-        </div>
-      </div>
-    );
+    return <div className="max-w-5xl mx-auto"><FormSkeleton fields={6} /></div>;
   }
 
   return (

@@ -84,7 +84,7 @@ export default function NovedadesPage() {
       setNovedades(novRes.data || []);
     } catch (err) {
       console.error('Error:', err);
-      try { addToast('Error al cargar novedades', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar novedades', { type: 'error' })
       setError(err.message || 'Error al cargar datos');
     } finally {
       setLoading(false);

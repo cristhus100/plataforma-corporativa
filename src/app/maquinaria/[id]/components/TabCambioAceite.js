@@ -10,6 +10,7 @@ import {
   calcularHorasDesdeCambioFiltro,
   calcularEstadoFiltroAire,
 } from '@/lib/utils/aceite';
+import { useUmbrales } from '@/hooks/useUmbrales';
 import { formatearFecha } from '@/lib/utils/maquinaria';
 import {
   Fuel,
@@ -33,6 +34,7 @@ import { useToast } from '@/context/ToastContext';
 export default function TabCambioAceite({ maquinariaId, maquinaria, onUpdate, isAdmin = false }) {
   const { addToast } = useToast();
   const supabase = createClient();
+  const umbrales = useUmbrales();
   const [lecturas, setLecturas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,11 +54,11 @@ export default function TabCambioAceite({ maquinariaId, maquinaria, onUpdate, is
   const [tecnicoAire, setTecnicoAire] = useState('');
   const [guardandoAire, setGuardandoAire] = useState(false);
 
-  const estadoAceite = calcularEstadoAceite(maquinaria.horometro_actual, maquinaria.ultimo_cambio_aceite_horometro);
+  const estadoAceite = calcularEstadoAceite(maquinaria.horometro_actual, maquinaria.ultimo_cambio_aceite_horometro, umbrales.aceite);
   const horasDesdeCambio = calcularHorasDesdeCambio(maquinaria.horometro_actual, maquinaria.ultimo_cambio_aceite_horometro);
   const configAceite = getEstadoAceiteConfig(estadoAceite);
 
-  const estadoFiltro = calcularEstadoFiltroCombustible(maquinaria.horometro_actual, maquinaria.ultimo_cambio_filtro_combustible_horometro);
+  const estadoFiltro = calcularEstadoFiltroCombustible(maquinaria.horometro_actual, maquinaria.ultimo_cambio_filtro_combustible_horometro, umbrales.filtro);
   const horasDesdeCambioFiltro = calcularHorasDesdeCambioFiltro(maquinaria.horometro_actual, maquinaria.ultimo_cambio_filtro_combustible_horometro);
   const configFiltro = getEstadoAceiteConfig(estadoFiltro);
 
@@ -95,7 +97,7 @@ export default function TabCambioAceite({ maquinariaId, maquinaria, onUpdate, is
       setLecturas(data || []);
     } catch (err) {
       console.error('Error cargando lecturas:', err);
-      try { addToast('Error al cargar lecturas de horómetro', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar lecturas de horómetro', { type: 'error' })
       setError(err.message);
     } finally {
       setLoading(false);

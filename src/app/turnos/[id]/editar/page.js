@@ -63,7 +63,7 @@ export default function EditarAsignacionPage() {
         });
       } catch (err) {
         console.error('Error:', err);
-        try { addToast('Error al cargar los datos', { type: 'error' }) } catch(e) {}
+        addToast('Error al cargar los datos', { type: 'error' })
         setError('Error al cargar los datos');
       } finally {
         setCargando(false);
@@ -110,7 +110,7 @@ export default function EditarAsignacionPage() {
       }, 1000);
     } catch (err) {
       console.error('Error:', err);
-      try { addToast('Error al actualizar la asignación', { type: 'error' }) } catch(e) {}
+      addToast('Error al actualizar la asignación', { type: 'error' })
       setError(err.message || 'Error al actualizar la asignación');
     } finally {
       setGuardando(false);

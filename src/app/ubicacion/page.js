@@ -86,7 +86,6 @@ export default function UbicacionPage() {
       const { data: posiciones, error: errPos } = await supabase
         .from('vw_ultimas_posiciones')
         .select('*')
-        .limit(100)
 
       const posMap = {}
       if (!errPos && posiciones) {
@@ -123,7 +122,7 @@ export default function UbicacionPage() {
       setUltimaActualizacion(new Date())
     } catch (err) {
       console.error('Error cargando posiciones:', err)
-      try { addToast('Error al cargar posiciones', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar posiciones', { type: 'error' })
     } finally {
       setLoading(false)
     }

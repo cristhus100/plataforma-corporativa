@@ -115,7 +115,7 @@ export default function EditarMaquinariaPage() {
       })
     } catch (err) {
       console.error('Error cargando maquinaria:', err)
-      try { addToast('Error al cargar los datos de la maquinaria', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar los datos de la maquinaria', { type: 'error' })
       setError('No se pudo cargar la información del equipo')
     } finally {
       setCargando(false)
@@ -161,7 +161,7 @@ export default function EditarMaquinariaPage() {
       router.push(`/maquinaria/${params.id}`)
     } catch (err) {
       console.error('Error:', err)
-      try { addToast('Error al actualizar la maquinaria', { type: 'error' }) } catch(e) {}
+      addToast('Error al actualizar la maquinaria', { type: 'error' })
       setError(err.message || 'Error al actualizar la maquinaria')
       setGuardando(false)
     }

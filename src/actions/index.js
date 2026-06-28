@@ -18,6 +18,7 @@ import { vehiculoSchema } from '@/lib/validaciones/vehiculo'
 import { anuncioSchema } from '@/lib/validaciones/anuncio'
 import { frenteSchema } from '@/lib/validaciones/frente'
 import { asignacionTurnoSchema, asistenciaTurnoSchema, asistenciaMasivaSchema } from '@/lib/validaciones/turnos'
+import { ordenMantenimientoSchema, cambioEstadoOrdenSchema } from '@/lib/validaciones/orden_mantenimiento'
 
 // ─── TRABAJADORES ────────────────────────────────────────────
 
@@ -816,6 +817,148 @@ export async function configurarUmbrales(umbrales) {
     if (error) throw error
 
     revalidatePath('/configuracion')
+    return { success: true }
+  } catch (err) {
+    return formatearError(err)
+  }
+}
+
+// ─── ÓRDENES DE MANTENIMIENTO ─────────────────────────────────
+
+/**
+ * Crear una nueva orden de mantenimiento
+ */
+export async function crearOrdenMantenimiento(formData) {
+  try {
+    const { supabase } = await verificarAdmin()
+
+    const validacion = await validate(ordenMantenimientoSchema, formData)
+    if (!validacion.success) throw new Error(validacion.error)
+
+    const datos = {
+      titulo: validacion.data.titulo,
+      descripcion: validacion.data.descripcion || null,
+      tipo: validacion.data.tipo || 'preventivo',
+      prioridad: validacion.data.prioridad || 'media',
+      estado: 'pendiente',
+      maquinaria_id: validacion.data.maquinaria_id ? Number(validacion.data.maquinaria_id) : null,
+      vehiculo_id: validacion.data.vehiculo_id ? Number(validacion.data.vehiculo_id) : null,
+      frente_trabajo_id: validacion.data.frente_trabajo_id ? Number(validacion.data.frente_trabajo_id) : null,
+      responsable_id: validacion.data.responsable_id ? Number(validacion.data.responsable_id) : null,
+      fecha_programada: validacion.data.fecha_programada,
+      fecha_inicio: validacion.data.fecha_inicio || null,
+      horometro_actual: validacion.data.horometro_actual != null ? Number(validacion.data.horometro_actual) : null,
+      costo_estimado: validacion.data.costo_estimado != null ? Number(validacion.data.costo_estimado) : null,
+      observaciones: validacion.data.observaciones || null,
+      activo: true,
+    }
+
+    const { data, error } = await supabase
+      .from('ordenes_mantenimiento')
+      .insert([datos])
+      .select()
+      .single()
+
+    if (error) throw error
+
+    revalidatePath('/mantenimiento/ordenes')
+    return { success: true, id: data.id }
+  } catch (err) {
+    return formatearError(err)
+  }
+}
+
+/**
+ * Actualizar una orden de mantenimiento
+ */
+export async function actualizarOrdenMantenimiento(id, formData) {
+  try {
+    const { supabase } = await verificarAdmin()
+
+    const validacion = await validate(ordenMantenimientoSchema, formData)
+    if (!validacion.success) throw new Error(validacion.error)
+
+    const datos = {
+      titulo: validacion.data.titulo,
+      descripcion: validacion.data.descripcion || null,
+      tipo: validacion.data.tipo || 'preventivo',
+      prioridad: validacion.data.prioridad || 'media',
+      maquinaria_id: validacion.data.maquinaria_id ? Number(validacion.data.maquinaria_id) : null,
+      vehiculo_id: validacion.data.vehiculo_id ? Number(validacion.data.vehiculo_id) : null,
+      frente_trabajo_id: validacion.data.frente_trabajo_id ? Number(validacion.data.frente_trabajo_id) : null,
+      responsable_id: validacion.data.responsable_id ? Number(validacion.data.responsable_id) : null,
+      fecha_programada: validacion.data.fecha_programada,
+      horometro_actual: validacion.data.horometro_actual != null ? Number(validacion.data.horometro_actual) : null,
+      costo_estimado: validacion.data.costo_estimado != null ? Number(validacion.data.costo_estimado) : null,
+      observaciones: validacion.data.observaciones || null,
+    }
+
+    // Limpiar vacíos
+    Object.keys(datos).forEach(k => { if (datos[k] === '' || datos[k] === undefined) delete datos[k] })
+
+    const { error } = await supabase
+      .from('ordenes_mantenimiento')
+      .update(datos)
+      .eq('id', id)
+
+    if (error) throw error
+
+    revalidatePath(`/mantenimiento/ordenes/${id}`)
+    revalidatePath('/mantenimiento/ordenes')
+    return { success: true }
+  } catch (err) {
+    return formatearError(err)
+  }
+}
+
+/**
+ * Eliminar (soft-delete) una orden de mantenimiento
+ */
+export async function eliminarOrdenMantenimiento(id) {
+  try {
+    const { supabase } = await verificarAdmin()
+
+    const { error } = await supabase
+      .from('ordenes_mantenimiento')
+      .update({ activo: false })
+      .eq('id', id)
+
+    if (error) throw error
+
+    revalidatePath('/mantenimiento/ordenes')
+    return { success: true }
+  } catch (err) {
+    return formatearError(err)
+  }
+}
+
+/**
+ * Cambiar el estado de una orden de mantenimiento
+ * (pendiente → en_proceso → completado, o cancelado)
+ */
+export async function cambiarEstadoOrdenMantenimiento(id, nuevoEstado) {
+  try {
+    const { supabase } = await verificarAdmin()
+
+    const validacion = await validate(cambioEstadoOrdenSchema, { estado: nuevoEstado })
+    if (!validacion.success) throw new Error(validacion.error)
+
+    const updateData = { estado: validacion.data.estado }
+
+    // Si se completa, registrar fecha de finalización
+    if (nuevoEstado === 'completado') {
+      updateData.fecha_fin = new Date().toISOString().split('T')[0]
+    }
+
+    const { error } = await supabase
+      .from('ordenes_mantenimiento')
+      .update(updateData)
+      .eq('id', id)
+
+    if (error) throw error
+
+    revalidatePath(`/mantenimiento/ordenes/${id}`)
+    revalidatePath('/mantenimiento/ordenes')
     return { success: true }
   } catch (err) {
     return formatearError(err)

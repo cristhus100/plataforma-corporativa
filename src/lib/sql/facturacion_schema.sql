@@ -169,62 +169,86 @@ ALTER TABLE notas_credito ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notas_debito ENABLE ROW LEVEL SECURITY;
 
 -- Tipo documentos: lectura para todos, escritura admin
+DROP POLICY IF EXISTS "Tipo documentos factura read all" ON tipo_documentos_factura;
 CREATE POLICY "Tipo documentos factura read all"
   ON tipo_documentos_factura FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Tipo documentos factura admin write" ON tipo_documentos_factura;
 CREATE POLICY "Tipo documentos factura admin write"
   ON tipo_documentos_factura FOR INSERT TO authenticated WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Tipo documentos factura admin update" ON tipo_documentos_factura;
 CREATE POLICY "Tipo documentos factura admin update"
   ON tipo_documentos_factura FOR UPDATE TO authenticated USING (es_admin()) WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Tipo documentos factura admin delete" ON tipo_documentos_factura;
 CREATE POLICY "Tipo documentos factura admin delete"
   ON tipo_documentos_factura FOR DELETE TO authenticated USING (es_admin());
 
 -- Facturas: lectura todos, escritura admin
+DROP POLICY IF EXISTS "Facturas read all" ON facturas;
 CREATE POLICY "Facturas read all"
   ON facturas FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Facturas admin write" ON facturas;
 CREATE POLICY "Facturas admin write"
   ON facturas FOR INSERT TO authenticated WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Facturas admin update" ON facturas;
 CREATE POLICY "Facturas admin update"
   ON facturas FOR UPDATE TO authenticated USING (es_admin()) WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Facturas admin delete" ON facturas;
 CREATE POLICY "Facturas admin delete"
   ON facturas FOR DELETE TO authenticated USING (es_admin());
 
 -- Items factura: lectura todos, escritura admin
+DROP POLICY IF EXISTS "Items factura read all" ON items_factura;
 CREATE POLICY "Items factura read all"
   ON items_factura FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Items factura admin write" ON items_factura;
 CREATE POLICY "Items factura admin write"
   ON items_factura FOR INSERT TO authenticated WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Items factura admin update" ON items_factura;
 CREATE POLICY "Items factura admin update"
   ON items_factura FOR UPDATE TO authenticated USING (es_admin()) WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Items factura admin delete" ON items_factura;
 CREATE POLICY "Items factura admin delete"
   ON items_factura FOR DELETE TO authenticated USING (es_admin());
 
 -- Recibos caja: lectura todos, escritura admin
+DROP POLICY IF EXISTS "Recibos caja read all" ON recibos_caja;
 CREATE POLICY "Recibos caja read all"
   ON recibos_caja FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Recibos caja admin write" ON recibos_caja;
 CREATE POLICY "Recibos caja admin write"
   ON recibos_caja FOR INSERT TO authenticated WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Recibos caja admin update" ON recibos_caja;
 CREATE POLICY "Recibos caja admin update"
   ON recibos_caja FOR UPDATE TO authenticated USING (es_admin()) WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Recibos caja admin delete" ON recibos_caja;
 CREATE POLICY "Recibos caja admin delete"
   ON recibos_caja FOR DELETE TO authenticated USING (es_admin());
 
 -- Notas crédito: lectura todos, escritura admin
+DROP POLICY IF EXISTS "Notas credito read all" ON notas_credito;
 CREATE POLICY "Notas credito read all"
   ON notas_credito FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Notas credito admin write" ON notas_credito;
 CREATE POLICY "Notas credito admin write"
   ON notas_credito FOR INSERT TO authenticated WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Notas credito admin update" ON notas_credito;
 CREATE POLICY "Notas credito admin update"
   ON notas_credito FOR UPDATE TO authenticated USING (es_admin()) WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Notas credito admin delete" ON notas_credito;
 CREATE POLICY "Notas credito admin delete"
   ON notas_credito FOR DELETE TO authenticated USING (es_admin());
 
 -- Notas débito: lectura todos, escritura admin
+DROP POLICY IF EXISTS "Notas debito read all" ON notas_debito;
 CREATE POLICY "Notas debito read all"
   ON notas_debito FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Notas debito admin write" ON notas_debito;
 CREATE POLICY "Notas debito admin write"
   ON notas_debito FOR INSERT TO authenticated WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Notas debito admin update" ON notas_debito;
 CREATE POLICY "Notas debito admin update"
   ON notas_debito FOR UPDATE TO authenticated USING (es_admin()) WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Notas debito admin delete" ON notas_debito;
 CREATE POLICY "Notas debito admin delete"
   ON notas_debito FOR DELETE TO authenticated USING (es_admin());
 

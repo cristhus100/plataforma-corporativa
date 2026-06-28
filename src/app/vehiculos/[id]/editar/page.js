@@ -62,7 +62,7 @@ export default function EditarVehiculoPage() {
       });
     } catch (err) {
       console.error('Error:', err);
-      try { addToast('Error al cargar datos del vehículo', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar datos del vehículo', { type: 'error' })
       setError(err.message);
     } finally {
       setCargando(false);

@@ -62,7 +62,7 @@ export default function TabDocumentos({ maquinariaId, isAdmin = false }) {
       setDocumentos(docsData);
     } catch (error) {
       console.error('Error cargando documentos:', error?.message || error);
-      try { addToast('Error al cargar documentos', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar documentos', { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -124,7 +124,7 @@ export default function TabDocumentos({ maquinariaId, isAdmin = false }) {
       cargarDatos();
     } catch (error) {
       console.error('Error:', error);
-      try { addToast('Error al subir documento: ' + error.message, { type: 'error' }) } catch(e) {}
+      addToast('Error al subir documento: ' + error.message, { type: 'error' })
     } finally {
       setUploading(false);
     }
@@ -144,6 +144,10 @@ export default function TabDocumentos({ maquinariaId, isAdmin = false }) {
   };
 
   const handleEliminar = async (doc) => {
+    const tipoNombre = doc.tipos_documentos_maquinaria?.nombre || 'documento';
+    const ok = await confirm(`¿Eliminar "${tipoNombre}"?`, { title: 'Eliminar documento', confirmText: 'Eliminar', variant: 'danger' });
+    if (!ok) return;
+
     try {
       if (doc.ruta_archivo) {
         await supabase.storage.from('documentos-maquinaria').remove([doc.ruta_archivo]);

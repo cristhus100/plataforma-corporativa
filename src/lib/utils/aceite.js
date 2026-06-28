@@ -44,13 +44,14 @@ export const ESTADOS_ALERTA_ACEITE = {
   },
 };
 
-export function calcularEstadoAceite(horometroActual, ultimoCambioHorometro) {
+export function calcularEstadoAceite(horometroActual, ultimoCambioHorometro, umbrales) {
+  const U = umbrales || UMBRALES_ACEITE;
   if (horometroActual == null) return 'SIN_DATO';
   if (ultimoCambioHorometro == null) return 'SIN_DATO';
   const horas = Math.max(0, (horometroActual || 0) - ultimoCambioHorometro);
-  if (horas >= UMBRALES_ACEITE.VENCIDO) return 'VENCIDO';
-  if (horas >= UMBRALES_ACEITE.CRITICO) return 'CRITICO';
-  if (horas >= UMBRALES_ACEITE.PROXIMO) return 'PROXIMO';
+  if (horas >= U.VENCIDO) return 'VENCIDO';
+  if (horas >= U.CRITICO) return 'CRITICO';
+  if (horas >= U.PROXIMO) return 'PROXIMO';
   return 'VIGENTE';
 }
 
@@ -93,13 +94,14 @@ export const UMBRALES_FILTRO_COMBUSTIBLE = {
   VENCIDO: 120,
 };
 
-export function calcularEstadoFiltroCombustible(horometroActual, ultimoCambioHorometro) {
+export function calcularEstadoFiltroCombustible(horometroActual, ultimoCambioHorometro, umbrales) {
+  const U = umbrales || UMBRALES_FILTRO_COMBUSTIBLE;
   if (horometroActual == null) return 'SIN_DATO';
   if (ultimoCambioHorometro == null) return 'SIN_DATO';
   const horas = Math.max(0, (horometroActual || 0) - ultimoCambioHorometro);
-  if (horas >= UMBRALES_FILTRO_COMBUSTIBLE.VENCIDO) return 'VENCIDO';
-  if (horas >= UMBRALES_FILTRO_COMBUSTIBLE.CRITICO) return 'CRITICO';
-  if (horas >= UMBRALES_FILTRO_COMBUSTIBLE.PROXIMO) return 'PROXIMO';
+  if (horas >= U.VENCIDO) return 'VENCIDO';
+  if (horas >= U.CRITICO) return 'CRITICO';
+  if (horas >= U.PROXIMO) return 'PROXIMO';
   return 'VIGENTE';
 }
 

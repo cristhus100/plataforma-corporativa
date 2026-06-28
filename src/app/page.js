@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { getDatosAuditoria } from '@/lib/supabase/auditoria'
 import { calcularCumplimientoEmpleado, calcularCumplimientoMaquinaria, calcularCumplimientoGlobal } from '@/lib/utils/auditoria'
 import { useToast } from '@/context/ToastContext'
 import StatsCard from '@/components/ui/StatsCard'
+import ProgressRing from '@/components/ui/ProgressRing'
+import LoadingSkeleton from '@/components/ui/LoadingSkeleton'
 import { Users, Wrench, MapPin, AlertTriangle, CheckCircle2, Clock, XCircle, History, UserPlus, FileUp, Truck, Car, Wind, Settings, ClipboardList, ClipboardCheck, Calendar, ArrowRight, Receipt, Calculator, DollarSign, Landmark } from 'lucide-react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
@@ -41,40 +43,18 @@ function getRangoCumplimiento(pct) {
   return { ...CUMPLIMIENTO_CONFIG.critico, pct }
 }
 
-function MiniProgressRing({ pct, size = 48, strokeWidth = 4 }) {
-  const radius = (size - strokeWidth) / 2
-  const circumference = 2 * Math.PI * radius
-  const offset = circumference - ((pct || 0) / 100) * circumference
-  const config = getRangoCumplimiento(pct)
-
-  return (
-    <svg width={size} height={size} className="flex-shrink-0">
-      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#e5e7eb" strokeWidth={strokeWidth} />
-      <circle
-        cx={size / 2} cy={size / 2} r={radius}
-        fill="none" stroke={config.color} strokeWidth={strokeWidth}
-        strokeDasharray={circumference} strokeDashoffset={offset}
-        strokeLinecap="round" transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        style={{ transition: 'stroke-dashoffset 0.5s ease' }}
-      />
-    </svg>
-  )
-}
-
 export default function Dashboard() {
   const supabase = createClient()
   const { addToast } = useToast()
   const [loading, setLoading] = useState(true)
   const fetchedRef = useRef(false)
   const [dashboardData, setDashboardData] = useState({
-    stats: { trabajadores: 0, maquinaria: 0, vehiculos: 0, ubicacion: 0 },
+    stats: { trabajadores: 0, maquinaria: 0, vehiculos: 0, ubicacion: 0, facturacion: 0, cuentas: 0, nominaPendientes: 0, carteraVencida: 0 },
     maquinariaPorEstado: [],
     trabajadoresPorDepto: [],
     timeline: [],
     alertasDocumentos: [],
-    alertasMaquinaria: [],
     alertasVehiculos: [],
-    alertasFiltroAire: [],
     proximasOrdenes: [],
     cumplimientoFrentes: [],
   })
@@ -88,223 +68,229 @@ export default function Dashboard() {
 
   async function fetchDashboardData() {
     try {
-      const [
-        { count: trabCount },
-        maqRes,
-        trabRes,
-        vehiculosCountRes,
-        historialRes,
-        nuevosTrabRes,
-        nuevaMaqRes,
-        nuevosVehRes,
-        docsTrabRes,
-        docsVehRes,
-        cambiosAceiteRes,
-        ordenesRes,
-        frentesRes,
-        facturasFinRes,
-        planCuentasRes,
-        nominasFinRes,
-        alertasTrabRes,
-        alertasVehRes,
-      ] = await Promise.all([
-        supabase.from('trabajadores').select('*', { count: 'exact', head: true }),
-        supabase.from('maquinaria').select('estado').eq('activo', true),
-        supabase.from('trabajadores').select('departamento_area:departamentos(nombre)').not('departamento_id', 'is', null),
-        supabase.from('vehiculos').select('*', { count: 'exact', head: true }).eq('activo', true),
-        supabase.from('historial_trabajadores').select('*, trabajador:trabajadores!trabajador_id(nombre,primer_apellido)').order('created_at', { ascending: false }).limit(20),
-        supabase.from('trabajadores').select('id, nombre, primer_apellido, created_at').order('created_at', { ascending: false }).limit(5),
-        supabase.from('maquinaria').select('id, nombre, codigo_interno, created_at').eq('activo', true).order('created_at', { ascending: false }).limit(5),
-        supabase.from('vehiculos').select('id, nombre, placa, created_at').eq('activo', true).order('created_at', { ascending: false }).limit(5),
-        supabase.from('documentos_trabajadores').select('id, created_at, tipo_documento_id, tipos_documentos_trabajador!tipo_documento_id(nombre), trabajador:trabajadores!trabajador_id(nombre,primer_apellido)').order('created_at', { ascending: false }).limit(10),
-        supabase.from('documentos_vehiculos').select('id, created_at, tipo_documento_id, tipo:tipos_documentos_vehiculo!tipo_documento_id(nombre), vehiculo:vehiculos!vehiculo_id(nombre,placa)').order('created_at', { ascending: false }).limit(10),
-        supabase.from('registros_horometro').select('id, created_at, es_cambio_aceite, es_cambio_filtro_combustible, condicion_filtro_aire, operador_nombre, maquinaria_id, maquinaria:maquinaria!maquinaria_id(nombre, codigo_interno)').or('es_cambio_aceite.eq.true,es_cambio_filtro_combustible.eq.true,condicion_filtro_aire.not.is.null').order('created_at', { ascending: false }).limit(10),
-        supabase.from('ordenes_mantenimiento').select('id, codigo, titulo, tipo, prioridad, estado, fecha_programada, maquinaria:maquinaria!maquinaria_id(codigo_interno, nombre)').in('estado', ['pendiente', 'en_proceso']).order('fecha_programada', { ascending: true }).limit(8),
-        supabase.from('frentes_trabajo').select('id, codigo, nombre').eq('activo', true).limit(10),
-        supabase.from('facturas').select('total, estado').eq('activo', true),
-        supabase.from('plan_cuentas').select('id', { count: 'exact', head: true }).eq('activa', true),
-        supabase.from('nominas').select('id').eq('pagado', false).eq('activo', true),
-        supabase.from('alertas_trabajadores').select('*').in('estado_alerta', ['VENCIDO', 'CRITICO']).order('dias_para_vencer', { ascending: true }).limit(5),
-        supabase.from('alertas_vehiculos').select('*').in('estado_alerta', ['VENCIDO', 'CRITICO']).order('dias_para_vencer', { ascending: true }).limit(5),
-      ])
+      // FASE 1: Datos rápidos esenciales — stats + gráficos
+      await fetchFaseRapida()
 
-      // Maquinaria por estado
-      const estadosMap = {}
-      ;(maqRes.data || []).forEach((m) => {
-        estadosMap[m.estado] = (estadosMap[m.estado] || 0) + 1
-      })
-      const maquinariaPorEstado = Object.entries(estadosMap).map(([name, value]) => ({
-        name: LABELS_ESTADOS[name] || name,
-        value,
-        color: COLORS_ESTADOS[name] || '#6B7280',
-      }))
+      // FASE 2: Datos pesados — auditoría (se ejecuta en segundo plano)
+      fetchFaseAuditoria()
 
-      // Empleados por departamento
-      const deptoMap = {}
-      ;(trabRes.data || []).forEach((t) => {
-        const nombre = t.departamento_area?.nombre || 'Sin departamento'
-        deptoMap[nombre] = (deptoMap[nombre] || 0) + 1
-      })
-      const trabajadoresPorDepto = Object.entries(deptoMap)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value)
-
-      // Construir timeline unificada
-      const timeline = []
-
-      ;(historialRes.data || []).forEach((h) => {
-        const nombre = h.trabajador
-          ? `${h.trabajador.nombre || ''} ${h.trabajador.primer_apellido || ''}`.trim()
-          : `Trabajador #${h.trabajador_id}`
-        timeline.push({
-          id: `h-${h.id}`,
-          fecha: h.created_at,
-          tipo: h.tipo_evento === 'actualizacion' ? 'edit' : h.tipo_evento?.startsWith('documento') ? 'file' : 'edit',
-          mensaje: h.titulo || h.descripcion || 'Actualización',
-          entidad: 'Empleado',
-          nombre,
-          icon: h.tipo_evento?.startsWith('documento') ? FileUp : Settings,
-        })
-      })
-
-      ;(nuevosTrabRes.data || []).forEach((t) => {
-        timeline.push({
-          id: `nt-${t.id}`, fecha: t.created_at, tipo: 'create',
-          mensaje: 'Nuevo empleado registrado', entidad: 'Empleado',
-          nombre: `${t.nombre || ''} ${t.primer_apellido || ''}`.trim(), icon: UserPlus,
-        })
-      })
-
-      ;(nuevaMaqRes.data || []).forEach((m) => {
-        timeline.push({
-          id: `nm-${m.id}`, fecha: m.created_at, tipo: 'create',
-          mensaje: `Nueva maquinaria: ${m.codigo_interno || ''}`, entidad: 'Maquinaria',
-          nombre: m.nombre || '', icon: Truck,
-        })
-      })
-
-      ;(nuevosVehRes.data || []).forEach((v) => {
-        timeline.push({
-          id: `nv-${v.id}`, fecha: v.created_at, tipo: 'create',
-          mensaje: `Nuevo vehículo: ${v.placa || ''}`, entidad: 'Vehículo',
-          nombre: v.nombre || '', icon: Car,
-        })
-      })
-
-      ;(docsTrabRes.data || []).forEach((d) => {
-        const nombreTrab = d.trabajador
-          ? `${d.trabajador.nombre || ''} ${d.trabajador.primer_apellido || ''}`.trim()
-          : 'Empleado'
-        timeline.push({
-          id: `dt-${d.id}`, fecha: d.created_at, tipo: 'file',
-          mensaje: `Documento: ${d.tipos_documentos_trabajador?.nombre || 'Documento'}`, entidad: 'Empleado',
-          nombre: nombreTrab, icon: FileUp,
-        })
-      })
-
-      ;(docsVehRes.data || []).forEach((d) => {
-        timeline.push({
-          id: `dv-${d.id}`, fecha: d.created_at, tipo: 'file',
-          mensaje: `Documento: ${d.tipo?.nombre || 'Documento'}`, entidad: 'Vehículo',
-          nombre: d.vehiculo?.nombre || d.vehiculo?.placa || 'Vehículo', icon: FileUp,
-        })
-      })
-
-      ;(cambiosAceiteRes.data || []).forEach((r) => {
-        const maqNombre = r.maquinaria?.nombre || r.maquinaria?.codigo_interno || 'Maquinaria'
-        let mensaje = ''
-        let icon = null
-        if (r.es_cambio_aceite) {
-          mensaje = `Cambio de aceite realizado por ${r.operador_nombre || 'operador'}`
-          icon = Truck
-        } else if (r.es_cambio_filtro_combustible) {
-          mensaje = `Cambio de filtros combustible por ${r.operador_nombre || 'operador'}`
-          icon = Wrench
-        } else if (r.condicion_filtro_aire) {
-          mensaje = `Filtro de aire: ${r.condicion_filtro_aire === 'critica' ? 'Crítico' : r.condicion_filtro_aire === 'regular' ? 'Regular' : 'Buena'} (${r.operador_nombre || 'operador'})`
-          icon = Wind
-        }
-        if (mensaje) {
-          timeline.push({
-            id: `rh-${r.id}`, fecha: r.created_at, tipo: 'edit',
-            mensaje, entidad: 'Maquinaria', nombre: maqNombre, icon: icon || Settings,
-          })
-        }
-      })
-
-      timeline.sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-      const timelineLimit = timeline.slice(0, 15)
-
-      // Calcular cumplimiento REAL por frente usando pipeline de auditoría
-      const cumplimientoFrentes = []
-      const frentes = (frentesRes.data || []).filter(f =>
-        ['FT-SR', 'FT-SANTA-ROSA', 'SANTA ROSA'].includes(f.codigo?.toUpperCase()) ||
-        f.nombre?.toLowerCase().includes('santa rosa')
-      )
-      if (frentes.length === 0) {
-        // Fallback: mostrar todos los activos
-        frentes.push(...(frentesRes.data || []))
-      }
-
-      // Procesar TODOS los frentes en PARALELO (Promise.all en lugar de for secuencial)
-      const resultadosFrentes = await Promise.all(frentes.map(async (frente) => {
-        try {
-          const datosAuditoria = await getDatosAuditoria(frente.id)
-          if (datosAuditoria) {
-            const { empleados, maquinaria } = datosAuditoria
-            empleados.forEach(emp => { emp._cumplimiento = calcularCumplimientoEmpleado(emp) })
-            maquinaria.forEach(maq => { maq._cumplimiento = calcularCumplimientoMaquinaria(maq) })
-            const global = calcularCumplimientoGlobal(empleados, maquinaria)
-            return { ...frente, pct: global.porcentaje, categorias: global.categorias }
-          }
-        } catch (err) {
-          console.error(`Error en auditoría para frente ${frente.codigo}:`, err)
-          return { ...frente, pct: 0, categorias: {} }
-        }
-      }))
-
-      cumplimientoFrentes.push(...resultadosFrentes)
-      cumplimientoFrentes.sort((a, b) => a.pct - b.pct)
-      // Solo mostrar frentes con datos reales o que sean Santa Rosa
-      const frentesValidos = cumplimientoFrentes.filter(f =>
-        f.pct > 0 ||
-        ['FT-SR', 'FT-SANTA-ROSA'].includes(f.codigo?.toUpperCase()) ||
-        f.nombre?.toLowerCase().includes('santa rosa')
-      )
-
-      // Financieros
-      const facturasFin = facturasFinRes.data || []
-      const carteraVencida = facturasFin
-        .filter(f => f.estado === 'vencida')
-        .reduce((sum, f) => sum + Number(f.total || 0), 0)
-      const facturacionTotal = facturasFin
-        .filter(f => f.estado !== 'anulada')
-        .reduce((sum, f) => sum + Number(f.total || 0), 0)
-
-      setDashboardData({
-        stats: {
-          trabajadores: trabCount || 0,
-          maquinaria: maqRes.data?.length || 0,
-          vehiculos: vehiculosCountRes.count || 0,
-          ubicacion: (maqRes.data || []).filter(m => m.estado === 'operativa').length,
-          facturacion: Math.round(facturacionTotal / 1000000),
-          cuentas: planCuentasRes.count || 0,
-          nominaPendientes: nominasFinRes.data?.length || 0,
-          carteraVencida: Math.round(carteraVencida / 1000000),
-        },
-        maquinariaPorEstado,
-        trabajadoresPorDepto,
-        timeline: timelineLimit,
-        proximasOrdenes: ordenesRes.data || [],
-        cumplimientoFrentes: frentesValidos,
-        alertasDocumentos: alertasTrabRes.data || [],
-        alertasVehiculos: alertasVehRes.data || [],
-      })
+      // FASE 3: Financieros (se ejecuta en segundo plano)
+      fetchFaseFinanciera()
     } catch (error) {
       console.error('Error cargando dashboard:', error)
       addToast('Error al cargar el dashboard', { type: 'error' })
     } finally {
       setLoading(false)
+    }
+  }
+
+  // ─── FASE 1: Rápida ────────────────────────────────────────────────
+  // Stats básicos, estado de maquinaria, empleados por depto,
+  // timeline de actividad, próximas órdenes, alertas críticas
+  async function fetchFaseRapida() {
+    const [
+      { count: trabCount },
+      maqRes,
+      trabRes,
+      { count: vehiculosCount },
+      historialRes,
+      nuevosTrabRes,
+      nuevaMaqRes,
+      nuevosVehRes,
+      docsTrabRes,
+      docsVehRes,
+      cambiosAceiteRes,
+      ordenesRes,
+      frentesRes,
+      alertasTrabRes,
+      alertasVehRes,
+    ] = await Promise.all([
+      supabase.from('trabajadores').select('*', { count: 'exact', head: true }),
+      supabase.from('maquinaria').select('estado').eq('activo', true),
+      supabase.from('trabajadores').select('departamento_area:departamentos(nombre)').not('departamento_id', 'is', null),
+      supabase.from('vehiculos').select('*', { count: 'exact', head: true }).eq('activo', true),
+      supabase.from('historial_trabajadores').select('*, trabajador:trabajadores!trabajador_id(nombre,primer_apellido)').order('created_at', { ascending: false }).limit(10),
+      supabase.from('trabajadores').select('id, nombre, primer_apellido, created_at').order('created_at', { ascending: false }).limit(5),
+      supabase.from('maquinaria').select('id, nombre, codigo_interno, created_at').eq('activo', true).order('created_at', { ascending: false }).limit(5),
+      supabase.from('vehiculos').select('id, nombre, placa, created_at').eq('activo', true).order('created_at', { ascending: false }).limit(5),
+      supabase.from('documentos_trabajadores').select('id, created_at, tipo_documento_id, tipos_documentos_trabajador!tipo_documento_id(nombre), trabajador:trabajadores!trabajador_id(nombre,primer_apellido)').order('created_at', { ascending: false }).limit(5),
+      supabase.from('documentos_vehiculos').select('id, created_at, tipo_documento_id, tipo:tipos_documentos_vehiculo!tipo_documento_id(nombre), vehiculo:vehiculos!vehiculo_id(nombre,placa)').order('created_at', { ascending: false }).limit(5),
+      supabase.from('registros_horometro').select('id, created_at, es_cambio_aceite, es_cambio_filtro_combustible, condicion_filtro_aire, operador_nombre, maquinaria_id, maquinaria:maquinaria!maquinaria_id(nombre, codigo_interno)').or('es_cambio_aceite.eq.true,es_cambio_filtro_combustible.eq.true,condicion_filtro_aire.not.is.null').order('created_at', { ascending: false }).limit(5),
+      supabase.from('ordenes_mantenimiento').select('id, codigo, titulo, tipo, prioridad, estado, fecha_programada, maquinaria:maquinaria!maquinaria_id(codigo_interno, nombre)').in('estado', ['pendiente', 'en_proceso']).order('fecha_programada', { ascending: true }).limit(5),
+      supabase.from('frentes_trabajo').select('id, codigo, nombre').eq('activo', true).limit(10),
+      supabase.from('alertas_trabajadores').select('*').in('estado_alerta', ['VENCIDO', 'CRITICO']).order('dias_para_vencer', { ascending: true }).limit(3),
+      supabase.from('alertas_vehiculos').select('*').in('estado_alerta', ['VENCIDO', 'CRITICO']).order('dias_para_vencer', { ascending: true }).limit(3),
+    ])
+
+    // Maquinaria por estado
+    const estadosMap = {}
+    ;(maqRes.data || []).forEach((m) => {
+      estadosMap[m.estado] = (estadosMap[m.estado] || 0) + 1
+    })
+    const maquinariaPorEstado = Object.entries(estadosMap).map(([name, value]) => ({
+      name: LABELS_ESTADOS[name] || name,
+      value,
+      color: COLORS_ESTADOS[name] || '#6B7280',
+    }))
+
+    // Empleados por departamento
+    const deptoMap = {}
+    ;(trabRes.data || []).forEach((t) => {
+      const nombre = t.departamento_area?.nombre || 'Sin departamento'
+      deptoMap[nombre] = (deptoMap[nombre] || 0) + 1
+    })
+    const trabajadoresPorDepto = Object.entries(deptoMap)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+
+    // Timeline unificada
+    const timeline = []
+    ;(historialRes.data || []).forEach((h) => {
+      const nombre = h.trabajador
+        ? `${h.trabajador.nombre || ''} ${h.trabajador.primer_apellido || ''}`.trim()
+        : `Trabajador #${h.trabajador_id}`
+      timeline.push({
+        id: `h-${h.id}`, fecha: h.created_at, tipo: 'edit',
+        mensaje: h.titulo || h.descripcion || 'Actualización', entidad: 'Empleado',
+        nombre, icon: Settings,
+      })
+    })
+    ;(nuevosTrabRes.data || []).forEach((t) => {
+      timeline.push({ id: `nt-${t.id}`, fecha: t.created_at, tipo: 'create',
+        mensaje: 'Nuevo empleado registrado', entidad: 'Empleado',
+        nombre: `${t.nombre || ''} ${t.primer_apellido || ''}`.trim(), icon: UserPlus })
+    })
+    ;(nuevaMaqRes.data || []).forEach((m) => {
+      timeline.push({ id: `nm-${m.id}`, fecha: m.created_at, tipo: 'create',
+        mensaje: `Nueva maquinaria: ${m.codigo_interno || ''}`, entidad: 'Maquinaria',
+        nombre: m.nombre || '', icon: Truck })
+    })
+    ;(nuevosVehRes.data || []).forEach((v) => {
+      timeline.push({ id: `nv-${v.id}`, fecha: v.created_at, tipo: 'create',
+        mensaje: `Nuevo vehículo: ${v.placa || ''}`, entidad: 'Vehículo',
+        nombre: v.nombre || '', icon: Car })
+    })
+    ;(docsTrabRes.data || []).forEach((d) => {
+      const nombreTrab = d.trabajador
+        ? `${d.trabajador.nombre || ''} ${d.trabajador.primer_apellido || ''}`.trim()
+        : 'Empleado'
+      timeline.push({ id: `dt-${d.id}`, fecha: d.created_at, tipo: 'file',
+        mensaje: `Documento: ${d.tipos_documentos_trabajador?.nombre || 'Documento'}`,
+        entidad: 'Empleado', nombre: nombreTrab, icon: FileUp })
+    })
+    ;(cambiosAceiteRes.data || []).forEach((r) => {
+      const maqNombre = r.maquinaria?.nombre || r.maquinaria?.codigo_interno || 'Maquinaria'
+      if (r.es_cambio_aceite) {
+        timeline.push({ id: `rh-${r.id}`, fecha: r.created_at, tipo: 'edit',
+          mensaje: `Cambio de aceite por ${r.operador_nombre || 'operador'}`,
+          entidad: 'Maquinaria', nombre: maqNombre, icon: Truck })
+      }
+    })
+
+    // Alertas críticas en timeline
+    ;(alertasTrabRes.data || []).forEach((a, idx) => {
+      timeline.push({ id: `al-t-${idx}`, fecha: a.created_at || new Date().toISOString(), tipo: 'alerta',
+        mensaje: `${a.tipo_documento || 'Documento'} ${a.estado_alerta === 'VENCIDO' ? 'vencido' : 'crítico'} hace ${Math.abs(a.dias_para_vencer)} días`,
+        entidad: 'Empleado', nombre: a.nombre_entidad || 'Empleado', icon: AlertTriangle })
+    })
+    ;(alertasVehRes.data || []).forEach((a, idx) => {
+      timeline.push({ id: `al-v-${idx}`, fecha: a.created_at || new Date().toISOString(), tipo: 'alerta',
+        mensaje: `${a.nombre_alerta || 'Documento'} ${a.estado_alerta === 'VENCIDO' ? 'vencido' : 'crítico'} hace ${Math.abs(a.dias_para_vencer)} días`,
+        entidad: 'Vehículo', nombre: a.nombre_vehiculo || a.nombre_entidad || 'Vehículo', icon: AlertTriangle })
+    })
+
+    timeline.sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+    const timelineLimit = timeline.slice(0, 10)
+
+    setDashboardData(prev => ({
+      ...prev,
+      stats: {
+        ...prev.stats,
+        trabajadores: trabCount || 0,
+        maquinaria: maqRes.data?.length || 0,
+        vehiculos: vehiculosCount || 0,
+        ubicacion: (maqRes.data || []).filter(m => m.estado === 'operativa').length,
+      },
+      maquinariaPorEstado,
+      trabajadoresPorDepto,
+      timeline: timelineLimit,
+      proximasOrdenes: ordenesRes.data || [],
+      alertasDocumentos: alertasTrabRes.data || [],
+      alertasVehiculos: alertasVehRes.data || [],
+    }))
+  }
+
+  // ─── FASE 2: Auditoría ─────────────────────────────────────────────
+  async function fetchFaseAuditoria() {
+    try {
+      const frentesRes = await supabase
+        .from('frentes_trabajo')
+        .select('id, codigo, nombre')
+        .eq('activo', true)
+        .limit(10)
+
+      const frentes = frentesRes.data || []
+
+      const resultadosFrentes = await Promise.all(frentes.map(async (frente) => {
+        try {
+          const datos = await getDatosAuditoria(frente.id)
+          if (!datos) return { ...frente, pct: 0, categorias: {} }
+          const { empleados, maquinaria } = datos
+          empleados.forEach(e => { e._cumplimiento = calcularCumplimientoEmpleado(e) })
+          maquinaria.forEach(m => { m._cumplimiento = calcularCumplimientoMaquinaria(m) })
+          const global = calcularCumplimientoGlobal(empleados, maquinaria)
+          return { ...frente, pct: global.porcentaje, categorias: global.categorias }
+        } catch {
+          return { ...frente, pct: 0, categorias: {} }
+        }
+      }))
+
+      resultadosFrentes.sort((a, b) => a.pct - b.pct)
+      const frentesValidos = resultadosFrentes.filter(f =>
+        f.pct > 0 || ['FT-SR', 'FT-SANTA-ROSA'].includes(f.codigo?.toUpperCase())
+      )
+
+      setDashboardData(prev => ({ ...prev, cumplimientoFrentes: frentesValidos }))
+    } catch (err) {
+      // Fire-and-forget: silencioso por diseño — datos complementarios
+      // que se refrescan en segundo plano sin interrumpir al usuario.
+      // En el próximo ciclo de fetchFaseAuditoria() se reintenta automáticamente.
+      console.error('Error en auditoría del dashboard:', err)
+    }
+  }
+
+  // ─── FASE 3: Financiera ────────────────────────────────────────────
+  async function fetchFaseFinanciera() {
+    try {
+      const [facturasRes, cuentasRes, nominasRes] = await Promise.all([
+        supabase.from('facturas').select('total, estado').eq('activo', true),
+        supabase.from('plan_cuentas').select('id', { count: 'exact', head: true }).eq('activa', true),
+        supabase.from('nominas').select('id').eq('pagado', false).eq('activo', true),
+      ])
+
+      const facturas = facturasRes.data || []
+      const carteraVencida = facturas
+        .filter(f => f.estado === 'vencida')
+        .reduce((sum, f) => sum + Number(f.total || 0), 0)
+      const facturacionTotal = facturas
+        .filter(f => f.estado !== 'anulada')
+        .reduce((sum, f) => sum + Number(f.total || 0), 0)
+
+      setDashboardData(prev => ({
+        ...prev,
+        stats: {
+          ...prev.stats,
+          facturacion: Math.round(facturacionTotal / 1000000),
+          cuentas: cuentasRes.count || 0,
+          nominaPendientes: nominasRes.data?.length || 0,
+          carteraVencida: Math.round(carteraVencida / 1000000),
+        },
+      }))
+    } catch (err) {
+      // Fire-and-forget: silencioso por diseño — datos complementarios
+      // que se refrescan en segundo plano sin interrumpir al usuario.
+      // En el próximo ciclo de fetchFaseFinanciera() se reintenta automáticamente.
+      console.error('Error en financieros del dashboard:', err)
     }
   }
 
@@ -362,7 +348,7 @@ export default function Dashboard() {
           <Link href="/alertas" className="text-sm text-blue-600 hover:text-blue-700 font-medium">Ver todas</Link>
         </div>
         {loading ? (
-          <p className="text-gray-400 text-center py-4">Cargando...</p>
+          <div className="space-y-3 py-2"><div className="h-16 bg-gray-100 rounded-lg animate-pulse" /><div className="h-16 bg-gray-100 rounded-lg animate-pulse" /></div>
         ) : dashboardData.alertasDocumentos.length === 0 && dashboardData.alertasVehiculos.length === 0 ? (
           <div className="text-center py-6">
             <CheckCircle2 className="mx-auto h-8 w-8 text-green-400" />
@@ -428,7 +414,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Estado de Maquinaria</h2>
           {loading ? (
-            <div className="flex items-center justify-center h-64"><p className="text-gray-400">Cargando...</p></div>
+            <div className="flex items-center justify-center h-64"><div className="w-40 h-40 rounded-full bg-gray-100 animate-pulse" /></div>
           ) : dashboardData.maquinariaPorEstado.length === 0 ? (
             <div className="flex items-center justify-center h-64"><p className="text-gray-400">Sin datos</p></div>
           ) : (
@@ -474,7 +460,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Empleados por Departamento</h2>
           {loading ? (
-            <div className="flex items-center justify-center h-64"><p className="text-gray-400">Cargando...</p></div>
+            <div className="flex items-center justify-center h-64"><div className="w-full max-w-md"><div className="h-4 bg-gray-100 rounded animate-pulse mb-4" /><div className="h-4 bg-gray-100 rounded animate-pulse w-3/4 mb-4" /><div className="h-4 bg-gray-100 rounded animate-pulse w-1/2" /></div></div>
           ) : dashboardData.trabajadoresPorDepto.length === 0 ? (
             <div className="flex items-center justify-center h-64"><p className="text-gray-400">Sin datos</p></div>
           ) : (
@@ -499,7 +485,7 @@ export default function Dashboard() {
             <Link href="/auditorias" className="text-sm text-blue-600 hover:text-blue-700 font-medium">Ver todo</Link>
           </div>
           {loading ? (
-            <div className="flex items-center justify-center h-64"><p className="text-gray-400">Cargando...</p></div>
+            <div className="flex items-center justify-center h-64"><div className="w-full max-w-sm space-y-3"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full bg-gray-100 animate-pulse" /><div className="flex-1 space-y-2"><div className="h-4 bg-gray-100 rounded animate-pulse" /><div className="h-3 bg-gray-100 rounded animate-pulse w-3/4" /></div></div><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full bg-gray-100 animate-pulse" /><div className="flex-1 space-y-2"><div className="h-4 bg-gray-100 rounded animate-pulse" /><div className="h-3 bg-gray-100 rounded animate-pulse w-3/4" /></div></div></div></div>
           ) : dashboardData.cumplimientoFrentes.length === 0 ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
@@ -514,7 +500,7 @@ export default function Dashboard() {
                 const cfg = getRangoCumplimiento(f.pct)
                 return (
                   <Link key={f.id} href={`/auditorias?frente=${f.id}`} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition border border-transparent hover:border-gray-200">
-                    <MiniProgressRing pct={f.pct} />
+                    <ProgressRing percentage={f.pct} size={48} strokeWidth={4} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{f.codigo} — {f.nombre}</p>
                       <p className={`text-xs ${cfg.text}`}>
@@ -541,7 +527,7 @@ export default function Dashboard() {
             <Link href="/mantenimiento/ordenes" className="text-sm text-blue-600 hover:text-blue-700 font-medium">Ver todas</Link>
           </div>
           {loading ? (
-            <p className="text-gray-400 text-center py-8">Cargando...</p>
+            <div className="space-y-3 py-4"><div className="h-16 bg-gray-100 rounded-lg animate-pulse" /><div className="h-16 bg-gray-100 rounded-lg animate-pulse" /><div className="h-16 bg-gray-100 rounded-lg animate-pulse" /></div>
           ) : dashboardData.proximasOrdenes.length === 0 ? (
             <div className="text-center py-8">
               <ClipboardList className="mx-auto h-10 w-10 text-gray-300" />
@@ -600,7 +586,7 @@ export default function Dashboard() {
             <h2 className="text-lg font-semibold text-gray-900">Actividad Reciente</h2>
           </div>
           {loading ? (
-            <p className="text-gray-400 text-center py-8">Cargando...</p>
+            <div className="space-y-4 py-4"><div className="flex gap-3"><div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse" /><div className="flex-1 space-y-2"><div className="h-4 bg-gray-100 rounded animate-pulse w-3/4" /><div className="h-3 bg-gray-100 rounded animate-pulse w-1/3" /></div></div><div className="flex gap-3"><div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse" /><div className="flex-1 space-y-2"><div className="h-4 bg-gray-100 rounded animate-pulse w-3/4" /><div className="h-3 bg-gray-100 rounded animate-pulse w-1/3" /></div></div></div>
           ) : dashboardData.timeline.length === 0 ? (
             <p className="text-gray-400 text-center py-8">Sin actividad reciente</p>
           ) : (

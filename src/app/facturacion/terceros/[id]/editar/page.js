@@ -82,7 +82,7 @@ export default function EditarTerceroPage() {
       })
     } catch (err) {
       console.error('Error:', err)
-      try { addToast('Error al cargar datos del tercero', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar datos del tercero', { type: 'error' })
       setError(err.message || 'Error al cargar el tercero')
     } finally {
       setCargando(false)

@@ -41,14 +41,14 @@ export default function MainLayout({ children }) {
   const esQR = pathname.startsWith('/mantenimiento/cambio-aceite/') || pathname.startsWith('/mantenimiento/vehiculo/')
   if (pathname === '/login' || esQR) {
     return (
-      <div className="min-h-screen bg-[#F5F5F5]">
+      <div className="min-h-screen">
         {children}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5]">
+    <div className="min-h-screen">
       <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
 
       {/* Overlay backdrop para mobile */}

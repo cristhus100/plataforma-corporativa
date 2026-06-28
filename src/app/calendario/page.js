@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/context/ToastContext'
 import { ChevronLeft, ChevronRight, CalendarDays, AlertTriangle, Gift, Briefcase, Truck, FileText } from 'lucide-react'
+import { CardGridSkeleton } from '@/components/ui/LoadingSkeleton'
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
@@ -31,27 +32,25 @@ export default function CalendarioPage() {
   const [diaSeleccionado, setDiaSeleccionado] = useState(null)
   const [cargandoEventos, setCargandoEventos] = useState(false)
 
-  // Cargar eventos fijos (documentos) — solo una vez al montar
+  // Cargar eventos — se recarga solo cuando cambia el año para
+  // traer documentos con vencimiento en el rango visible
   useEffect(() => {
-    cargarDocumentos()
-  }, [])
-
-  // Re-proyectar eventos anuales cuando cambia el año
-  useEffect(() => {
-    if (Object.keys(eventosAnuales).length > 0 || !loading) {
-      proyectarEventosAnuales(año)
-    }
+    cargarDocumentos(año)
   }, [año])
 
-  async function cargarDocumentos() {
+  async function cargarDocumentos(añoVisible) {
     try {
       setCargandoEventos(true)
+      const year = añoVisible || año
 
-      // Vencimientos de documentos de trabajadores (eventos fijos)
+      // Vencimientos de documentos del año visible — sin límite arbitrario
+      const inicioAño = `${year}-01-01`
+      const finAño = `${year + 1}-01-01`
       const { data: docs } = await supabase
         .from('documentos_trabajadores')
         .select('*, trabajador:trabajadores!trabajador_id(nombre,primer_apellido), tipo:tipos_documentos_trabajador!tipo_documento_id(nombre)')
-        .limit(500)
+        .gte('fecha_vencimiento', inicioAño)
+        .lt('fecha_vencimiento', finAño)
 
       const eventosTemp = []
       ;(docs || []).forEach((d) => {
@@ -66,10 +65,14 @@ export default function CalendarioPage() {
         }
       })
 
-      // Datos fuente para eventos anuales (cumpleaños, ingresos, adquisiciones)
+      // Datos fuente para eventos anuales — todos los registros activos,
+      // necesarios para proyectar cumpleaños/aniversarios a cualquier año
       const [trabRes, maqRes] = await Promise.all([
-        supabase.from('trabajadores').select('id, nombre, primer_apellido, fecha_nacimiento, fecha_ingreso'),
-        supabase.from('maquinaria').select('id, nombre, codigo_interno, fecha_adquisicion'),
+        supabase.from('trabajadores')
+          .select('id, nombre, primer_apellido, fecha_nacimiento, fecha_ingreso'),
+        supabase.from('maquinaria')
+          .select('id, nombre, codigo_interno, fecha_adquisicion')
+          .eq('activo', true),
       ])
 
       const trabajadores = trabRes.data || []
@@ -96,12 +99,12 @@ export default function CalendarioPage() {
 
       setEventosAnuales(anualesBase)
 
-      // Proyectar eventos anuales al año actual
-      const anualesProyectados = proyectarAnuales(anualesBase, año)
+      // Proyectar eventos anuales al año visible
+      const anualesProyectados = proyectarAnuales(anualesBase, year)
       setEventos([...eventosTemp, ...anualesProyectados])
     } catch (err) {
       console.error('Error cargando eventos:', err)
-      try { addToast('Error al cargar eventos del calendario', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar eventos del calendario', { type: 'error' })
     } finally {
       setCargandoEventos(false)
       setLoading(false)
@@ -196,9 +199,6 @@ export default function CalendarioPage() {
     setMes(nuevoMes)
     setAño(nuevoAño)
     setDiaSeleccionado(null)
-    if (nuevoAño !== año && Object.keys(eventosAnuales).length > 0) {
-      proyectarEventosAnuales(nuevoAño)
-    }
   }
 
   function getEventosDelDia(dia) {
@@ -309,7 +309,7 @@ export default function CalendarioPage() {
           </h3>
 
           {loading ? (
-            <p className="text-gray-400 text-sm">Cargando...</p>
+            <CardGridSkeleton count={1} />
           ) : eventosDelDiaSeleccionado.length === 0 ? (
             <div className="text-center py-8">
               <CalendarDays size={32} className="mx-auto text-gray-300 mb-2" />

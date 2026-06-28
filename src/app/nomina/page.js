@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
 import StatsCard from '@/components/ui/StatsCard';
+import { StatsCardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { formatCOP } from '@/lib/utils/nomina';
 import { exportarExcel } from '@/lib/utils/exportar';
 import {
@@ -18,7 +19,6 @@ import {
   Plus,
   Eye,
   AlertTriangle,
-  Loader2,
   CircleCheck,
   CircleX,
 } from 'lucide-react';
@@ -148,7 +148,7 @@ export default function NominaPage() {
       });
     } catch (err) {
       console.error('Error:', err);
-      try { addToast('Error al cargar datos de nómina', { type: 'error' }); } catch(e) {}
+      addToast('Error al cargar datos de nómina', { type: 'error' })
       setError(err.message || 'Error al cargar datos');
     } finally {
       setLoading(false);
@@ -184,14 +184,7 @@ export default function NominaPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Cargando m&oacute;dulo de n&oacute;mina...</p>
-        </div>
-      </div>
-    );
+    return <div className="space-y-6"><StatsCardSkeleton count={4} /></div>;
   }
 
   if (error) {

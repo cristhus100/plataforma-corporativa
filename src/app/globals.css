@@ -5,7 +5,6 @@
   --sm-yellow: #FFC107;
   --sm-yellow-dark: #FFA000;
   --sm-yellow-light: #FFF8E1;
-
   --sm-black: #1A1A1A;
   --sm-gray-900: #212121;
   --sm-gray-800: #2D2D2D;
@@ -23,6 +22,10 @@
 
   --background: #FFFFFF;
   --foreground: #1A1A1A;
+
+  /* Fondo principal (MainLayout) */
+  --bg-main: #F5F5F5;
+  --bg-body: #FFFFFF;
 }
 
 @theme inline {
@@ -44,7 +47,7 @@
 }
 
 body {
-  background: var(--sm-gray-100);
+  background: var(--bg-main);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -74,88 +77,198 @@ body {
   outline-offset: 2px;
 }
 
-/* ============================================
-   DARK MODE
-   ============================================ */
-[data-theme="dark"] body {
-  --sm-gray-100: #111111;
-  --sm-gray-200: #1A1A1A;
-  --sm-gray-300: #2D2D2D;
-  --sm-gray-500: #757575;
-  --sm-gray-700: #9E9E9E;
-  --sm-gray-800: #BDBDBD;
-  --sm-gray-900: #E0E0E0;
-  --sm-black: #FFFFFF;
-  --sm-white: #1A1A1A;
-  --foreground: #E0E0E0;
-  --background: #111111;
+/* ════════════════════════════════════════════════════════════════
+   DARK MODE PREMIUM — Inspired by Linear.app & Vercel
+   ════════════════════════════════════════════════════════════════ */
+[data-theme="dark"] {
+  /* Brand — amarillo se mantiene vibrante */
+  --sm-yellow: #FFC107;
+  --sm-yellow-dark: #FFB300;
+  --sm-yellow-light: #3D3200;
+
+  /* Invertir grises para dark */
+  --sm-black: #0A0A0A;
+  --sm-gray-900: #EDEDED;
+  --sm-gray-800: #D4D4D4;
+  --sm-gray-700: #A3A3A3;
+  --sm-gray-500: #737373;
+  --sm-gray-300: #404040;
+  --sm-gray-200: #2E2E2E;
+  --sm-gray-100: #1A1A1A;
+  --sm-white: #171717;
+
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --info: #3B82F6;
+
+  --background: #0A0A0A;
+  --foreground: #EDEDED;
+
+  /* Fondo principal (MainLayout) */
+  --bg-main: #111111;
+  --bg-body: #171717;
 }
 
 [data-theme="dark"] body {
   background: #111111;
-  color: #E0E0E0;
-}
-
-[data-theme="dark"] .bg-white {
-  background-color: #1A1A1A !important;
-}
-
-[data-theme="dark"] .border-gray-200 {
-  border-color: #2D2D2D !important;
-}
-
-[data-theme="dark"] .border-gray-100 {
-  border-color: #2D2D2D !important;
-}
-
-[data-theme="dark"] .text-gray-900 {
-  color: #E0E0E0 !important;
-}
-
-[data-theme="dark"] .text-gray-700 {
-  color: #BDBDBD !important;
-}
-
-[data-theme="dark"] .text-gray-600 {
-  color: #9E9E9E !important;
-}
-
-[data-theme="dark"] .text-gray-500 {
-  color: #757575 !important;
-}
-
-[data-theme="dark"] .bg-gray-50 {
-  background-color: #1F1F1F !important;
-}
-
-[data-theme="dark"] .bg-gray-100 {
-  background-color: #2D2D2D !important;
-}
-
-[data-theme="dark"] .divide-gray-200 {
-  border-color: #2D2D2D !important;
-}
-
-[data-theme="dark"] .hover\:bg-gray-50:hover {
-  background-color: #2D2D2D !important;
+  color: #EDEDED;
 }
 
 [data-theme="dark"] input,
 [data-theme="dark"] select,
 [data-theme="dark"] textarea {
-  background-color: #2D2D2D !important;
-  border-color: #424242 !important;
-  color: #E0E0E0 !important;
+  background-color: #1A1A1A;
+  border-color: #2E2E2E;
+  color: #EDEDED;
 }
 
 [data-theme="dark"] input::placeholder,
 [data-theme="dark"] textarea::placeholder {
-  color: #757575 !important;
+  color: #525252;
 }
 
-/* ============================================
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+  border-color: var(--sm-yellow);
+  box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.15);
+  background-color: #262626;
+}
+
+/* ─── Card y surface backgrounds ─── */
+[data-theme="dark"] .bg-white {
+  background-color: #171717;
+}
+
+[data-theme="dark"] .bg-gray-50 {
+  background-color: #1A1A1A;
+}
+
+[data-theme="dark"] .bg-gray-100 {
+  background-color: #262626;
+}
+
+[data-theme="dark"] .border-gray-200 {
+  border-color: #2E2E2E;
+}
+
+[data-theme="dark"] .text-gray-900 {
+  color: #EDEDED;
+}
+
+[data-theme="dark"] .text-gray-700 {
+  color: #A3A3A3;
+}
+
+[data-theme="dark"] .text-gray-600 {
+  color: #A3A3A3;
+}
+
+[data-theme="dark"] .text-gray-500 {
+  color: #737373;
+}
+
+[data-theme="dark"] .text-gray-400 {
+  color: #525252;
+}
+
+[data-theme="dark"] .hover\:bg-gray-50:hover {
+  background-color: #1A1A1A;
+}
+
+[data-theme="dark"] .hover\:bg-gray-100:hover {
+  background-color: #262626;
+}
+
+[data-theme="dark"] .hover\:bg-gray-300:hover {
+  background-color: #525252;
+}
+
+[data-theme="dark"] .hover\:border-gray-200:hover {
+  border-color: #404040;
+}
+
+[data-theme="dark"] .bg-gray-200 {
+  background-color: #2E2E2E;
+}
+
+[data-theme="dark"] .bg-gray-300 {
+  background-color: #404040;
+}
+
+[data-theme="dark"] .text-gray-300 {
+  color: #737373;
+}
+
+[data-theme="dark"] .text-gray-200 {
+  color: #A3A3A3;
+}
+
+[data-theme="dark"] .text-gray-100 {
+  color: #D4D4D4;
+}
+
+[data-theme="dark"] .shadow-sm,
+[data-theme="dark"] .shadow {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .shadow-lg,
+[data-theme="dark"] .shadow-xl {
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* ─── border-gray-100 / 300 ─── */
+[data-theme="dark"] .border-gray-100 {
+  border-color: #262626;
+}
+
+[data-theme="dark"] .border-gray-300 {
+  border-color: #404040;
+}
+
+/* ─── Table dividers ─── */
+[data-theme="dark"] .divide-gray-100 > * + * {
+  border-color: #262626;
+}
+
+[data-theme="dark"] .divide-gray-200 > * + * {
+  border-color: #2E2E2E;
+}
+
+/* ─── Badge backgrounds (dark mode) ─── */
+[data-theme="dark"] .bg-red-50 { background-color: #2D0A0A; }
+[data-theme="dark"] .border-red-200 { border-color: #4A1515; }
+[data-theme="dark"] .bg-green-50 { background-color: #0A2D0A; }
+[data-theme="dark"] .border-green-200 { border-color: #154A15; }
+[data-theme="dark"] .bg-orange-50 { background-color: #2D1A0A; }
+[data-theme="dark"] .border-orange-200 { border-color: #4A2A15; }
+[data-theme="dark"] .bg-yellow-50 { background-color: #2D2D0A; }
+[data-theme="dark"] .border-yellow-200 { border-color: #4A4A15; }
+[data-theme="dark"] .bg-blue-50 { background-color: #0A1A2D; }
+[data-theme="dark"] .border-blue-200 { border-color: #152A4A; }
+[data-theme="dark"] .bg-purple-50 { background-color: #1A0A2D; }
+[data-theme="dark"] .border-purple-200 { border-color: #2A154A; }
+
+/* ─── Recharts ─── */
+[data-theme="dark"] .recharts-text {
+  fill: #A3A3A3 !important;
+}
+
+[data-theme="dark"] .recharts-cartesian-grid-horizontal line,
+[data-theme="dark"] .recharts-cartesian-grid-vertical line {
+  stroke: #2E2E2E !important;
+}
+
+[data-theme="dark"] .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: #171717 !important;
+  border: 1px solid #2E2E2E !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
    ANIMACIONES
-   ============================================ */
+   ════════════════════════════════════════════════════════════════ */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -179,9 +292,9 @@ body {
   animation: slideUp 0.4s ease-out;
 }
 
-/* ============================================
+/* ════════════════════════════════════════════════════════════════
    ESTILOS DE IMPRESIÓN (PDF)
-   ============================================ */
+   ════════════════════════════════════════════════════════════════ */
 @media print {
   body * { visibility: hidden; }
   .print-area, .print-area * { visibility: visible; }
@@ -189,47 +302,39 @@ body {
   .no-print { display: none !important; }
 }
 
-/* ============================================
-   RESPONSIVE — Mejoras mobile/tablet
-   ============================================ */
-
-/* Tablets y pantallas medianas */
+/* ════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════════════════════════════ */
 @media (max-width: 1023px) {
   .sidebar-overlay {
     backdrop-filter: blur(4px);
   }
 }
 
-/* Móviles pequeños */
 @media (max-width: 640px) {
   .p-6 { padding: 1rem !important; }
   .gap-6 { gap: 1rem !important; }
 
-  /* Stats cards en una columna */
   .grid-cols-1\:sm\:grid-cols-2\:lg\:grid-cols-4,
   .grid.grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-4 {
     grid-template-columns: 1fr !important;
   }
 
-  /* Formularios: inputs full-width */
   input, select, textarea {
-    font-size: 16px !important; /* Previene zoom en iOS */
+    font-size: 16px !important;
   }
 
-  /* Tablas responsive */
   .table-responsive {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Sidebar full-width en mobile */
   aside.w-64 {
     width: 85vw !important;
     max-width: 320px;
   }
 }
 
-/* Safe area para iOS notches */
 @supports (padding: env(safe-area-inset-top)) {
   .safe-area-top {
     padding-top: env(safe-area-inset-top);

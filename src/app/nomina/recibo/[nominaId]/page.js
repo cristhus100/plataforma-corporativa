@@ -53,7 +53,7 @@ export default function ReciboPage() {
       setDetalles(dets || []);
     } catch (err) {
       console.error('Error:', err);
-      try { addToast('Error al cargar los datos de la nómina', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar los datos de la nómina', { type: 'error' })
       setError(err.message);
     } finally {
       setLoading(false);

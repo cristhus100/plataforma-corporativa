@@ -62,7 +62,7 @@ export default function CarteraPage() {
       setFacturas(facturasConSaldo)
     } catch (err) {
       console.error('Error:', err)
-      try { addToast('Error al cargar la cartera', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar la cartera', { type: 'error' })
       setError('Error al cargar la cartera')
     } finally {
       setLoading(false)

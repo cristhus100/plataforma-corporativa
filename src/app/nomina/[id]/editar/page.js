@@ -59,7 +59,7 @@ export default function EditarNominasPage() {
       setNominas(noms || []);
     } catch (err) {
       console.error('Error:', err);
-      try { addToast('Error al cargar datos de la nómina', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar datos de la nómina', { type: 'error' })
       setError(err.message);
     } finally {
       setLoading(false);
@@ -131,7 +131,7 @@ export default function EditarNominasPage() {
       cargarDatos();
     } catch (err) {
       console.error('Error guardando:', err);
-      try { addToast('Error al guardar la nómina', { type: 'error' }) } catch(e) {}
+      addToast('Error al guardar la nómina', { type: 'error' })
       setError(err.message || 'Error al guardar');
     } finally {
       setGuardando(false);

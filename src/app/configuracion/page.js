@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { guardarConfiguracionAlertas, crearFrente, actualizarFrente, eliminarFrente, crearTipoMaquinaria, actualizarTipoMaquinaria, eliminarTipoMaquinaria, configurarUmbrales, actualizarRolUsuario } from '@/actions'
+import { TableSkeleton } from '@/components/ui/LoadingSkeleton'
 import { useRole } from '@/context/RoleContext'
 import { useToast } from '@/context/ToastContext'
 import CollapsibleSection from '@/components/ui/CollapsibleSection'
@@ -45,7 +46,7 @@ function EmptyRow({ colSpan, message }) {
 // ─── Página principal ────────────────────────────────────────────
 
 export default function ConfiguracionPage() {
-  const { addToast } = useToast();
+  const { addToast, confirm } = useToast();
   const supabase = createClient()
   const { isAdmin, loading: roleLoading } = useRole()
 
@@ -131,7 +132,7 @@ export default function ConfiguracionPage() {
       setAlertas(data.alertas || [])
     } catch (err) {
       console.error('Error fetching alertas:', err)
-      try { addToast('Error al cargar alertas', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar alertas', { type: 'error' })
     } finally {
       setLoadingAlertas(false)
     }
@@ -185,7 +186,7 @@ export default function ConfiguracionPage() {
       setTimeout(() => setGuardadoAlertas(false), 3000)
     } catch (err) {
       console.error('Error guardando configuración:', err)
-      try { addToast('No se pudo guardar. Verifica los permisos de administrador.', { type: 'error' }) } catch(e) {}
+      addToast('No se pudo guardar. Verifica los permisos de administrador.', { type: 'error' })
     } finally {
       setGuardandoAlertas(false)
     }
@@ -338,7 +339,7 @@ export default function ConfiguracionPage() {
       setUsuarios(perfiles || [])
     } catch (err) {
       console.error('Error cargando usuarios:', err)
-      try { addToast('Error al cargar usuarios', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar usuarios', { type: 'error' })
     } finally {
       setLoadingUsuarios(false)
     }
@@ -509,9 +510,9 @@ export default function ConfiguracionPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {loadingFrentes ? (
-                      <EmptyRow colSpan={6} message="Cargando frentes..." />
+                      <tr><td colSpan={6} className="px-3 py-4"><div className="space-y-3"><div className="h-10 bg-gray-100 rounded animate-pulse" /><div className="h-10 bg-gray-100 rounded animate-pulse" /><div className="h-10 bg-gray-100 rounded animate-pulse" /></div></td></tr>
                     ) : frentes.length === 0 ? (
-                      <EmptyRow colSpan={6} message="No hay frentes de trabajo registrados" />
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">No hay frentes de trabajo registrados</td></tr>
                     ) : (
                       frentes.map(f => (
                         <tr key={f.id} className="hover:bg-gray-50">
@@ -524,9 +525,23 @@ export default function ConfiguracionPage() {
                               {f.activo ? 'Activo' : 'Inactivo'}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-right">
+                          <td className="px-3 py-2 text-right flex items-center justify-end gap-1">
                             <button onClick={() => abrirEditarFrente(f)} className="p-1 text-gray-400 hover:text-blue-600" title="Editar">
                               <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                const ok = await confirm(`¿Eliminar el frente "${f.nombre}"?`, { title: 'Eliminar frente', confirmText: 'Eliminar', variant: 'danger' })
+                                if (!ok) return
+                                const result = await eliminarFrente(f.id)
+                                if (result?.error) { addToast(result.error, { type: 'error' }); return }
+                                addToast('Frente eliminado', { type: 'success' })
+                                fetchFrentes()
+                              }}
+                              className="p-1 text-gray-400 hover:text-red-600"
+                              title="Eliminar"
+                            >
+                              <Trash2 size={14} />
                             </button>
                           </td>
                         </tr>
@@ -566,7 +581,7 @@ export default function ConfiguracionPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {loadingTipos ? (
-                      <EmptyRow colSpan={3} message="Cargando tipos..." />
+                      <tr><td colSpan={3} className="px-3 py-4"><div className="space-y-3"><div className="h-10 bg-gray-100 rounded animate-pulse" /><div className="h-10 bg-gray-100 rounded animate-pulse" /></div></td></tr>
                     ) : tiposMaq.length === 0 ? (
                       <EmptyRow colSpan={3} message="No hay tipos de maquinaria registrados" />
                     ) : (
@@ -574,9 +589,23 @@ export default function ConfiguracionPage() {
                         <tr key={t.id} className="hover:bg-gray-50">
                           <td className="px-3 py-2 font-medium text-gray-900">{t.nombre}</td>
                           <td className="px-3 py-2 text-gray-500">{t.descripcion || '—'}</td>
-                          <td className="px-3 py-2 text-right">
+                          <td className="px-3 py-2 text-right flex items-center justify-end gap-1">
                             <button onClick={() => abrirEditarTipo(t)} className="p-1 text-gray-400 hover:text-blue-600" title="Editar">
                               <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                const ok = await confirm(`¿Eliminar el tipo "${t.nombre}"?`, { title: 'Eliminar tipo', confirmText: 'Eliminar', variant: 'danger' })
+                                if (!ok) return
+                                const result = await eliminarTipoMaquinaria(t.id)
+                                if (result?.error) { addToast(result.error, { type: 'error' }); return }
+                                addToast('Tipo de maquinaria eliminado', { type: 'success' })
+                                fetchTiposMaquinaria()
+                              }}
+                              className="p-1 text-gray-400 hover:text-red-600"
+                              title="Eliminar"
+                            >
+                              <Trash2 size={14} />
                             </button>
                           </td>
                         </tr>
@@ -682,7 +711,7 @@ export default function ConfiguracionPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {loadingUsuarios ? (
-                      <EmptyRow colSpan={4} message="Cargando usuarios..." />
+                      <tr><td colSpan={4} className="px-3 py-4"><div className="space-y-3"><div className="h-10 bg-gray-100 rounded animate-pulse" /><div className="h-10 bg-gray-100 rounded animate-pulse" /></div></td></tr>
                     ) : usuarios.length === 0 ? (
                       <EmptyRow colSpan={4} message="No hay usuarios registrados" />
                     ) : (
@@ -726,7 +755,7 @@ export default function ConfiguracionPage() {
               <h3 className="text-sm font-semibold text-gray-900">Resumen de Alertas</h3>
             </div>
             {loadingAlertas ? (
-              <p className="text-sm text-gray-400">Cargando...</p>
+              <div className="space-y-3 p-3"><div className="h-10 bg-gray-100 rounded animate-pulse" /><div className="h-10 bg-gray-100 rounded animate-pulse" /><div className="h-10 bg-gray-100 rounded animate-pulse" /></div>
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">

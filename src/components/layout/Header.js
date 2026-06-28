@@ -7,6 +7,7 @@ import { Bell, Search, User, Menu, LogOut, Sun, Moon, AlertTriangle, XCircle, Cl
 import { createClient } from '@/lib/supabase/client'
 import { useRole } from '@/context/RoleContext'
 import { useAlertas } from '@/hooks/useAlertas'
+import { useTheme } from '@/context/ThemeContext'
 
 export default function Header({ onToggleSidebar }) {
   const router = useRouter()
@@ -14,22 +15,13 @@ export default function Header({ onToggleSidebar }) {
   const { perfil, user, isAdmin, loading: roleLoading } = useRole()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotif, setShowNotif] = useState(false)
-  const [darkMode, setDarkMode] = useState(false)
   const notifRef = useRef(null)
   const { notificaciones: todasNotifs, conteoUrgente: alertCount } = useAlertas()
   const notificaciones = todasNotifs.slice(0, 10)
+  const { darkMode, toggleTheme } = useTheme()
 
   useEffect(() => {
-    // Cargar preferencia de tema
-    const stored = localStorage.getItem('theme')
-    if (stored === 'dark') {
-      setDarkMode(true)
-      document.documentElement.setAttribute('data-theme', 'dark')
-    }
-  }, [])
-
-  // Cerrar notificaciones al hacer click fuera
-  useEffect(() => {
+    // Cerrar notificaciones al hacer click fuera
     function handleClick(e) {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
         setShowNotif(false)
@@ -39,14 +31,7 @@ export default function Header({ onToggleSidebar }) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  function toggleTheme() {
-    const newTheme = darkMode ? 'light' : 'dark'
-    setDarkMode(!darkMode)
-    localStorage.setItem('theme', newTheme)
-    document.documentElement.setAttribute('data-theme', newTheme)
-  }
-
-  const handleLogout = async () => {
+  async function handleLogout() {
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()

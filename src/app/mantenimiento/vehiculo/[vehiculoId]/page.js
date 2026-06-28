@@ -10,6 +10,7 @@ import {
   calcularHorasDesdeCambio,
   getEstadoAceiteConfig,
 } from '@/lib/utils/aceite';
+import { useUmbrales } from '@/hooks/useUmbrales';
 import {
   CheckCircle2, AlertTriangle, AlertCircle, Clock,
   User, Calendar, Gauge, ArrowRight, Loader2, Droplets, Clock3, Hash, Car,
@@ -19,6 +20,7 @@ export default function RegistroVehiculoPage() {
   const supabase = createClient();
   const params = useParams();
   const vehiculoId = params.vehiculoId;
+  const umbrales = useUmbrales();
 
   const [vehiculo, setVehiculo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -85,7 +87,7 @@ export default function RegistroVehiculoPage() {
       }]);
       await supabase.from('vehiculos').update({ kilometraje_actual: kFinal }).eq('id', vehiculoId);
 
-      const estado = calcularEstadoAceite(kFinal, vehiculo.ultimo_cambio_aceite_horometro);
+      const estado = calcularEstadoAceite(kFinal, vehiculo.ultimo_cambio_aceite_horometro, umbrales.aceite);
       const kmDesdeCambio = calcularHorasDesdeCambio(kFinal, vehiculo.ultimo_cambio_aceite_horometro);
 
       setResultado({

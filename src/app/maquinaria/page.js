@@ -18,6 +18,7 @@ import {
   calcularEstadoFiltroCombustible,
   calcularEstadoFiltroAire,
 } from '@/lib/utils/aceite';
+import { useUmbrales } from '@/hooks/useUmbrales';
 import {
   Truck,
   CheckCircle2,
@@ -35,6 +36,7 @@ import {
 export default function MaquinariaPage() {
   const supabase = createClient();
   const { isAdmin } = useRole();
+  const umbrales = useUmbrales();
   const [tipos, setTipos] = useState([]);
   const [resumen, setResumen] = useState({ total: 0, operativa: 0, mantenimiento: 0, fueraServicio: 0 });
 
@@ -218,7 +220,7 @@ export default function MaquinariaPage() {
 
   // Helpers para badges
   function renderAceiteBadge(m) {
-    const estado = calcularEstadoAceite(m.horometro_actual, m.ultimo_cambio_aceite_horometro);
+    const estado = calcularEstadoAceite(m.horometro_actual, m.ultimo_cambio_aceite_horometro, umbrales.aceite);
     const config = getEstadoAceiteConfig(estado);
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${config.badge}`}>
@@ -229,7 +231,7 @@ export default function MaquinariaPage() {
   }
 
   function renderFiltroBadge(m) {
-    const estado = calcularEstadoFiltroCombustible(m.horometro_actual, m.ultimo_cambio_filtro_combustible_horometro);
+    const estado = calcularEstadoFiltroCombustible(m.horometro_actual, m.ultimo_cambio_filtro_combustible_horometro, umbrales.filtro);
     const config = getEstadoAceiteConfig(estado);
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${config.badge}`}>

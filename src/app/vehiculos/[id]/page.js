@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import { Car, AlertTriangle, Trash2 } from 'lucide-react';
+import { DetailSkeleton } from '@/components/ui/LoadingSkeleton';
 import TabDocumentos from './components/TabDocumentos';
 import TabMantenimiento from './components/TabMantenimiento';
 import TabHistorial from './components/TabHistorial';
@@ -50,7 +51,7 @@ export default function VehiculoDetallePage() {
       setVehiculo(data);
     } catch (err) {
       console.error('Error:', err);
-      try { addToast('Error al cargar datos del vehículo', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar datos del vehículo', { type: 'error' })
     } finally {
       setLoading(false);
     }
@@ -70,14 +71,7 @@ export default function VehiculoDetallePage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando...</p>
-        </div>
-      </div>
-    );
+    return <div className="max-w-5xl mx-auto"><DetailSkeleton /></div>;
   }
 
   if (!vehiculo) {

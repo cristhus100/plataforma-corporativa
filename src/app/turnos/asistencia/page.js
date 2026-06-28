@@ -98,8 +98,8 @@ export default function AsistenciaPage() {
       }
     } catch (err) {
       console.error('Error:', err);
-	      try { addToast('Error al cargar datos de asistencia', { type: 'error' }) } catch(e) {}
-	      setError('Error al cargar datos');
+      addToast('Error al cargar datos de asistencia', { type: 'error' })
+      setError('Error al cargar datos');
     } finally {
       setCargando(false);
     }
@@ -170,8 +170,8 @@ export default function AsistenciaPage() {
       cargarDatos();
     } catch (err) {
       console.error('Error:', err);
-	      try { addToast('Error al guardar la asistencia', { type: 'error' }) } catch(e) {}
-	      setError(err.message || 'Error al guardar la asistencia');
+      addToast('Error al guardar la asistencia', { type: 'error' })
+      setError(err.message || 'Error al guardar la asistencia');
     } finally {
       setGuardando(false);
     }

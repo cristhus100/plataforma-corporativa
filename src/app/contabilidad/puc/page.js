@@ -63,7 +63,7 @@ export default function PUCPage() {
         setCuentasList(data || []);
       } catch (err) {
         console.error('Error loading PUC:', err);
-        try { addToast('Error al cargar el plan de cuentas', { type: 'error' }) } catch(e) {}
+        addToast('Error al cargar el plan de cuentas', { type: 'error' })
         setError(err.message);
       } finally {
         setLoading(false);

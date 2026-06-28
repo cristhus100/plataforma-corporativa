@@ -144,3 +144,45 @@ describe('getEstadoAceiteLabel()', () => {
     expect(getEstadoAceiteLabel('SIN_DATO')).toBe('Sin registro')
   })
 })
+
+describe('calcularEstadoAceite con umbrales personalizados', () => {
+  const U = { PROXIMO: 100, CRITICO: 200, VENCIDO: 400 }
+
+  it('usa los umbrales proporcionados en vez de los defaults', () => {
+    expect(calcularEstadoAceite(150, 0, U)).toBe('PROXIMO')
+    expect(calcularEstadoAceite(250, 0, U)).toBe('CRITICO')
+    expect(calcularEstadoAceite(450, 0, U)).toBe('VENCIDO')
+  })
+
+  it('backward compatible sin parámetro umbrales', () => {
+    expect(calcularEstadoAceite(199, 0)).toBe('VIGENTE')
+    expect(calcularEstadoAceite(200, 0)).toBe('PROXIMO')
+    expect(calcularEstadoAceite(300, 0)).toBe('VENCIDO')
+  })
+
+  it('SIN_DATO funciona con umbrales personalizados', () => {
+    expect(calcularEstadoAceite(null, 100, U)).toBe('SIN_DATO')
+    expect(calcularEstadoAceite(100, null, U)).toBe('SIN_DATO')
+  })
+
+  it('VIGENTE con umbrales personalizados', () => {
+    expect(calcularEstadoAceite(90, 0, U)).toBe('VIGENTE')
+    expect(calcularEstadoAceite(99, 0, U)).toBe('VIGENTE')
+  })
+})
+
+describe('calcularEstadoFiltroCombustible con umbrales personalizados', () => {
+  const U = { PROXIMO: 40, CRITICO: 60, VENCIDO: 80 }
+
+  it('usa los umbrales proporcionados en vez de los defaults', () => {
+    expect(calcularEstadoFiltroCombustible(50, 0, U)).toBe('PROXIMO')
+    expect(calcularEstadoFiltroCombustible(70, 0, U)).toBe('CRITICO')
+    expect(calcularEstadoFiltroCombustible(90, 0, U)).toBe('VENCIDO')
+  })
+
+  it('backward compatible sin parámetro umbrales', () => {
+    expect(calcularEstadoFiltroCombustible(79, 0)).toBe('VIGENTE')
+    expect(calcularEstadoFiltroCombustible(80, 0)).toBe('PROXIMO')
+    expect(calcularEstadoFiltroCombustible(120, 0)).toBe('VENCIDO')
+  })
+})

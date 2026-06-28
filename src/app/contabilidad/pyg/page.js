@@ -116,7 +116,7 @@ export default function PyGPage() {
       setConsultado(true);
     } catch (err) {
       console.error('Error loading PyG:', err);
-      try { addToast('Error al cargar datos', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar datos', { type: 'error' })
       setError(err.message);
     } finally {
       setLoading(false);

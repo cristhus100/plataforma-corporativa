@@ -114,7 +114,7 @@ export default function NuevoTrabajadorPage() {
       }
     } catch (err) {
       console.error('Error:', err);
-      try { addToast('Error al crear trabajador', { type: 'error' }) } catch(e) {}
+      addToast('Error al crear trabajador', { type: 'error' })
       setError(err.message || 'Error al crear trabajador');
       setLoading(false);
     }

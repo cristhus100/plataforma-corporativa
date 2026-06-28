@@ -45,7 +45,7 @@ export default function MayorPage() {
         setCuentas(data || []);
       } catch (err) {
         console.error('Error loading cuentas:', err);
-        try { addToast('Error al cargar cuentas contables', { type: 'error' }) } catch(e) {}
+        addToast('Error al cargar cuentas contables', { type: 'error' })
         setError(err.message);
       } finally {
         setLoading(false);
@@ -101,7 +101,7 @@ export default function MayorPage() {
       setAsientos(data || []);
     } catch (err) {
       console.error('Error consulting mayor:', err);
-      try { addToast('Error al consultar movimientos del mayor', { type: 'error' }) } catch(e) {}
+      addToast('Error al consultar movimientos del mayor', { type: 'error' })
       setError(err.message);
     } finally {
       setLoadingData(false);

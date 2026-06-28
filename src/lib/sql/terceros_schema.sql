@@ -48,9 +48,13 @@ CREATE INDEX IF NOT EXISTS idx_terceros_activo ON terceros(activo);
 -- ============================================================
 ALTER TABLE terceros ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Terceros read all" ON terceros;
 CREATE POLICY "Terceros read all" ON terceros FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Terceros admin write" ON terceros;
 CREATE POLICY "Terceros admin write" ON terceros FOR INSERT TO authenticated WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Terceros admin update" ON terceros;
 CREATE POLICY "Terceros admin update" ON terceros FOR UPDATE TO authenticated USING (es_admin()) WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Terceros admin delete" ON terceros;
 CREATE POLICY "Terceros admin delete" ON terceros FOR DELETE TO authenticated USING (es_admin());
 
 -- ============================================================

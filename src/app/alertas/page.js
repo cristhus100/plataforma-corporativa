@@ -2,9 +2,10 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState, useRef } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState } from 'react'
+import { useAlertas } from '@/hooks/useAlertas'
 import { useToast } from '@/context/ToastContext'
+import { TableSkeleton } from '@/components/ui/LoadingSkeleton'
 import {
   AlertTriangle,
   AlertCircle,
@@ -52,62 +53,28 @@ const ESTADOS = {
 }
 
 export default function AlertasPage() {
-  const supabase = createClient()
   const { addToast } = useToast()
-  const fetchedRef = useRef(false)
+  const {
+    documentos: contextDocumentos,
+    maquinaria: contextMaquinaria,
+    vehiculos: contextVehiculos,
+    filtroAire: contextFiltroAire,
+    loading,
+    suprimidas: descartadas,
+    descartar: descartarAlerta,
+  } = useAlertas()
   const [modo, setModo] = useState('documentos') // 'documentos' | 'maquinaria' | 'vehiculos'
 
-  // Estado para documentos
-  const [alertas, setAlertas] = useState([])
-  const [loading, setLoading] = useState(true)
+  // Estado local: filtros y búsqueda
   const [filtroEstado, setFiltroEstado] = useState('TODOS')
   const [filtroTipo, setFiltroTipo] = useState('TODOS')
   const [busqueda, setBusqueda] = useState('')
-
-  // Estado para maquinaria
-  const [alertasAceite, setAlertasAceite] = useState([])
-  const [loadingAceite, setLoadingAceite] = useState(false)
   const [filtroEstadoAceite, setFiltroEstadoAceite] = useState('TODOS')
   const [busquedaAceite, setBusquedaAceite] = useState('')
-
-  // Estado para vehiculos
-  const [alertasVehiculos, setAlertasVehiculos] = useState([])
-  const [loadingVehiculos, setLoadingVehiculos] = useState(false)
   const [filtroEstadoVehiculos, setFiltroEstadoVehiculos] = useState('TODOS')
   const [busquedaVehiculos, setBusquedaVehiculos] = useState('')
-
-  // Estado para filtro de aire
-  const [alertasFiltroAire, setAlertasFiltroAire] = useState([])
-  const [loadingFiltroAire, setLoadingFiltroAire] = useState(false)
   const [busquedaFiltroAire, setBusquedaFiltroAire] = useState('')
-
-  // Alertas descartadas localmente
-  const [descartadas, setDescartadas] = useState([])
   const [mostrarDescartadas, setMostrarDescartadas] = useState(false)
-
-  useEffect(() => {
-    fetchAlertas()
-    cargarDescartadas()
-  }, [])
-
-  async function cargarDescartadas() {
-    try {
-      const { data } = await supabase.from('alertas_suprimidas').select('entidad_id')
-      if (data) setDescartadas(data.map(d => d.entidad_id))
-    } catch (e) { /* ignore */ }
-  }
-
-  async function descartarAlerta(id) {
-    if (!id) return
-    try {
-      await supabase.from('alertas_suprimidas').insert([{ entidad_id: id }])
-      setDescartadas(prev => [...prev, id])
-    } catch (e) {
-      setDescartadas(prev => [...prev, id])
-      console.error('Error al descartar alerta:', e)
-      try { addToast('Error al descartar alerta', { type: 'error' }) } catch(e) {}
-    }
-  }
 
   function estaDescartada(item) {
     if (mostrarDescartadas) return false
@@ -116,130 +83,8 @@ export default function AlertasPage() {
     return descartadas.includes(id) || descartadas.includes(`tmp_${id}`)
   }
 
-  useEffect(() => {
-    if (modo === 'maquinaria') {
-      fetchAlertasAceite()
-      fetchAlertasFiltroAire()
-    } else if (modo === 'vehiculos') {
-      fetchAlertasVehiculos()
-    } else if (modo === 'filtro_aire') {
-      fetchAlertasFiltroAire()
-    }
-  }, [modo])
-
-  async function fetchAlertas() {
-    try {
-      setLoading(true)
-     const { data, error } = await supabase
-  .from('vw_alertas_documentos')
-  .select('*')
-  .order('fecha_vencimiento', { ascending: true })
-  .limit(200)
-
-  if (error) throw error
-
-  setAlertas(data || [])
-
-    } catch (err) {
-  console.error('Error cargando alertas:', err)
-      try { addToast('Error al cargar alertas de documentos', { type: 'error' }) } catch(e) {}
-  } finally {
-  setLoading(false)
-  }
-  }
-
-  async function fetchAlertasAceite() {
-    try {
-      setLoadingAceite(true)
-      const { data, error } = await supabase
-        .from('vw_alertas_maquinaria')
-        .select('*')
-        .order('horas_desde_cambio', { ascending: false })
-        .limit(200)
-
-      if (error) throw error
-      setAlertasAceite(data || [])
-    } catch (err) {
-      console.error('Error cargando alertas de aceite:', err)
-      try { addToast('Error al cargar alertas de aceite', { type: 'error' }) } catch(e) {}
-    } finally {
-      setLoadingAceite(false)
-    }
-  }
-
-  // Conteos
-  const conteos = {
-    VENCIDO: alertas.filter(a => a.estado_alerta === 'VENCIDO').length,
-    CRITICO: alertas.filter(a => a.estado_alerta === 'CRITICO').length,
-    PROXIMO: alertas.filter(a => a.estado_alerta === 'PROXIMO').length,
-    VIGENTE: alertas.filter(a => a.estado_alerta === 'VIGENTE').length,
-  }
-
-  const conteosVehiculos = {
-    VENCIDO: alertasVehiculos.filter(a => a.estado_alerta === 'VENCIDO').length,
-    CRITICO: alertasVehiculos.filter(a => a.estado_alerta === 'CRITICO').length,
-    PROXIMO: alertasVehiculos.filter(a => a.estado_alerta === 'PROXIMO').length,
-    VIGENTE: alertasVehiculos.filter(a => a.estado_alerta === 'VIGENTE').length,
-  }
-
-  const conteosAceite = {
-    VENCIDO: alertasAceite.filter(a => a.estado_alerta === 'VENCIDO').length,
-    CRITICO: alertasAceite.filter(a => a.estado_alerta === 'CRITICO').length,
-    PROXIMO: alertasAceite.filter(a => a.estado_alerta === 'PROXIMO').length,
-    VIGENTE: alertasAceite.filter(a => a.estado_alerta === 'VIGENTE').length,
-    SIN_DATO: alertasAceite.filter(a => a.estado_alerta === 'SIN_DATO').length,
-  }
-
-  // Filtros documentos
-  const alertasFiltradas = alertas.filter(a => {
-    if (estaDescartada(a)) return false
-    if (filtroEstado !== 'TODOS' && a.estado_alerta !== filtroEstado) return false
-    if (filtroTipo !== 'TODOS' && a.tipo_entidad !== filtroTipo) return false
-    if (busqueda) {
-      const texto = `${a.nombre_entidad || ''} ${a.tipo_documento || ''}`.toLowerCase()
-      if (!texto.includes(busqueda.toLowerCase())) return false
-    }
-    return true
-  })
-
-  async function fetchAlertasVehiculos() {
-    try {
-      setLoadingVehiculos(true)
-      const { data, error } = await supabase
-        .from('vw_alertas_vehiculos')
-        .select('*')
-        .order('estado_alerta', { ascending: true })
-        .limit(200)
-      if (error) throw error
-      setAlertasVehiculos(data || [])
-    } catch (err) {
-      console.error('Error cargando alertas de vehículos:', err)
-      try { addToast('Error al cargar alertas de vehículos', { type: 'error' }) } catch(e) {}
-    } finally {
-      setLoadingVehiculos(false)
-    }
-  }
-
-  async function fetchAlertasFiltroAire() {
-    try {
-      setLoadingFiltroAire(true)
-      const { data, error } = await supabase
-        .from('maquinaria')
-        .select('id, nombre, codigo_interno, ultima_condicion_filtro_aire, horometro_actual, ultimo_cambio_filtro_aire_horometro, ultimo_cambio_filtro_aire_fecha')
-        .in('ultima_condicion_filtro_aire', ['regular', 'critica'])
-        .order('ultima_condicion_filtro_aire', { ascending: true })
-      if (error) throw error
-      setAlertasFiltroAire(data || [])
-    } catch (err) {
-      console.error('Error cargando alertas de filtro de aire:', err)
-      try { addToast('Error al cargar alertas de filtro de aire', { type: 'error' }) } catch(e) {}
-    } finally {
-      setLoadingFiltroAire(false)
-    }
-  }
-
   // Filtros filtro de aire
-  const alertasFiltroAireFiltradas = alertasFiltroAire.filter(a => {
+  const alertasFiltroAireFiltradas = (contextFiltroAire || []).filter(a => {
     if (busquedaFiltroAire) {
       const texto = `${a.nombre || ''} ${a.codigo_interno || ''}`.toLowerCase()
       if (!texto.includes(busquedaFiltroAire.toLowerCase())) return false
@@ -248,7 +93,7 @@ export default function AlertasPage() {
   })
 
   // Filtros vehiculos
-  const alertasVehiculosFiltradas = alertasVehiculos.filter(a => {
+  const alertasVehiculosFiltradas = (contextVehiculos || []).filter(a => {
     if (estaDescartada(a)) return false
     if (filtroEstadoVehiculos !== 'TODOS' && a.estado_alerta !== filtroEstadoVehiculos) return false
     if (busquedaVehiculos) {
@@ -259,7 +104,7 @@ export default function AlertasPage() {
   })
 
   // Filtros aceite
-  const alertasAceiteFiltradas = alertasAceite.filter(a => {
+  const alertasAceiteFiltradas = (contextMaquinaria || []).filter(a => {
     if (estaDescartada(a)) return false
     if (filtroEstadoAceite !== 'TODOS') {
       if (filtroEstadoAceite === 'SIN_DATO' && a.estado_alerta !== 'SIN_DATO') return false
@@ -268,6 +113,42 @@ export default function AlertasPage() {
     if (busquedaAceite) {
       const texto = `${a.nombre_equipo || ''} ${a.codigo_interno || ''}`.toLowerCase()
       if (!texto.includes(busquedaAceite.toLowerCase())) return false
+    }
+    return true
+  })
+
+  // Conteos documentos
+  const documentos = contextDocumentos || []
+  const conteos = {
+    VENCIDO: documentos.filter(a => a.estado_alerta === 'VENCIDO').length,
+    CRITICO: documentos.filter(a => a.estado_alerta === 'CRITICO').length,
+    PROXIMO: documentos.filter(a => a.estado_alerta === 'PROXIMO').length,
+    VIGENTE: documentos.filter(a => a.estado_alerta === 'VIGENTE').length,
+  }
+
+  const conteosVehiculos = {
+    VENCIDO: (contextVehiculos || []).filter(a => a.estado_alerta === 'VENCIDO').length,
+    CRITICO: (contextVehiculos || []).filter(a => a.estado_alerta === 'CRITICO').length,
+    PROXIMO: (contextVehiculos || []).filter(a => a.estado_alerta === 'PROXIMO').length,
+    VIGENTE: (contextVehiculos || []).filter(a => a.estado_alerta === 'VIGENTE').length,
+  }
+
+  const conteosAceite = {
+    VENCIDO: (contextMaquinaria || []).filter(a => a.estado_alerta === 'VENCIDO').length,
+    CRITICO: (contextMaquinaria || []).filter(a => a.estado_alerta === 'CRITICO').length,
+    PROXIMO: (contextMaquinaria || []).filter(a => a.estado_alerta === 'PROXIMO').length,
+    VIGENTE: (contextMaquinaria || []).filter(a => a.estado_alerta === 'VIGENTE').length,
+    SIN_DATO: (contextMaquinaria || []).filter(a => a.estado_alerta === 'SIN_DATO').length,
+  }
+
+  // Filtros documentos
+  const alertasFiltradas = documentos.filter(a => {
+    if (estaDescartada(a)) return false
+    if (filtroEstado !== 'TODOS' && a.estado_alerta !== filtroEstado) return false
+    if (filtroTipo !== 'TODOS' && a.tipo_entidad !== filtroTipo) return false
+    if (busqueda) {
+      const texto = `${a.nombre_entidad || ''} ${a.tipo_documento || ''}`.toLowerCase()
+      if (!texto.includes(busqueda.toLowerCase())) return false
     }
     return true
   })
@@ -396,7 +277,7 @@ export default function AlertasPage() {
           {/* Tabla documentos */}
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             {loading ? (
-              <div className="p-12 text-center text-gray-500">Cargando alertas...</div>
+              <div className="p-8"><TableSkeleton rows={6} cols={5} /></div>
             ) : alertasFiltradas.length === 0 ? (
               <div className="p-12 text-center">
                 <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-3" />
@@ -478,7 +359,7 @@ export default function AlertasPage() {
 
             {!loading && alertasFiltradas.length > 0 && (
               <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-600">
-                Mostrando <span className="font-semibold">{alertasFiltradas.length}</span> de <span className="font-semibold">{alertas.length}</span> alertas
+                Mostrando <span className="font-semibold">{alertasFiltradas.length}</span> de <span className="font-semibold">{documentos.length}</span> alertas
               </div>
             )}
           </div>
@@ -569,7 +450,7 @@ export default function AlertasPage() {
 
           {/* Tabla alertas de aceite */}
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            {loadingAceite ? (
+            {loading ? (
               <div className="p-12 text-center text-gray-500">Cargando alertas de mantenimiento...</div>
             ) : alertasAceiteFiltradas.length === 0 ? (
               <div className="p-12 text-center">
@@ -668,7 +549,7 @@ export default function AlertasPage() {
 
             {!loadingAceite && alertasAceiteFiltradas.length > 0 && (
               <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-600">
-                Mostrando <span className="font-semibold">{alertasAceiteFiltradas.length}</span> de <span className="font-semibold">{alertasAceite.length}</span> equipos
+                Mostrando <span className="font-semibold">{alertasAceiteFiltradas.length}</span> de <span className="font-semibold">{(contextMaquinaria || []).length}</span> equipos
               </div>
             )}
           </div>
@@ -679,7 +560,7 @@ export default function AlertasPage() {
               <Wind className="w-4 h-4 text-gray-500" />
               <h3 className="text-sm font-semibold text-gray-700">Filtros de Aire</h3>
             </div>
-            {loadingFiltroAire ? (
+            {loading ? (
               <div className="p-6 text-center text-gray-500 text-sm">Cargando...</div>
             ) : alertasFiltroAireFiltradas.length === 0 ? (
               <div className="p-6 text-center">
@@ -734,7 +615,7 @@ export default function AlertasPage() {
                 </table>
               </div>
             )}
-            {!loadingFiltroAire && alertasFiltroAireFiltradas.length > 0 && (
+            {!loading && alertasFiltroAireFiltradas.length > 0 && (
               <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
                 <span className="font-semibold">{alertasFiltroAireFiltradas.length}</span> equipo(s) con alerta
               </div>
@@ -783,7 +664,7 @@ export default function AlertasPage() {
           </div>
 
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            {loadingVehiculos ? (
+            {loading ? (
               <div className="p-12 text-center text-gray-500">Cargando alertas de vehículos...</div>
             ) : alertasVehiculosFiltradas.length === 0 ? (
               <div className="p-12 text-center">
@@ -852,9 +733,9 @@ export default function AlertasPage() {
                 </table>
               </div>
             )}
-            {!loadingVehiculos && alertasVehiculosFiltradas.length > 0 && (
+            {!loading && alertasVehiculosFiltradas.length > 0 && (
               <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-600">
-                Mostrando <span className="font-semibold">{alertasVehiculosFiltradas.length}</span> de <span className="font-semibold">{alertasVehiculos.length}</span> alertas
+                Mostrando <span className="font-semibold">{alertasVehiculosFiltradas.length}</span> de <span className="font-semibold">{(contextVehiculos || []).length}</span> alertas
               </div>
             )}
           </div>

@@ -59,7 +59,7 @@ export default function TerceroDetallePage() {
       setTercero(data)
     } catch (err) {
       console.error('Error:', err)
-      try { addToast('Error al cargar el tercero', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar el tercero', { type: 'error' })
       setError(err.message || 'Error al cargar el tercero')
     } finally {
       setLoading(false)

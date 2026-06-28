@@ -10,6 +10,7 @@ import {
   calcularEstadoFiltroCombustible,
   calcularHorasDesdeCambioFiltro,
 } from '@/lib/utils/aceite';
+import { useUmbrales } from '@/hooks/useUmbrales';
 import { formatearFecha } from '@/lib/utils/maquinaria';
 import {
   Fuel,
@@ -33,6 +34,7 @@ import QRCode from 'qrcode';
 export default function TabMantenimiento({ vehiculoId, vehiculo, onUpdate, isAdmin = false }) {
   const { addToast } = useToast();
   const supabase = createClient();
+  const umbrales = useUmbrales();
   const [lecturas, setLecturas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -50,11 +52,11 @@ export default function TabMantenimiento({ vehiculoId, vehiculo, onUpdate, isAdm
   const [tecnicoFiltro, setTecnicoFiltro] = useState('');
   const [guardandoFiltro, setGuardandoFiltro] = useState(false);
 
-  const estadoAceite = calcularEstadoAceite(vehiculo.kilometraje_actual, vehiculo.ultimo_cambio_aceite_horometro);
+  const estadoAceite = calcularEstadoAceite(vehiculo.kilometraje_actual, vehiculo.ultimo_cambio_aceite_horometro, umbrales.aceite);
   const kmDesdeCambio = calcularHorasDesdeCambio(vehiculo.kilometraje_actual, vehiculo.ultimo_cambio_aceite_horometro);
   const configAceite = getEstadoAceiteConfig(estadoAceite);
 
-  const estadoFiltro = calcularEstadoFiltroCombustible(vehiculo.kilometraje_actual, vehiculo.ultimo_cambio_filtro_combustible_horometro);
+  const estadoFiltro = calcularEstadoFiltroCombustible(vehiculo.kilometraje_actual, vehiculo.ultimo_cambio_filtro_combustible_horometro, umbrales.filtro);
   const kmDesdeCambioFiltro = calcularHorasDesdeCambioFiltro(vehiculo.kilometraje_actual, vehiculo.ultimo_cambio_filtro_combustible_horometro);
   const configFiltro = getEstadoAceiteConfig(estadoFiltro);
 
@@ -85,7 +87,7 @@ export default function TabMantenimiento({ vehiculoId, vehiculo, onUpdate, isAdm
       setLecturas(data || []);
     } catch (err) {
       console.error('Error cargando lecturas:', err);
-      try { addToast('Error al cargar los registros de mantenimiento', { type: 'error' }); } catch(e) {};
+      addToast('Error al cargar los registros de mantenimiento', { type: 'error' })
       setError(err.message);
     } finally {
       setLoading(false);

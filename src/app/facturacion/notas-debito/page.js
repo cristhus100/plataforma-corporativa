@@ -65,7 +65,7 @@ export default function NotasDebitoPage() {
       setNotas(data || [])
     } catch (err) {
       console.error('Error:', err)
-      try { addToast('Error al cargar las notas debito', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar las notas débito', { type: 'error' })
       setError('Error al cargar las notas d&eacute;bito')
     } finally {
       setLoading(false)
@@ -84,7 +84,7 @@ export default function NotasDebitoPage() {
       if (tiposRes.data) setTiposDocumento(tiposRes.data)
     } catch (err) {
       console.error('Error catalogos:', err)
-      try { addToast('Error al cargar catalogos', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar catálogos', { type: 'error' })
     }
   }
 

@@ -7,6 +7,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRole } from '@/context/RoleContext'
+import { actualizarOrdenMantenimiento } from '@/actions'
 import { useToast } from '@/context/ToastContext'
 
 export default function EditarOrdenPage() {
@@ -98,7 +99,7 @@ export default function EditarOrdenPage() {
       });
     } catch (err) {
       console.error('Error cargando orden:', err);
-      try { addToast('Error al cargar datos de la orden', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar datos de la orden', { type: 'error' })
       setError('No se pudo cargar la orden');
     } finally {
       setCargando(false);
@@ -120,36 +121,15 @@ export default function EditarOrdenPage() {
     setError(null);
 
     try {
-      const dataToUpdate = {
-        titulo: form.titulo,
-        descripcion: form.descripcion || null,
-        tipo: form.tipo,
-        prioridad: form.prioridad,
-        maquinaria_id: form.maquinaria_id ? parseInt(form.maquinaria_id) : null,
-        vehiculo_id: form.vehiculo_id ? parseInt(form.vehiculo_id) : null,
-        frente_trabajo_id: form.frente_trabajo_id ? parseInt(form.frente_trabajo_id) : null,
-        responsable_id: form.responsable_id ? parseInt(form.responsable_id) : null,
-        fecha_programada: form.fecha_programada || null,
-        horometro_actual: form.horometro_actual ? parseFloat(form.horometro_actual) : null,
-        costo_estimado: form.costo_estimado ? parseInt(form.costo_estimado) : null,
-        observaciones: form.observaciones || null,
-      };
+      const result = await actualizarOrdenMantenimiento(params.id, form);
 
-      Object.keys(dataToUpdate).forEach(key => {
-        if (dataToUpdate[key] === '') dataToUpdate[key] = null;
-      });
+      if (result.error) throw new Error(result.error);
 
-      const { error: updateError } = await supabase
-        .from('ordenes_mantenimiento')
-        .update(dataToUpdate)
-        .eq('id', params.id);
-
-      if (updateError) throw updateError;
-
+      addToast('Orden actualizada exitosamente', { type: 'success' });
       router.push(`/mantenimiento/ordenes/${params.id}`);
     } catch (err) {
       console.error('Error:', err);
-      try { addToast('Error al actualizar la orden', { type: 'error' }) } catch(e) {}
+      addToast('Error al actualizar la orden', { type: 'error' });
       setError(err.message || 'Error al actualizar la orden');
       setGuardando(false);
     }

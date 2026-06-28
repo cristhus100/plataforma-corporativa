@@ -70,7 +70,7 @@ export default function ComprobanteDetailPage() {
       setAsientos(asientosData || []);
     } catch (err) {
       console.error('Error loading comprobante:', err);
-      try { addToast('Error al cargar datos del comprobante', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar datos del comprobante', { type: 'error' })
       setError(err.message);
     } finally {
       setLoading(false);

@@ -206,39 +206,63 @@ ALTER TABLE detalle_nomina ENABLE ROW LEVEL SECURITY;
 ALTER TABLE liquidacion_prestaciones ENABLE ROW LEVEL SECURITY;
 
 -- Tipo novedades: lectura todos, escritura admin
+DROP POLICY IF EXISTS "Tipo novedades read all" ON tipo_novedades;
 CREATE POLICY "Tipo novedades read all" ON tipo_novedades FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Tipo novedades admin write" ON tipo_novedades;
 CREATE POLICY "Tipo novedades admin write" ON tipo_novedades FOR INSERT TO authenticated WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Tipo novedades admin update" ON tipo_novedades;
 CREATE POLICY "Tipo novedades admin update" ON tipo_novedades FOR UPDATE TO authenticated USING (es_admin()) WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Tipo novedades admin delete" ON tipo_novedades;
 CREATE POLICY "Tipo novedades admin delete" ON tipo_novedades FOR DELETE TO authenticated USING (es_admin());
 
 -- Novedades nómina: lectura todos, inserción/actualización authenticated (como asistencia), admin delete
+DROP POLICY IF EXISTS "Novedades nomina read all" ON novedades_nomina;
 CREATE POLICY "Novedades nomina read all" ON novedades_nomina FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Novedades nomina insert" ON novedades_nomina;
 CREATE POLICY "Novedades nomina insert" ON novedades_nomina FOR INSERT TO authenticated WITH CHECK (true);
+DROP POLICY IF EXISTS "Novedades nomina update" ON novedades_nomina;
 CREATE POLICY "Novedades nomina update" ON novedades_nomina FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Novedades nomina admin delete" ON novedades_nomina;
 CREATE POLICY "Novedades nomina admin delete" ON novedades_nomina FOR DELETE TO authenticated USING (es_admin());
 
 -- Periodos nómina: lectura todos, escritura admin
+DROP POLICY IF EXISTS "Periodos nomina read all" ON periodos_nomina;
 CREATE POLICY "Periodos nomina read all" ON periodos_nomina FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Periodos nomina admin write" ON periodos_nomina;
 CREATE POLICY "Periodos nomina admin write" ON periodos_nomina FOR INSERT TO authenticated WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Periodos nomina admin update" ON periodos_nomina;
 CREATE POLICY "Periodos nomina admin update" ON periodos_nomina FOR UPDATE TO authenticated USING (es_admin()) WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Periodos nomina admin delete" ON periodos_nomina;
 CREATE POLICY "Periodos nomina admin delete" ON periodos_nomina FOR DELETE TO authenticated USING (es_admin());
 
 -- Nóminas: lectura todos, escritura admin
+DROP POLICY IF EXISTS "Nominas read all" ON nominas;
 CREATE POLICY "Nominas read all" ON nominas FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Nominas admin write" ON nominas;
 CREATE POLICY "Nominas admin write" ON nominas FOR INSERT TO authenticated WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Nominas admin update" ON nominas;
 CREATE POLICY "Nominas admin update" ON nominas FOR UPDATE TO authenticated USING (es_admin()) WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Nominas admin delete" ON nominas;
 CREATE POLICY "Nominas admin delete" ON nominas FOR DELETE TO authenticated USING (es_admin());
 
 -- Detalle nómina: lectura todos, escritura admin
+DROP POLICY IF EXISTS "Detalle nomina read all" ON detalle_nomina;
 CREATE POLICY "Detalle nomina read all" ON detalle_nomina FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Detalle nomina admin write" ON detalle_nomina;
 CREATE POLICY "Detalle nomina admin write" ON detalle_nomina FOR INSERT TO authenticated WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Detalle nomina admin update" ON detalle_nomina;
 CREATE POLICY "Detalle nomina admin update" ON detalle_nomina FOR UPDATE TO authenticated USING (es_admin()) WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Detalle nomina admin delete" ON detalle_nomina;
 CREATE POLICY "Detalle nomina admin delete" ON detalle_nomina FOR DELETE TO authenticated USING (es_admin());
 
 -- Liquidación prestaciones: lectura todos, escritura admin
+DROP POLICY IF EXISTS "Prestaciones read all" ON liquidacion_prestaciones;
 CREATE POLICY "Prestaciones read all" ON liquidacion_prestaciones FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Prestaciones admin write" ON liquidacion_prestaciones;
 CREATE POLICY "Prestaciones admin write" ON liquidacion_prestaciones FOR INSERT TO authenticated WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Prestaciones admin update" ON liquidacion_prestaciones;
 CREATE POLICY "Prestaciones admin update" ON liquidacion_prestaciones FOR UPDATE TO authenticated USING (es_admin()) WITH CHECK (es_admin());
+DROP POLICY IF EXISTS "Prestaciones admin delete" ON liquidacion_prestaciones;
 CREATE POLICY "Prestaciones admin delete" ON liquidacion_prestaciones FOR DELETE TO authenticated USING (es_admin());
 
 -- ============================================================

@@ -115,7 +115,7 @@ export default function BalanceGeneralPage() {
       setConsultado(true);
     } catch (err) {
       console.error('Error loading balance general:', err);
-      try { addToast('Error al cargar el balance general', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar el balance general', { type: 'error' })
       setError(err.message);
     } finally {
       setLoading(false);

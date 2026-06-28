@@ -174,7 +174,7 @@ export default function NuevaMaquinariaPage() {
       if (result.success) router.push('/maquinaria')
     } catch (err) {
       console.error('Error:', err)
-      try { addToast('Error al crear la maquinaria', { type: 'error' }) } catch(e) {}
+      addToast('Error al crear la maquinaria', { type: 'error' })
       setError(err.message || 'Error al crear la maquinaria')
       setLoading(false)
     }

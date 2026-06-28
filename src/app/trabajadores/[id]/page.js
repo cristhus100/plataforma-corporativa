@@ -61,7 +61,7 @@ export default function DetalleTrabajadorPage() {
       setTrabajador(data);
     } catch (err) {
       console.error('Error cargando trabajador:', err);
-      try { addToast('Error al cargar datos del trabajador', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar datos del trabajador', { type: 'error' })
       setError(err.message);
     } finally {
       setLoading(false);
@@ -107,7 +107,7 @@ export default function DetalleTrabajadorPage() {
       router.refresh();
     } catch (err) {
       console.error('Error al eliminar:', err);
-      try { addToast('Error al eliminar trabajador', { type: 'error' }) } catch(e) {}
+      addToast('Error al eliminar trabajador', { type: 'error' })
       setErrorEliminar('No se pudo eliminar: ' + err.message);
       setEliminando(false);
     }
@@ -517,7 +517,7 @@ function TabHistorial({ trabajadorId }) {
       setHistorial(data || []);
     } catch (err) {
       console.error('Error cargando historial:', err);
-      try { addToast('Error al cargar historial del trabajador', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar historial del trabajador', { type: 'error' })
     } finally {
       setLoading(false);
     }

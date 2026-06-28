@@ -33,6 +33,7 @@ CREATE INDEX IF NOT EXISTS idx_maquinaria_frente ON maquinaria(frente_trabajo_id
 ALTER TABLE frentes_trabajo ENABLE ROW LEVEL SECURITY;
 
 -- Admin: full access
+DROP POLICY IF EXISTS "Admin full access frentes_trabajo" ON frentes_trabajo;
 CREATE POLICY "Admin full access frentes_trabajo"
   ON frentes_trabajo
   FOR ALL
@@ -41,6 +42,7 @@ CREATE POLICY "Admin full access frentes_trabajo"
   WITH CHECK (es_admin());
 
 -- Usuario: read-only
+DROP POLICY IF EXISTS "Usuario read frentes_trabajo" ON frentes_trabajo;
 CREATE POLICY "Usuario read frentes_trabajo"
   ON frentes_trabajo
   FOR SELECT

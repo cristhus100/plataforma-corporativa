@@ -23,6 +23,7 @@ import {
   diasDesdeHoy,
   getEstadoProgramacion,
 } from '@/lib/utils/ordenes_mantenimiento';
+import { cambiarEstadoOrdenMantenimiento } from '@/actions';
 import { useToast } from '@/context/ToastContext';
 
 const TABS = [
@@ -66,7 +67,7 @@ export default function OrdenDetallePage() {
       setOrden(data);
     } catch (err) {
       console.error('Error cargando orden:', err);
-      try { addToast('Error al cargar la orden', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar la orden', { type: 'error' })
       setError(err.message);
     } finally {
       setLoading(false);
@@ -76,23 +77,20 @@ export default function OrdenDetallePage() {
   const handleCambiarEstado = async (nuevoEstado) => {
     setCambiando(true);
     try {
-      const updateData = { estado: nuevoEstado };
+      const result = await cambiarEstadoOrdenMantenimiento(params.id, nuevoEstado);
 
-      if (nuevoEstado === 'completado') {
-        updateData.fecha_fin = new Date().toISOString().split('T')[0];
-      }
+      if (result.error) throw new Error(result.error);
 
-      const { error: err } = await supabase
-        .from('ordenes_mantenimiento')
-        .update(updateData)
-        .eq('id', params.id);
-
-      if (err) throw err;
-      setOrden({ ...orden, ...updateData });
+      setOrden(prev => ({
+        ...prev,
+        estado: nuevoEstado,
+        fecha_fin: nuevoEstado === 'completado' ? new Date().toISOString().split('T')[0] : prev.fecha_fin,
+      }));
       setMostrarModal(false);
+      addToast(`Orden ${nuevoEstado === 'completado' ? 'completada' : nuevoEstado === 'cancelado' ? 'cancelada' : 'iniciada'} exitosamente`, { type: 'success' });
     } catch (err) {
       console.error('Error cambiando estado:', err);
-      try { addToast('Error al cambiar el estado de la orden', { type: 'error' }) } catch(e) {}
+      addToast('Error al cambiar el estado de la orden', { type: 'error' });
     } finally {
       setCambiando(false);
     }

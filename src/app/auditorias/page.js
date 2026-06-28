@@ -14,6 +14,7 @@ import {
   CATEGORIAS_AUDITORIA,
   CATEGORIAS_ORDER,
 } from '@/lib/utils/auditoria';
+import ProgressRing from '@/components/ui/ProgressRing';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/context/ToastContext';
 import {
@@ -41,35 +42,6 @@ const CAT_ICONS = {
   maquinaria_mantenimiento: Wrench,
   maquinaria_operacion: Settings,
 };
-
-// ─── COMPONENTE: Anillo de progreso circular ─────────────────
-function ProgressRing({ percentage, size = 160, strokeWidth = 12, color, label }) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (percentage / 100) * circumference;
-  const rango = getRangoCumplimiento(percentage);
-
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <svg width={size} height={size} className="transform -rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="transparent" stroke="#e5e7eb" strokeWidth={strokeWidth} />
-        <circle
-          cx={size / 2} cy={size / 2} r={radius} fill="transparent"
-          stroke={color || rango.color} strokeWidth={strokeWidth}
-          strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
-          className="transition-all duration-1000 ease-out"
-        />
-      </svg>
-      <div className="absolute flex flex-col items-center justify-center" style={{ width: size, height: size }}>
-        <span className="text-4xl font-bold" style={{ color: rango.color }}>{percentage}%</span>
-      </div>
-      <span className="text-sm font-semibold px-3 py-1 rounded-full" style={{ backgroundColor: rango.color + '20', color: rango.color }}>
-        {rango.label}
-      </span>
-      <p className="text-xs text-gray-500 text-center max-w-[200px]">{rango.desc}</p>
-    </div>
-  );
-}
 
 // ─── COMPONENTE: Badge de estado ─────────────────────────────
 function EstadoBadge({ estado }) {
@@ -260,7 +232,7 @@ export default function AuditoriasPage() {
       } catch (err) {
         if (!mounted) return;
         console.error('Error cargando frentes:', err);
-        try { addToast('Error al cargar frentes de trabajo', { type: 'error' }) } catch(e) {}
+        addToast('Error al cargar frentes de trabajo', { type: 'error' })
       } finally {
         if (mounted) setLoadingFrentes(false);
       }
@@ -286,7 +258,7 @@ export default function AuditoriasPage() {
     } catch (err) {
       if (!mountedRef.current) return;
       console.error('Error cargando auditoría:', err);
-      try { addToast('Error al cargar datos de auditoría', { type: 'error' }) } catch(e) {}
+      addToast('Error al cargar datos de auditoría', { type: 'error' })
       setError(err.message || 'Error al cargar los datos de auditoría');
     } finally {
       if (mountedRef.current) setLoading(false);
@@ -393,7 +365,7 @@ export default function AuditoriasPage() {
           {/* CUMPLIMIENTO GLOBAL + CATEGORÍAS */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="flex items-center justify-center p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
-              <ProgressRing percentage={cumplimiento.porcentaje} size={180} />
+              <ProgressRing percentage={cumplimiento.porcentaje} size={180} strokeWidth={12} showPercentage showLabel showDescription />
             </div>
             <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
               {CATEGORIAS_ORDER.map((cat) => {

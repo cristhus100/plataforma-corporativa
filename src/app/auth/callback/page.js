@@ -34,7 +34,7 @@ export default function AuthCallbackPage() {
       }).then(({ error }) => {
         if (error) {
           console.error('Error al establecer sesión de recuperación:', error)
-          try { addToast('Error al restablecer la contraseña', { type: 'error' }) } catch(e) {}
+          addToast('Error al restablecer la contraseña', { type: 'error' })
           setMode('error')
           setErrorMsg('El enlace de recuperación es inválido o ha expirado.')
         } else {

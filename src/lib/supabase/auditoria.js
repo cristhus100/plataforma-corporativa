@@ -136,22 +136,34 @@ export async function getMaquinariaCompleta(frenteId) {
 
   if (err1) throw err1;
 
-  // 2. Para cada máquina, obtener mantenimientos recientes
-  const maquinariaConMant = await Promise.all(
-    (maquinaria || []).map(async (maq) => {
-      const { data: mantenimientos, error: err2 } = await supabase
-        .from('mantenimientos')
-        .select('id, tipo, fecha, descripcion')
-        .eq('maquinaria_id', maq.id)
-        .order('fecha', { ascending: false })
-        .limit(5);
+  // 2. Obtener mantenimientos de todas las máquinas en una sola query
+  const maquinariaIds = (maquinaria || []).map((m) => m.id);
+  let mantenimientosPorMaquina = {};
+  if (maquinariaIds.length > 0) {
+    const { data: todosMantenimientos, error: err2 } = await supabase
+      .from('mantenimientos')
+      .select('id, maquinaria_id, tipo, fecha, descripcion')
+      .in('maquinaria_id', maquinariaIds)
+      .order('fecha', { ascending: false });
 
-      if (err2) throw err2;
-      return { ...maq, mantenimientos: mantenimientos || [] };
-    })
-  );
+    if (err2) throw err2;
 
-  return maquinariaConMant || [];
+    // Agrupar mantenimientos por maquinaria_id en JS
+    (todosMantenimientos || []).forEach((m) => {
+      if (!mantenimientosPorMaquina[m.maquinaria_id]) {
+        mantenimientosPorMaquina[m.maquinaria_id] = [];
+      }
+      mantenimientosPorMaquina[m.maquinaria_id].push(m);
+    });
+  }
+
+  // Asignar hasta 5 mantenimientos recientes a cada máquina
+  const maquinariaConMant = (maquinaria || []).map((maq) => ({
+    ...maq,
+    mantenimientos: (mantenimientosPorMaquina[maq.id] || []).slice(0, 5),
+  }));
+
+  return maquinariaConMant;
 }
 
 /**
