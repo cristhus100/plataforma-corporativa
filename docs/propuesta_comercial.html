@@ -11,14 +11,21 @@
 
   :root {
     --yellow: #FFC107;
-    --yellow-dark: #FFA000;
+    --yellow-dark: #E5A100;
     --black: #1A1A1A;
-    --gray-900: #212121;
-    --gray-700: #424242;
-    --gray-500: #757575;
-    --gray-300: #E0E0E0;
-    --gray-100: #F5F5F5;
+    --gray-900: #171717;
+    --gray-800: #2D2D2D;
+    --gray-700: #404040;
+    --gray-600: #525252;
+    --gray-500: #737373;
+    --gray-400: #A3A3A3;
+    --gray-300: #D4D4D4;
+    --gray-200: #E5E5E5;
+    --gray-100: #F2F2F2;
+    --gray-50: #FAFAFA;
     --white: #FFFFFF;
+    --green: #059669;
+    --green-bg: #ECFDF5;
   }
 
   body {
@@ -29,10 +36,10 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* ═══════════════ COVER / HERO ═══════════════ */
+  /* ═══════════════ COVER ═══════════════ */
   .cover {
     min-height: 100vh;
-    background: linear-gradient(135deg, #1A1A1A 0%, #2D2D2D 50%, #1A1A1A 100%);
+    background: linear-gradient(160deg, #0F0F0F 0%, #1A1A1A 40%, #222222 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -43,58 +50,57 @@
   .cover::before {
     content: '';
     position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle at 30% 50%, rgba(255,193,7,0.08) 0%, transparent 50%),
-                radial-gradient(circle at 70% 50%, rgba(255,193,7,0.05) 0%, transparent 50%);
-    animation: float 20s ease-in-out infinite;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 50%, rgba(255,193,7,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 80% 30%, rgba(255,193,7,0.03) 0%, transparent 60%);
   }
-  @keyframes float {
-    0%, 100% { transform: translate(0, 0) rotate(0deg); }
-    33% { transform: translate(2%, -2%) rotate(1deg); }
-    67% { transform: translate(-1%, 1%) rotate(-1deg); }
+  .cover::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,193,7,0.3), transparent);
   }
   .cover-content {
     position: relative;
     z-index: 1;
     max-width: 880px;
     text-align: center;
-    animation: fadeUp 1s ease-out;
+    animation: fadeUp 0.9s ease-out;
   }
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(40px); }
     to { opacity: 1; transform: translateY(0); }
   }
   .cover-badge {
-    display: inline-block;
-    background: rgba(255, 193, 7, 0.15);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255,193,7,0.1);
     color: var(--yellow);
-    padding: 0.5rem 1.5rem;
+    padding: 0.45rem 1.25rem;
     border-radius: 100px;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 600;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     margin-bottom: 2rem;
-    border: 1px solid rgba(255, 193, 7, 0.25);
+    border: 1px solid rgba(255,193,7,0.2);
   }
   .cover h1 {
-    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-size: clamp(2.8rem, 6.5vw, 4.8rem);
     font-weight: 900;
     color: var(--white);
-    line-height: 1.1;
+    line-height: 1.05;
     margin-bottom: 1.5rem;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.04em;
   }
-  .cover h1 span {
-    color: var(--yellow);
-  }
+  .cover h1 span { color: var(--yellow); }
   .cover p {
-    font-size: clamp(1.1rem, 2vw, 1.35rem);
-    color: #A3A3A3;
-    max-width: 640px;
+    font-size: clamp(1.05rem, 1.8vw, 1.3rem);
+    color: var(--gray-400);
+    max-width: 620px;
     margin: 0 auto 2.5rem;
     line-height: 1.7;
   }
@@ -102,125 +108,123 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 0.75rem 2rem;
-    color: #737373;
-    font-size: 0.9rem;
+    gap: 0.75rem 2.5rem;
+    color: var(--gray-500);
+    font-size: 0.85rem;
   }
-  .cover-meta strong {
-    color: #D4D4D4;
-    font-weight: 600;
-  }
+  .cover-meta span { display: flex; align-items: center; gap: 0.4rem; }
+  .cover-meta strong { color: var(--gray-300); font-weight: 600; }
 
   /* ═══════════════ GENERAL ═══════════════ */
   .section {
-    padding: 5rem 2rem;
+    padding: 5.5rem 2rem;
     max-width: 1100px;
     margin: 0 auto;
   }
   .section-header {
     margin-bottom: 3.5rem;
+    max-width: 720px;
   }
+  .section-header.centered { text-align: center; margin-left: auto; margin-right: auto; }
   .section-tag {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
     background: var(--yellow);
     color: var(--black);
-    padding: 0.3rem 1rem;
+    padding: 0.25rem 0.9rem;
     border-radius: 100px;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     margin-bottom: 1rem;
   }
   .section h2 {
     font-size: clamp(1.8rem, 3.5vw, 2.5rem);
     font-weight: 800;
     color: var(--black);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
     line-height: 1.2;
   }
-  .section h2 + p {
+  .section h2 + p, .section > p.sub {
     color: var(--gray-500);
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     margin-top: 0.75rem;
-    max-width: 600px;
+    line-height: 1.6;
   }
-
   .section-white { background: var(--white); }
-  .section-gray { background: var(--gray-100); }
+  .section-gray {
+    background: linear-gradient(180deg, var(--gray-50) 0%, var(--gray-100) 100%);
+  }
 
   /* ═══════════════ RESUMEN ═══════════════ */
   .resumen-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
   }
   .resumen-card {
     background: var(--white);
-    border: 1px solid var(--gray-300);
-    border-radius: 16px;
+    border: 1px solid var(--gray-200);
+    border-radius: 14px;
     padding: 2rem;
     text-align: center;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: all 0.25s ease;
   }
   .resumen-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+    border-color: var(--yellow);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.06);
   }
-  .resumen-card .icon {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-  }
+  .resumen-card .icon { font-size: 2rem; margin-bottom: 0.75rem; display: block; }
   .resumen-card h3 {
     font-size: 2.5rem;
     font-weight: 900;
-    color: var(--yellow-dark);
+    color: var(--black);
     line-height: 1;
   }
   .resumen-card h3 small {
     font-size: 1rem;
-    font-weight: 600;
-    color: var(--gray-500);
+    font-weight: 500;
+    color: var(--gray-400);
   }
   .resumen-card p {
     color: var(--gray-500);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     margin-top: 0.5rem;
+    line-height: 1.5;
   }
 
   /* ═══════════════ MÓDULOS ═══════════════ */
   .modulos-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
+    gap: 1.25rem;
   }
   .modulo-card {
     background: var(--white);
-    border: 1px solid var(--gray-300);
-    border-radius: 16px;
+    border: 1px solid var(--gray-200);
+    border-radius: 14px;
     padding: 1.75rem;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: all 0.25s ease;
     display: flex;
     flex-direction: column;
   }
   .modulo-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+    border-color: var(--gray-400);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.04);
   }
-  .modulo-card .emoji {
-    font-size: 1.75rem;
-    margin-bottom: 0.75rem;
-  }
+  .modulo-card .emoji { font-size: 1.6rem; margin-bottom: 0.75rem; }
   .modulo-card h3 {
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     font-weight: 700;
-    color: var(--black);
-    margin-bottom: 0.4rem;
+    color: var(--gray-900);
+    margin-bottom: 0.3rem;
   }
   .modulo-card .status {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 600;
-    color: #10B981;
+    color: var(--green);
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
@@ -228,97 +232,66 @@
   }
   .modulo-card .status::before {
     content: '';
-    width: 6px; height: 6px;
-    background: #10B981;
+    width: 5px; height: 5px;
+    background: var(--green);
     border-radius: 50%;
   }
   .modulo-card p {
     color: var(--gray-500);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     line-height: 1.6;
     flex: 1;
   }
   .modulo-card .features {
     margin-top: 1rem;
     padding-top: 1rem;
-    border-top: 1px solid var(--gray-300);
+    border-top: 1px solid var(--gray-200);
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem;
+    gap: 0.35rem;
   }
   .modulo-card .features span {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     background: var(--gray-100);
-    color: var(--gray-700);
-    padding: 0.2rem 0.6rem;
+    color: var(--gray-600);
+    padding: 0.2rem 0.55rem;
     border-radius: 6px;
-  }
-
-  /* ═══════════════ TECH STACK ═══════════════ */
-  .tech-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1.5rem;
-  }
-  .tech-card {
-    background: var(--white);
-    border: 1px solid var(--gray-300);
-    border-radius: 14px;
-    padding: 1.5rem;
-    text-align: center;
-    transition: transform 0.2s ease;
-  }
-  .tech-card:hover {
-    transform: translateY(-2px);
-  }
-  .tech-card .icon {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
-  }
-  .tech-card h3 {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--black);
-  }
-  .tech-card p {
-    font-size: 0.8rem;
-    color: var(--gray-500);
-    margin-top: 0.25rem;
+    font-weight: 500;
   }
 
   /* ═══════════════ ARQUITECTURA ═══════════════ */
-  .arquitectura {
-    background: var(--black);
+  .arquitectura-block {
+    background: linear-gradient(160deg, #0F0F0F 0%, #1A1A1A 100%);
     border-radius: 20px;
     padding: 3rem;
-    margin: 0 2rem;
     max-width: 1100px;
     margin: 0 auto;
-    color: #D4D4D4;
   }
-  .arquitectura h2 {
+  .arquitectura-block h2 {
     color: var(--white);
     font-size: 1.8rem;
     font-weight: 800;
-    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.4rem;
   }
-  .arquitectura h2 span { color: var(--yellow); }
-  .arquitectura > p {
-    color: #A3A3A3;
+  .arquitectura-block h2 span { color: var(--yellow); }
+  .arquitectura-block > p {
+    color: var(--gray-400);
     margin-bottom: 2rem;
+    font-size: 0.95rem;
   }
   .arquitectura-code {
     background: #0A0A0A;
     border: 1px solid #2D2D2D;
     border-radius: 12px;
     padding: 2rem;
-    font-family: 'SF Mono', 'Fira Code', monospace;
-    font-size: 0.85rem;
-    line-height: 1.8;
+    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.9;
     overflow-x: auto;
     color: #D4D4D4;
   }
-  .arquitectura-code .comment { color: #737373; }
+  .arquitectura-code .comment { color: #525252; font-style: italic; }
   .arquitectura-code .highlight { color: var(--yellow); }
   .arquitectura-code .string { color: #22C55E; }
   .arquitectura-code .key { color: #60A5FA; }
@@ -326,37 +299,40 @@
   /* ═══════════════ SEGURIDAD ═══════════════ */
   .seguridad-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1.5rem;
   }
   .seguridad-item {
     display: flex;
     gap: 1rem;
     align-items: flex-start;
+    padding: 0.5rem 0;
   }
   .seguridad-item .check {
-    width: 32px; height: 32px;
+    width: 28px; height: 28px;
+    min-width: 28px;
     background: var(--yellow);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    flex-shrink: 0;
+    font-size: 0.85rem;
     color: var(--black);
   }
   .seguridad-item h4 {
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 700;
-    color: var(--black);
-    margin-bottom: 0.2rem;
+    color: var(--gray-900);
+    margin-bottom: 0.15rem;
   }
   .seguridad-item p {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--gray-500);
+    line-height: 1.5;
   }
 
-  /* ═══════════════ MEJORAS RECIENTES ═══════════════ */
+  /* ═══════════════ MEJORAS ═══════════════ */
   .mejoras-timeline {
     position: relative;
     padding-left: 2rem;
@@ -365,131 +341,138 @@
     content: '';
     position: absolute;
     left: 7px;
-    top: 0;
-    bottom: 0;
-    width: 2px;
+    top: 0.5rem;
+    bottom: 1rem;
+    width: 1.5px;
     background: var(--gray-300);
   }
   .mejora-item {
     position: relative;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
     padding-left: 1.5rem;
   }
+  .mejora-item:last-child { margin-bottom: 0; }
   .mejora-item::before {
     content: '';
     position: absolute;
-    left: -1.65rem;
-    top: 0.5rem;
-    width: 12px; height: 12px;
+    left: -1.6rem;
+    top: 0.45rem;
+    width: 10px; height: 10px;
     background: var(--yellow);
     border-radius: 50%;
-    border: 2px solid var(--white);
+    border: 2px solid var(--gray-50);
   }
   .mejora-item h4 {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 700;
-    color: var(--black);
+    color: var(--gray-900);
   }
   .mejora-item p {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--gray-500);
-    margin-top: 0.15rem;
+    margin-top: 0.1rem;
+    line-height: 1.5;
+  }
+
+  /* ═══════════════ BENEFICIOS ═══════════════ */
+  .beneficios-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+  .beneficio-item {
+    padding: 1.5rem;
+    border-left: 3px solid var(--yellow);
+    background: var(--gray-50);
+    border-radius: 0 12px 12px 0;
+  }
+  .beneficio-item h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 0.35rem;
+  }
+  .beneficio-item p {
+    color: var(--gray-500);
+    font-size: 0.85rem;
+    line-height: 1.6;
   }
 
   /* ═══════════════ PRECIOS ═══════════════ */
-  .precios-toggle {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-    margin-bottom: 3rem;
-  }
-  .precios-toggle button {
-    padding: 0.6rem 1.5rem;
-    border-radius: 100px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    border: 1px solid var(--gray-300);
-    background: var(--white);
-    color: var(--gray-700);
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-  .precios-toggle button.active {
-    background: var(--black);
-    color: var(--white);
-    border-color: var(--black);
-  }
   .precios-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 1.5rem;
     align-items: start;
   }
   .precio-card {
     background: var(--white);
-    border: 1px solid var(--gray-300);
-    border-radius: 20px;
+    border: 1px solid var(--gray-200);
+    border-radius: 16px;
     padding: 2.5rem 2rem;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
+    position: relative;
   }
   .precio-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.06);
   }
   .precio-card.featured {
-    border-color: var(--yellow);
-    border-width: 2px;
-    position: relative;
-    transform: scale(1.03);
+    border: 2px solid var(--yellow);
+    background: linear-gradient(180deg, var(--white) 0%, #FFFBEB 100%);
+    transform: scale(1.02);
+    z-index: 1;
   }
   .precio-card.featured:hover {
-    transform: scale(1.03) translateY(-4px);
+    transform: scale(1.02) translateY(-4px);
+    box-shadow: 0 16px 48px rgba(255,193,7,0.12);
   }
   .precio-card .badge {
     position: absolute;
     top: -12px;
     left: 50%;
     transform: translateX(-50%);
-    background: var(--yellow);
-    color: var(--black);
+    background: var(--black);
+    color: var(--yellow);
     padding: 0.3rem 1.2rem;
     border-radius: 100px;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
     white-space: nowrap;
+    border: 1px solid rgba(255,193,7,0.2);
   }
   .precio-card .plan-name {
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--gray-500);
-    margin-bottom: 0.5rem;
+    letter-spacing: 0.1em;
+    color: var(--gray-400);
+    margin-bottom: 0.75rem;
   }
   .precio-card .price {
-    font-size: 2.8rem;
+    font-size: 2.6rem;
     font-weight: 900;
-    color: var(--black);
+    color: var(--gray-900);
     line-height: 1;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.2rem;
+    letter-spacing: -0.02em;
   }
   .precio-card .price small {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--gray-500);
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--gray-400);
   }
   .precio-card .price-desc {
     color: var(--gray-500);
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     margin-bottom: 1.5rem;
   }
   .precio-card .divider {
     height: 1px;
-    background: var(--gray-300);
+    background: var(--gray-200);
     margin: 1.25rem 0;
   }
   .precio-card ul {
@@ -498,140 +481,194 @@
     margin-bottom: 1.5rem;
   }
   .precio-card ul li {
-    padding: 0.5rem 0;
-    font-size: 0.9rem;
-    color: var(--gray-700);
+    padding: 0.45rem 0;
+    font-size: 0.85rem;
+    color: var(--gray-600);
     display: flex;
     align-items: flex-start;
-    gap: 0.6rem;
+    gap: 0.55rem;
     line-height: 1.4;
   }
   .precio-card ul li::before {
-    content: '✓';
-    color: #10B981;
-    font-weight: 700;
-    flex-shrink: 0;
+    content: '';
+    width: 18px; height: 18px;
+    min-width: 18px;
+    background: var(--green-bg);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
     margin-top: 0.05rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23059669'%3E%3Cpath fill-rule='evenodd' d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z' clip-rule='evenodd'/%3E%3C/svg%3E");
+    background-size: 12px;
+    background-position: center;
+    background-repeat: no-repeat;
   }
   .precio-card .cta-card {
     display: block;
     text-align: center;
-    padding: 0.85rem;
-    border-radius: 12px;
+    padding: 0.8rem;
+    border-radius: 10px;
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     text-decoration: none;
+    cursor: pointer;
+    border: none;
     transition: all 0.2s ease;
     background: var(--gray-100);
-    color: var(--gray-700);
-  }
-  .precio-card.featured .cta-card {
-    background: var(--yellow);
-    color: var(--black);
-  }
-  .precio-card.featured .cta-card:hover {
-    box-shadow: 0 4px 20px rgba(255, 193, 7, 0.3);
+    color: var(--gray-600);
+    font-family: inherit;
   }
   .precio-card .cta-card:hover {
-    background: var(--gray-300);
+    background: var(--gray-200);
+  }
+  .precio-card.featured .cta-card {
+    background: var(--black);
+    color: var(--yellow);
+  }
+  .precio-card.featured .cta-card:hover {
+    background: #2D2D2D;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
   }
   .precio-note {
     text-align: center;
-    margin-top: 2.5rem;
-    padding: 1.5rem;
-    background: var(--gray-100);
-    border-radius: 14px;
-    color: var(--gray-500);
-    font-size: 0.9rem;
-  }
-  .precio-note strong {
-    color: var(--gray-900);
-  }
-
-  /* ═══════════════ INCLUYE ═══════════════ */
-  .incluye-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
     margin-top: 2rem;
-  }
-  .incluye-item {
-    background: var(--gray-100);
+    padding: 1.25rem 1.5rem;
+    background: var(--white);
+    border: 1px solid var(--gray-200);
     border-radius: 12px;
-    padding: 1rem 1.25rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--gray-900);
+    color: var(--gray-500);
+    font-size: 0.85rem;
+    line-height: 1.6;
   }
-  .incluye-item .icon-check {
-    color: #10B981;
-    font-weight: 700;
+  .precio-note strong { color: var(--gray-900); font-weight: 700; }
+  .precio-note.dark {
+    background: var(--black);
+    border-color: #2D2D2D;
+    color: var(--gray-400);
   }
+  .precio-note.dark strong { color: var(--white); }
 
-  /* ═══════════════ FOOTER / CTA ═══════════════ */
+  /* ═══════════════ COMPARATIVA ═══════════════ */
+  .comparativa-wrap {
+    margin-top: 3rem;
+    overflow-x: auto;
+  }
+  .comparativa-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    min-width: 600px;
+  }
+  .comparativa-wrap thead th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    border-bottom: 2px solid var(--gray-900);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .comparativa-wrap thead th:not(:first-child) { text-align: center; }
+  .comparativa-wrap tbody tr {
+    border-bottom: 1px solid var(--gray-200);
+    transition: background 0.15s ease;
+  }
+  .comparativa-wrap tbody tr:hover { background: var(--gray-50); }
+  .comparativa-wrap tbody td {
+    padding: 0.9rem 1rem;
+    color: var(--gray-600);
+  }
+  .comparativa-wrap tbody td:not(:first-child) { text-align: center; }
+  .comparativa-wrap .highlight-row td {
+    color: var(--gray-900);
+    font-weight: 600;
+    background: #FFFBEB;
+  }
+  .comparativa-wrap .highlight-row td:nth-child(2) { color: var(--black); font-weight: 900; font-size: 1rem; }
+  .comparativa-wrap .highlight-row td:nth-child(3) { color: var(--green); font-weight: 700; }
+
+  /* ═══════════════ CTA ═══════════════ */
   .cta-section {
-    background: linear-gradient(135deg, #1A1A1A 0%, #2D2D2D 100%);
+    background: linear-gradient(160deg, #0F0F0F 0%, #1A1A1A 50%, #222222 100%);
     padding: 5rem 2rem;
     text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-section::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,193,7,0.3), transparent);
   }
   .cta-content {
-    max-width: 600px;
+    max-width: 560px;
     margin: 0 auto;
+    position: relative;
+    z-index: 1;
   }
   .cta-content h2 {
     font-size: 2rem;
     font-weight: 800;
     color: var(--white);
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.02em;
   }
   .cta-content p {
-    color: #A3A3A3;
-    font-size: 1.1rem;
+    color: var(--gray-400);
+    font-size: 1.05rem;
     margin-bottom: 2.5rem;
+    line-height: 1.6;
   }
   .cta-button {
     display: inline-flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.6rem;
     background: var(--yellow);
     color: var(--black);
-    padding: 1rem 2.5rem;
-    border-radius: 14px;
-    font-size: 1.1rem;
+    padding: 0.9rem 2.25rem;
+    border-radius: 12px;
+    font-size: 1.05rem;
     font-weight: 700;
     text-decoration: none;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: all 0.25s ease;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
   }
   .cta-button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(255, 193, 7, 0.3);
+    box-shadow: 0 10px 36px rgba(255,193,7,0.25);
   }
   .cta-info {
     display: flex;
     justify-content: center;
     gap: 2rem 3rem;
-    margin-top: 2rem;
+    margin-top: 2.5rem;
     flex-wrap: wrap;
-    color: #737373;
-    font-size: 0.9rem;
+    color: var(--gray-500);
+    font-size: 0.85rem;
   }
   .cta-info strong {
-    color: #D4D4D4;
+    color: var(--gray-300);
     display: block;
     font-weight: 600;
-    margin-bottom: 0.15rem;
+    margin-bottom: 0.1rem;
   }
 
   .footer {
     background: #0A0A0A;
     padding: 1.5rem 2rem;
     text-align: center;
-    color: #525252;
-    font-size: 0.8rem;
+    color: var(--gray-600);
+    font-size: 0.78rem;
+    line-height: 1.6;
   }
+  .footer small { color: var(--gray-600); }
 
   /* ═══════════════ MODAL ═══════════════ */
   .modal-overlay {
@@ -645,100 +682,97 @@
     justify-content: center;
     padding: 1rem;
   }
-  .modal-overlay.open {
-    display: flex;
-  }
+  .modal-overlay.open { display: flex; }
   .modal-box {
     background: var(--white);
     border-radius: 20px;
     padding: 2.5rem;
-    max-width: 480px;
+    max-width: 460px;
     width: 100%;
     animation: fadeUp 0.3s ease-out;
   }
   .modal-box h3 {
-    font-size: 1.3rem;
+    font-size: 1.25rem;
     font-weight: 800;
-    color: var(--black);
-    margin-bottom: 0.3rem;
+    color: var(--gray-900);
+    margin-bottom: 0.25rem;
   }
   .modal-box p {
     color: var(--gray-500);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     margin-bottom: 1.5rem;
   }
   .modal-box input,
   .modal-box textarea {
     width: 100%;
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--gray-300);
+    padding: 0.7rem 1rem;
+    border: 1px solid var(--gray-200);
     border-radius: 10px;
     font-size: 0.9rem;
     font-family: 'Inter', sans-serif;
     margin-bottom: 0.75rem;
-    transition: border-color 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
     outline: none;
+    color: var(--gray-900);
   }
+  .modal-box input::placeholder,
+  .modal-box textarea::placeholder { color: var(--gray-400); }
   .modal-box input:focus,
   .modal-box textarea:focus {
     border-color: var(--yellow);
-    box-shadow: 0 0 0 3px rgba(255,193,7,0.15);
+    box-shadow: 0 0 0 3px rgba(255,193,7,0.12);
   }
-  .modal-box textarea {
-    height: 100px;
-    resize: vertical;
-  }
-  .modal-actions {
-    display: flex;
-    gap: 0.75rem;
-    margin-top: 0.5rem;
-  }
+  .modal-box textarea { height: 90px; resize: vertical; }
+  .modal-actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
   .modal-actions button {
     flex: 1;
-    padding: 0.75rem;
+    padding: 0.7rem;
     border-radius: 10px;
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     cursor: pointer;
     transition: all 0.2s ease;
     border: none;
+    font-family: inherit;
   }
   .modal-actions .btn-primary {
-    background: var(--yellow);
-    color: var(--black);
+    background: var(--black);
+    color: var(--white);
   }
   .modal-actions .btn-primary:hover {
-    box-shadow: 0 4px 15px rgba(255,193,7,0.3);
+    background: #2D2D2D;
   }
   .modal-actions .btn-secondary {
     background: var(--gray-100);
-    color: var(--gray-700);
+    color: var(--gray-600);
   }
-  .modal-actions .btn-secondary:hover {
-    background: var(--gray-300);
-  }
+  .modal-actions .btn-secondary:hover { background: var(--gray-200); }
 
   /* ═══════════════ PRINT ═══════════════ */
   @media print {
     .cover { min-height: auto; padding: 3rem 2rem; }
     .section { padding: 3rem 2rem; page-break-inside: avoid; }
-    .modulo-card, .tech-card, .resumen-card { break-inside: avoid; }
+    .modulo-card, .resumen-card { break-inside: avoid; }
+    .precio-card { break-inside: avoid; }
+    .cta-button { border: 2px solid var(--black); }
   }
 
   /* ═══════════════ RESPONSIVE ═══════════════ */
   @media (max-width: 640px) {
     .section { padding: 3rem 1.25rem; }
-    .arquitectura { padding: 1.5rem; margin: 0 1rem; }
-    .arquitectura-code { font-size: 0.75rem; padding: 1rem; }
+    .arquitectura-block { padding: 1.5rem; margin: 0 1rem; }
+    .arquitectura-code { font-size: 0.72rem; padding: 1.25rem; }
+    .precio-card.featured { transform: none; }
+    .precio-card.featured:hover { transform: translateY(-4px); }
   }
 </style>
 </head>
 <body>
 
-<!-- ═════════ COVER ═════════ -->
+<!-- ═══════════════ COVER ═══════════════ -->
 <section class="cover">
   <div class="cover-content">
-    <div class="cover-badge">Solución Corporativa Integral</div>
+    <div class="cover-badge">✦ Solución Corporativa Integral</div>
     <h1>
       <span>Una</span> plataforma.<br>
       <span>Todo</span> tu negocio.
@@ -756,45 +790,44 @@
   </div>
 </section>
 
-<!-- ═════════ RESUMEN ═════════ -->
+<!-- ═══════════════ RESUMEN ═══════════════ -->
 <section class="section section-white">
   <div class="section-header">
     <span class="section-tag">Panorama general</span>
     <h2>La plataforma en números</h2>
-    <p>18 módulos funcionales, más de 60 páginas y una arquitectura empresarial lista para crecer.</p>
+    <p>18 módulos funcionales, más de 60 páginas y una arquitectura empresarial lista para producción.</p>
   </div>
   <div class="resumen-grid">
     <div class="resumen-card">
-      <div class="icon">📦</div>
+      <span class="icon">📦</span>
       <h3>18 <small>módulos</small></h3>
       <p>Desde RRHH hasta contabilidad, pasando por operaciones, mantenimiento y finanzas</p>
     </div>
     <div class="resumen-card">
-      <div class="icon">📄</div>
+      <span class="icon">📄</span>
       <h3>60+ <small>páginas</small></h3>
       <p>Todas con CRUD completo, búsqueda, paginación server-side y diseño responsive</p>
     </div>
     <div class="resumen-card">
-      <div class="icon">🔒</div>
+      <span class="icon">🔒</span>
       <h3>RLS <small>seguridad</small></h3>
       <p>Row Level Security de Supabase: cada usuario ve solo lo que debe ver</p>
     </div>
     <div class="resumen-card">
-      <div class="icon">⚡</div>
+      <span class="icon">⚡</span>
       <h3>&lt;2s <small>carga</small></h3>
       <p>Server Actions, streaming y optimizaciones de rendimiento en todas las páginas</p>
     </div>
   </div>
 </section>
 
-<!-- ═════════ MÓDULOS ═════════ -->
+<!-- ═══════════════ MÓDULOS ═══════════════ -->
 <section class="section section-gray">
   <div class="section-header">
     <span class="section-tag">Cobertura total</span>
     <h2>18 módulos que cubren cada área de tu empresa</h2>
     <p>Desde la operación en campo hasta los estados financieros, todo en un solo lugar.</p>
   </div>
-
   <div class="modulos-grid">
     <div class="modulo-card">
       <div class="emoji">📊</div>
@@ -911,7 +944,7 @@
   </div>
 </section>
 
-<!-- ═════════ ARQUITECTURA ═════════ -->
+<!-- ═══════════════ ARQUITECTURA ═══════════════ -->
 <section class="section section-white" style="padding-bottom: 0;">
   <div class="section-header">
     <span class="section-tag">Arquitectura</span>
@@ -920,7 +953,7 @@
   </div>
 </section>
 
-<div class="arquitectura">
+<div class="arquitectura-block" style="margin-bottom: 5rem;">
   <h2>Stack <span>tecnológico</span></h2>
   <p>Next.js 16 + Supabase + Tailwind CSS 4 — un ecosistema probado y en constante evolución.</p>
   <div class="arquitectura-code">
@@ -941,12 +974,12 @@
   </div>
 </div>
 
-<!-- ═════════ SEGURIDAD ═════════ -->
+<!-- ═══════════════ SEGURIDAD ═══════════════ -->
 <section class="section section-white">
   <div class="section-header">
     <span class="section-tag">Seguridad</span>
     <h2>Protegemos tus datos</h2>
-    <p>Cada capa de la plataforma está diseñada con seguridad desde el diseño.</p>
+    <p>Cada capa de la plataforma está diseñada con seguridad desde su arquitectura.</p>
   </div>
   <div class="seguridad-list">
     <div class="seguridad-item">
@@ -981,7 +1014,7 @@
       <div class="check">✓</div>
       <div>
         <h4>Validación con Zod</h4>
-        <p>Schemas de validación estrictos en cada operación de entrada/salida de datos.</p>
+        <p>Schemas de validación estrictos en cada operación de entrada y salida de datos.</p>
       </div>
     </div>
     <div class="seguridad-item">
@@ -994,14 +1027,14 @@
   </div>
 </section>
 
-<!-- ═════════ MEJORAS ═════════ -->
+<!-- ═══════════════ MEJORAS ═══════════════ -->
 <section class="section section-gray">
   <div class="section-header">
     <span class="section-tag">Mejoras continuas</span>
     <h2>Evolución constante</h2>
     <p>La plataforma se ha fortalecido con mejoras continuas en todos los frentes.</p>
   </div>
-  <div style="max-width: 700px; margin: 0 auto;">
+  <div style="max-width: 680px; margin: 0 auto;">
     <div class="mejoras-timeline">
       <div class="mejora-item">
         <h4>🏆 Dark Mode Premium</h4>
@@ -1035,54 +1068,56 @@
   </div>
 </section>
 
-<!-- ═════════ BENEFICIOS ═════════ -->
+<!-- ═══════════════ BENEFICIOS ═══════════════ -->
 <section class="section section-white">
   <div class="section-header">
     <span class="section-tag">¿Por qué esta plataforma?</span>
     <h2>Lo que obtienes</h2>
   </div>
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
-    <div style="padding: 1.5rem; border-left: 3px solid var(--yellow);">
-      <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem;">🔗 Todo en un solo lugar</h3>
-      <p style="color: var(--gray-500); font-size: 0.9rem;">Olvídate de tener 5 sistemas distintos. Una plataforma unifica tu operación, tu gente y tus finanzas.</p>
+  <div class="beneficios-grid">
+    <div class="beneficio-item">
+      <h3>🔗 Todo en un solo lugar</h3>
+      <p>Olvídate de tener 5 sistemas distintos. Una plataforma unifica tu operación, tu gente y tus finanzas.</p>
     </div>
-    <div style="padding: 1.5rem; border-left: 3px solid var(--yellow);">
-      <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem;">📱 Acceso desde cualquier lado</h3>
-      <p style="color: var(--gray-500); font-size: 0.9rem;">Diseño responsive y formularios QR para registro en campo desde el celular del operario.</p>
+    <div class="beneficio-item">
+      <h3>📱 Acceso desde cualquier lado</h3>
+      <p>Diseño responsive y formularios QR para registro en campo desde el celular del operario.</p>
     </div>
-    <div style="padding: 1.5rem; border-left: 3px solid var(--yellow);">
-      <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem;">🔮 Alertas inteligentes</h3>
-      <p style="color: var(--gray-500); font-size: 0.9rem;">El sistema te avisa antes de que algo venza: documentos, mantenimientos, condiciones críticas.</p>
+    <div class="beneficio-item">
+      <h3>🔮 Alertas inteligentes</h3>
+      <p>El sistema te avisa antes de que algo venza: documentos, mantenimientos, condiciones críticas.</p>
     </div>
-    <div style="padding: 1.5rem; border-left: 3px solid var(--yellow);">
-      <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem;">📊 Toma decisiones con datos</h3>
-      <p style="color: var(--gray-500); font-size: 0.9rem;">Dashboard, estados financieros, cartera aging, cumplimiento de auditorías: información a un clic.</p>
+    <div class="beneficio-item">
+      <h3>📊 Toma decisiones con datos</h3>
+      <p>Dashboard, estados financieros, cartera aging, cumplimiento de auditorías: información a un clic.</p>
     </div>
-    <div style="padding: 1.5rem; border-left: 3px solid var(--yellow);">
-      <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem;">🔒 Tus datos seguros</h3>
-      <p style="color: var(--gray-500); font-size: 0.9rem;">RLS de Supabase, JWT, HTTPS, validación Zod. Cada capa protegida desde el diseño.</p>
+    <div class="beneficio-item">
+      <h3>🔒 Tus datos seguros</h3>
+      <p>RLS de Supabase, JWT, HTTPS, validación Zod. Cada capa protegida desde el diseño.</p>
     </div>
-    <div style="padding: 1.5rem; border-left: 3px solid var(--yellow);">
-      <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem;">🚀 Sin límites de crecimiento</h3>
-      <p style="color: var(--gray-500); font-size: 0.9rem;">Arquitectura serverless en Vercel + Supabase. Escala automáticamente con tu negocio.</p>
+    <div class="beneficio-item">
+      <h3>🚀 Sin límites de crecimiento</h3>
+      <p>Arquitectura serverless en Vercel + Supabase. Escala automáticamente con tu negocio.</p>
     </div>
   </div>
 </section>
 
-<!-- ═════════ PRECIOS ═════════ -->
+<!-- ═══════════════ PRECIOS ═══════════════ -->
 <section class="section section-gray" id="precios">
-  <div class="section-header" style="text-align: center;">
+  <div class="section-header centered">
     <span class="section-tag">Inversión</span>
     <h2>Planes para cada necesidad</h2>
-    <p style="margin-left: auto; margin-right: auto;">Una plataforma completa, flexible y con soporte continuo. Elige el plan que mejor se ajuste a tu empresa.</p>
+    <p>Una plataforma completa, flexible y con soporte continuo. Elige el plan ideal para tu empresa.</p>
   </div>
 
   <div class="precios-grid">
-    <!-- Plan Básico -->
-    <div class="precio-card">
+
+    <!-- Plan Básico ⭐ RECOMENDADO -->
+    <div class="precio-card featured">
+      <div class="badge">⭐ Más popular</div>
       <div class="plan-name">Básico</div>
       <div class="price">$9.800.000 <small>/ único</small></div>
-      <div class="price-desc">Implementación inicial del núcleo operativo</div>
+      <div class="price-desc">Núcleo operativo completo para empezar</div>
       <div class="divider"></div>
       <ul>
         <li>Hasta 5 usuarios concurrentes</li>
@@ -1091,16 +1126,16 @@
         <li>Turnos A/B/C con asistencia diaria</li>
         <li>Alertas y notificaciones automáticas</li>
         <li>Checklist diario de maquinaria</li>
+        <li>Auditorías de cumplimiento</li>
         <li>Instalación y configuración completa</li>
         <li>Capacitación del equipo (2 sesiones virtuales)</li>
         <li>3 meses de soporte técnico</li>
       </ul>
-      <span class="cta-card">Elegir plan</span>
+      <button class="cta-card">Elegir plan</button>
     </div>
 
-    <!-- Plan Profesional (destacado) -->
-    <div class="precio-card featured">
-      <div class="badge">Recomendado</div>
+    <!-- Plan Profesional -->
+    <div class="precio-card">
       <div class="plan-name">Profesional</div>
       <div class="price">$24.500.000 <small>/ único</small></div>
       <div class="price-desc">Plataforma completa con módulos financieros</div>
@@ -1117,7 +1152,7 @@
         <li>6 meses de soporte técnico prioritario</li>
         <li>Actualizaciones gratuitas durante el primer año</li>
       </ul>
-      <span class="cta-card">Elegir plan</span>
+      <button class="cta-card">Elegir plan</button>
     </div>
 
     <!-- Plan Enterprise -->
@@ -1138,7 +1173,7 @@
         <li>Capacitación presencial del equipo</li>
         <li>Hosting gestionado incluido</li>
       </ul>
-      <span class="cta-card">Solicitar cotización</span>
+      <button class="cta-card">Solicitar cotización</button>
     </div>
   </div>
 
@@ -1147,64 +1182,64 @@
   </div>
 
   <!-- ════════════ COMPARATIVA ════════════ -->
-  <div style="margin-top: 3rem; overflow-x: auto;">
-    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 600px;">
+  <div class="comparativa-wrap">
+    <table>
       <thead>
-        <tr style="border-bottom: 2px solid var(--black);">
-          <th style="text-align: left; padding: 0.75rem 1rem; font-weight: 700; color: var(--black);">Producto</th>
-          <th style="text-align: center; padding: 0.75rem 1rem; font-weight: 700; color: var(--black);">Inversión inicial</th>
-          <th style="text-align: center; padding: 0.75rem 1rem; font-weight: 700; color: var(--black);">Costo mensual</th>
-          <th style="text-align: center; padding: 0.75rem 1rem; font-weight: 700; color: var(--black);">Módulos incluidos</th>
+        <tr>
+          <th>Producto</th>
+          <th>Inversión inicial</th>
+          <th>Costo mensual</th>
+          <th>Módulos incluidos</th>
         </tr>
       </thead>
       <tbody>
-        <tr style="border-bottom: 1px solid var(--gray-300);">
-          <td style="padding: 0.9rem 1rem;"><strong>⚡ Nuestra plataforma</strong></td>
-          <td style="text-align: center; padding: 0.9rem 1rem; color: var(--yellow-dark); font-weight: 900;">$24.500.000</td>
-          <td style="text-align: center; padding: 0.9rem 1rem; color: #10B981; font-weight: 700;">$590.000</td>
-          <td style="text-align: center; padding: 0.9rem 1rem;">18 módulos</td>
+        <tr class="highlight-row">
+          <td><strong>⚡ Nuestra plataforma</strong></td>
+          <td>$24.500.000</td>
+          <td>$590.000</td>
+          <td><strong>18 módulos</strong></td>
         </tr>
-        <tr style="border-bottom: 1px solid var(--gray-300);">
-          <td style="padding: 0.9rem 1rem; color: var(--gray-500);">Desarrollo a la medida (agencia)</td>
-          <td style="text-align: center; padding: 0.9rem 1rem; color: var(--gray-700);">$80M — $200M</td>
-          <td style="text-align: center; padding: 0.9rem 1rem; color: var(--gray-500);">—</td>
-          <td style="text-align: center; padding: 0.9rem 1rem; color: var(--gray-500);">8-12 meses de espera</td>
+        <tr>
+          <td>Desarrollo a la medida (agencia)</td>
+          <td>$80M — $200M</td>
+          <td>—</td>
+          <td>8-12 meses de espera</td>
         </tr>
-        <tr style="border-bottom: 1px solid var(--gray-300);">
-          <td style="padding: 0.9rem 1rem; color: var(--gray-500);">Alegra (Contab + Fact)</td>
-          <td style="text-align: center; padding: 0.9rem 1rem; color: var(--gray-500);">$0</td>
-          <td style="text-align: center; padding: 0.9rem 1rem;">$90K — $250K</td>
-          <td style="text-align: center; padding: 0.9rem 1rem; color: var(--gray-500);">2 módulos</td>
+        <tr>
+          <td>Alegra (Contab + Fact)</td>
+          <td>$0</td>
+          <td>$90K — $250K</td>
+          <td>2 módulos</td>
         </tr>
-        <tr style="border-bottom: 1px solid var(--gray-300);">
-          <td style="padding: 0.9rem 1rem; color: var(--gray-500);">Siigo (Contab + Nómina)</td>
-          <td style="text-align: center; padding: 0.9rem 1rem; color: var(--gray-500);">$0</td>
-          <td style="text-align: center; padding: 0.9rem 1rem;">$100K — $300K</td>
-          <td style="text-align: center; padding: 0.9rem 1rem; color: var(--gray-500);">2-3 módulos</td>
+        <tr>
+          <td>Siigo (Contab + Nómina)</td>
+          <td>$0</td>
+          <td>$100K — $300K</td>
+          <td>2-3 módulos</td>
         </tr>
-        <tr style="border-bottom: 1px solid var(--gray-300);">
-          <td style="padding: 0.9rem 1rem; color: var(--gray-500);">SAP Business One</td>
-          <td style="text-align: center; padding: 0.9rem 1rem; color: var(--gray-700);">$30M — $80M</td>
-          <td style="text-align: center; padding: 0.9rem 1rem; color: var(--gray-700);">$2M+ / usuario</td>
-          <td style="text-align: center; padding: 0.9rem 1rem; color: var(--gray-500);">ERP completo</td>
+        <tr>
+          <td>SAP Business One</td>
+          <td>$30M — $80M</td>
+          <td>$2M+ / usuario</td>
+          <td>ERP completo</td>
         </tr>
       </tbody>
     </table>
   </div>
 
-  <div class="precio-note" style="background: var(--black); color: #D4D4D4; margin-top: 1rem;">
+  <div class="precio-note dark">
     <strong>⚡ Valor real:</strong> Construir esta plataforma desde cero en una agencia colombiana cuesta entre <strong>$80 y $200 millones de pesos</strong> y toma de 6 a 12 meses. Nosotros ya lo hicimos, lo probamos y lo tenemos en producción. No estás pagando por código, estás pagando por <strong>años de trabajo, expertise y un sistema que ya funciona</strong>.
   </div>
 </section>
 
-<!-- ═════════ CTA ═════════ -->
+<!-- ═══════════════ CTA ═══════════════ -->
 <section class="cta-section">
   <div class="cta-content">
     <h2>¿Listo para transformar tu gestión?</h2>
     <p>Una plataforma probada, estable y en producción. Contáctanos para una demo personalizada.</p>
-    <a href="#" class="cta-button" onclick="window.print(); return false;">
+    <button class="cta-button" onclick="window.print();">
       📄 Descargar propuesta en PDF
-    </a>
+    </button>
     <div class="cta-info">
       <div><strong>Serviequipos Mantenimiento Ltda.</strong>Santa Rosa · Cauca</div>
       <div><strong>Contacto</strong>Cristhian Camilo Avellaneda</div>
@@ -1218,7 +1253,7 @@
   <br><small>Desarrollado con Next.js + Supabase + Tailwind CSS</small>
 </div>
 
-<!-- ═════════ MODAL CONTACTO ═════════ -->
+<!-- ═══════════════ MODAL CONTACTO ═══════════════ -->
 <div class="modal-overlay" id="modalContacto">
   <div class="modal-box">
     <h3 id="modalTitle">📩 Solicitar plan</h3>
@@ -1264,20 +1299,16 @@
     }
 
     const cuerpo = `*Nueva solicitud - Plan ${planSeleccionado}*\n\nNombre: ${nombre}\nEmail: ${email}\nTeléfono: ${telefono || 'No indicado'}\nMensaje: ${mensaje || 'Sin mensaje'}`;
-
-    // Abrir en mailto como fallback principal
     window.location.href = `mailto:cristhianavellaneda@gmail.com?subject=${encodeURIComponent('Solicitud Plataforma Corporativa - Plan ' + planSeleccionado)}&body=${encodeURIComponent(cuerpo)}`;
 
     cerrarModal();
     alert('✅ Solicitud enviada. Te contactaremos pronto.');
   }
 
-  // Cerrar modal al hacer clic fuera
   document.getElementById('modalContacto').addEventListener('click', function(e) {
     if (e.target === this) cerrarModal();
   });
 
-  // Asignar eventos a los botones de planes
   document.querySelectorAll('.cta-card').forEach(function(btn, idx) {
     const planes = ['Básico', 'Profesional', 'Enterprise'];
     btn.addEventListener('click', function(e) {
