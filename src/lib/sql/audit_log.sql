@@ -108,11 +108,6 @@ CREATE TRIGGER audit_ordenes_mantenimiento
   AFTER INSERT OR UPDATE OR DELETE ON ordenes_mantenimiento
   FOR EACH ROW EXECUTE FUNCTION audit_trigger_func();
 
-DROP TRIGGER IF EXISTS audit_historial_aceite ON historial_aceite;
-CREATE TRIGGER audit_historial_aceite
-  AFTER INSERT OR UPDATE OR DELETE ON historial_aceite
-  FOR EACH ROW EXECUTE FUNCTION audit_trigger_func();
-
 DROP TRIGGER IF EXISTS audit_checklist_diario ON checklist_diario_maquinaria;
 CREATE TRIGGER audit_checklist_diario
   AFTER INSERT OR UPDATE OR DELETE ON checklist_diario_maquinaria
