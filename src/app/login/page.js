@@ -1,14 +1,23 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { login, signup } from './actions'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -26,6 +35,8 @@ export default function LoginPage() {
     const form = new FormData()
     form.append('email', email)
     form.append('password', password)
+    const redirectParam = searchParams.get('redirect')
+    if (redirectParam) form.append('redirect', redirectParam)
 
     const result = isLogin
       ? await login(form)

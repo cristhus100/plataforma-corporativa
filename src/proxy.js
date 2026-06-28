@@ -27,19 +27,30 @@ export async function proxy(request) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Rutas públicas que no requieren autenticación
+  // Rutas públicas (sin autenticación)
   const publicPaths = ['/login', '/forgot-password', '/auth']
-  const isPublicPath = publicPaths.some(p => request.nextUrl.pathname.startsWith(p))
 
-  // Si no hay usuario y no está en ruta pública, redirigir a login
-  if (!user && !isPublicPath) {
+  // Rutas QR (formularios desde código QR, no requieren sesión)
+  const qrPaths = [
+    '/mantenimiento/cambio-aceite/',
+    '/mantenimiento/vehiculo/',
+  ]
+
+  const pathname = request.nextUrl.pathname
+  const isPublicPath = publicPaths.some(p => pathname.startsWith(p))
+  const isQrPath = qrPaths.some(p => pathname.startsWith(p))
+
+  // Si no hay usuario y no está en ruta pública ni QR → redirigir a login
+  if (!user && !isPublicPath && !isQrPath) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    // Guardar la ruta original para redirigir después del login
+    url.searchParams.set('redirect', pathname)
     return NextResponse.redirect(url)
   }
 
-  // Si hay usuario y está en login, redirigir al dashboard
-  if (user && request.nextUrl.pathname === '/login') {
+  // Si hay usuario y está en login → redirigir al dashboard
+  if (user && isPublicPath) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
@@ -50,6 +61,6 @@ export async function proxy(request) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|logo-serviequipos.jpg|mantenimiento/.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|logo-serviequipos.jpg|mantenimiento/cambio-aceite/|mantenimiento/vehiculo/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

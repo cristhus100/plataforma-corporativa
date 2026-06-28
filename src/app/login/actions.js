@@ -19,7 +19,10 @@ export async function login(formData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/')
+
+  // Redirigir a la ruta original si venía de un redirect del middleware
+  const redirectTo = formData.get('redirect') || '/'
+  redirect(redirectTo)
 }
 
 export async function signup(formData) {
