@@ -57,6 +57,10 @@
 | ✅ Tests | Tests unitarios para aceite, maquinaria, facturación, nómina, auditoría, órdenes mtto | ✅ |
 | ✅ Sin límites duros | .limit(100) removido de ubicación, anuncios y calendario | ✅ |
 | ✅ Umbrales | Configurables por módulo con UI en Configuración | ✅ |
+| ✅ Autenticación | proxy.js con protección de rutas + redirect post-login | ✅ |
+| ✅ Seguridad HTTP | HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy | ✅ |
+| ✅ Auditoría DB | audit_log con triggers automáticos en 11 tablas críticas + RLS solo admin | ✅ |
+| ✅ Login | Suspense boundary, manejo de redirect params | ✅ |
 
 ---
 
@@ -65,11 +69,12 @@
 | Métrica | Valor |
 |---------|-------|
 | Módulos funcionales | 18 |
-| Mejoras aplicadas | 14 |
-| Archivos fuente | ~155+ |
-| Páginas (page.js) | 60 |
-| Scripts SQL | 18 migraciones |
-| Tests unitarios | 5 suites + aceite |
+| Mejoras aplicadas | 18 |
+| Archivos fuente | ~160+ |
+| Páginas (page.js) | 60+ |
+| Scripts SQL | 19 migraciones |
+| Tests unitarios | 6 suites |
+| Componentes de seguridad | 4 (proxy, headers, audit_log, RLS policies) |
 
 ---
 

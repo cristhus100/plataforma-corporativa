@@ -38,13 +38,25 @@ NEXT_PUBLIC_SUPABASE_URL=tu_url_supabase
 NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
 ```
 
+## 🛡️ Seguridad
+
+| Componente | Descripción |
+|------------|-------------|
+| **Proxy de autenticación** | `proxy.js` protege todas las rutas, redirige a login con preservación de URL |
+| **Security Headers** | HSTS (2 años), X-Frame-Options DENY, Content-Type nosniff, Referrer-Policy, Permissions-Policy |
+| **Auditoría (audit_log)** | Triggers automáticos en 11 tablas críticas con trazabilidad de quién, qué, cuándo |
+| **RLS (Row Level Security)** | Políticas de acceso a nivel de fila en Supabase |
+| **Server Actions** | Todas las mutaciones del lado servidor (nunca desde el cliente) |
+| **Zod Validation** | Esquemas de validación en los 18 módulos |
+| **Roles** | Admin / Usuario con funciones de base de datos (`es_admin()`) |
+
 ## 📂 Módulos del Sistema
 
 | Módulo | Ruta | Descripción |
 |--------|------|-------------|
 | Dashboard | `/` | Indicadores, charts, actividad reciente, próximos mantenimientos |
 | Trabajadores | `/trabajadores/*` | CRUD completo, historial, documentos, PDF |
-| Maquinaria | `/maquinaria/*` | CRUD completo, fotos, documentos, operador, horómetros |
+| Maquinaria | `/maquinaria/*` | CRUD completo, fotos, documentos, operador, horómetros, checklist diario |
 | Vehículos | `/vehiculos/*` | CRUD completo, documentos, kilometraje |
 | Mantenimiento | `/mantenimiento/*` | Cambio aceite (QR), ordenes de mantenimiento (OM-XXXX) |
 | Turnos | `/turnos/*` | Turnos A/B/C, asignación semanal, asistencia diaria |
@@ -56,7 +68,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
 | Contabilidad | `/contabilidad/*` | PUC colombiano, comprobantes, asientos, estados financieros |
 | Nómina | `/nomina/*` | Periodos, liquidación, seguridad social, prestaciones sociales |
 | Anuncios | `/anuncios` | Comunicados internos |
-| Configuración | `/configuracion` | Notificaciones email vía Resend |
+| Configuración | `/configuracion` | Notificaciones email vía Resend, frentes y tipos mtto |
 
 ## 👨‍💻 Desarrollador
 
