@@ -1,6 +1,6 @@
-# Roadmap: Plataforma Corporativa → ERP Integral
+# Roadmap: Plataforma Corporativa — Serviequipos Mantenimiento Ltda
 
-> Estado actual al 2026-06-14
+> Estado actual al 2026-06-28
 > Empresa: Serviequipos Mantenimiento Ltda. (mantenimiento industrial, Santa Rosa)
 
 ---
@@ -11,95 +11,65 @@
 |-------|-------------|
 | ✅ | Completado / Funcional |
 | 🔶 | Parcial / Básico |
-| ❌ | No iniciado |
 
 ---
 
-## Módulos Existentes (15 implementados)
+## Módulos Implementados (18 funcionales)
 
 | # | Módulo | Rutas | Estado | Observaciones |
 |---|--------|-------|--------|---------------|
 | 1 | Login / Autenticación | `/login` | ✅ | Supabase Auth, roles admin/usuario |
-| 2 | Dashboard | `/` | ✅ | Charts Recharts, stats cards, actividad reciente |
+| 2 | Dashboard | `/` | ✅ | Charts Recharts, stats cards, alertas reales en timeline, frentes generalizados |
 | 3 | Trabajadores (RRHH básico) | `/trabajadores/*` | ✅ | CRUD completo, historial, documentos, PDF |
-| 4 | Maquinaria (Equipos) | `/maquinaria/*` | ✅ | CRUD completo, fotos, documentos, operador |
+| 4 | Maquinaria (Equipos) | `/maquinaria/*` | ✅ | CRUD completo, fotos, documentos, operador, checklist diario |
 | 5 | Vehículos | `/vehiculos/*` | ✅ | CRUD completo, documentos, mantenimiento |
 | 6 | Mantenimiento (Cambio Aceite) | `/mantenimiento/cambio-aceite/*` | ✅ | Formulario vía QR, horómetros diarios |
 | 7 | Mantenimiento (Vehículos) | `/mantenimiento/vehiculo/*` | ✅ | Formulario vía QR, kilometraje diario |
-| 8 | Órdenes de Mantenimiento | `/mantenimiento/ordenes/*` | ✅ | CRUD completo con códigos automáticos |
-| 9 | Turnos (A/B/C) | `/turnos/*` | ✅ | Asignación semanal + asistencia diaria |
-| 10 | Auditorías (Cumplimiento) | `/auditorias` | ✅ | Dashboard ponderado 100% (6 categorías) |
+| 8 | Órdenes de Mantenimiento | `/mantenimiento/ordenes/*` | ✅ | CRUD completo con códigos automáticos OM-XXXX |
+| 9 | Turnos (A/B/C) | `/turnos/*` | ✅ | Asignación semanal + asistencia diaria, frentes generalizados |
+| 10 | Auditorías (Cumplimiento) | `/auditorias` | ✅ | Dashboard ponderado 100% (6 categorías), frentes generalizados |
 | 11 | Alertas | `/alertas` | ✅ | Documentos, maquinaria, vehículos + API |
 | 12 | Ubicación (GPS) | `/ubicacion` | 🔶 | Solo simulado (datos aleatorios) |
-| 13 | Calendario | `/calendario` | 🔶 | Eventos por año, no refiltra por mes |
+| 13 | Calendario | `/calendario` | ✅ | Eventos por año con filtros, cumpleaños |
 | 14 | Anuncios / Comunicados | `/anuncios` | ✅ | CRUD completo con prioridades |
-| 15 | Configuración | `/configuracion` | ✅ | Alertas email vía Resend |
-| 16 | Facturación / Cartera | `/facturacion/*` | ✅ | Facturas, recibos, notas crédito/débito, cartera aging |
-| 17 | Contabilidad | `/contabilidad/*` | ✅ | PUC, comprobantes, asientos, estados financieros |
-| 18 | Nómina | `/nomina/*` | ✅ | Periodos, liquidación, seguridad social, prestaciones |
+| 15 | Configuración | `/configuracion` | ✅ | Alertas email vía Resend, frentes y tipos de mtto configurables |
+| 16 | Facturación / Cartera | `/facturacion/*` | ✅ | Facturas, recibos de caja, notas crédito/débito, cartera aging |
+| 17 | Contabilidad | `/contabilidad/*` | ✅ | PUC colombiano, comprobantes, asientos, estados financieros |
+| 18 | Nómina | `/nomina/*` | ✅ | Periodos, liquidación, seguridad social, prestaciones sociales |
 
 ---
 
-## Lo que falta para un ERP Corporativo Completo
+## Mejoras aplicadas a módulos existentes
 
-### 🔴 PRIORIDAD ALTA — Núcleo financiero-contable
-
-| Módulo | Descripción | Prioridad |
-|--------|-------------|-----------|
-| ✅ **Contabilidad** | Libro diario, plan de cuentas, asientos contables, estados financieros (balance, P&G) | 🔴 Alta |
-| ✅ **Facturación / Cartera** | Facturas electrónicas, cuentas por cobrar, cuentas por pagar, conciliación | 🔴 Alta |
-| ❌ **Presupuestos** | Presupuestos anuales por centro de costo, seguimiento de ejecución | 🔴 Alta |
-| ✅ **Nomina / Payroll** | Liquidación de nómina, seguridad social, parafiscales, primas, cesantías, liquidación | 🔴 Alta |
-
-### 🟡 PRIORIDAD MEDIA — Gestión comercial y de inventarios
-
-| Módulo | Descripción | Prioridad |
-|--------|-------------|-----------|
-| ❌ **Inventario / Almacén** | Gestión de repuestos, consumibles, herramientas; entradas/salidas, mínimos/máximos | 🟡 Media |
-| ❌ **Órdenes de Compra** | Solicitudes de compra, aprobaciones, recepción, vinculación con inventario | 🟡 Media |
-| ❌ **Proveedores** | Catálogo de proveedores, evaluación, histórico de compras | 🟡 Media |
-| ❌ **Clientes / Contratos** | Gestión de clientes, contratos de mantenimiento, términos, renovaciones | 🟡 Media |
-| ❌ **Cotizaciones** | Generación de cotizaciones, aprobación, conversión a orden de trabajo | 🟡 Media |
-
-### 🟢 PRIORIDAD BAJA — Expansión y especialización
-
-| Módulo | Descripción | Prioridad |
-|--------|-------------|-----------|
-| ❌ **Gestión de Proyectos** | Planificación de obras/proyectos, hitos, cronogramas, asignación de recursos | 🟢 Baja |
-| ❌ **SST Completo** | Seguridad y Salud en el Trabajo: matriz de riesgos, incidentes, EPPS, exámenes médicos | 🟢 Baja |
-| ❌ **Capacitaciones** | Gestión de cursos, certificaciones, vencimientos, programación | 🟢 Baja |
-| ❌ **Evaluación de Desempeño** | Evaluaciones periódicas de trabajadores, 360° | 🟢 Baja |
-| ❌ **Indicadores / BI** | Tablero de indicadores clave (KPIs), reports avanzados, exportación Excel | 🟢 Baja |
+| Módulo | Mejora | Estado |
+|--------|--------|--------|
+| ✅ Dashboard | Alertas reales conectadas al timeline | ✅ |
+| ✅ Dashboard | Frentes generalizados (sin hardcode Santa Rosa) | ✅ |
+| ✅ Auditorías | Frentes generalizados (sin hardcode Santa Rosa) | ✅ |
+| ✅ Turnos | Frentes generalizados (sin hardcode Santa Rosa) | ✅ |
+| ✅ Maquinaria | Checklist Diario (15 items, historial, operador) | ✅ |
+| ✅ Calendario | Refiltrado al cambiar de mes, sin límite de 500 | ✅ |
+| ✅ Mobile | Sidebar overlay, responsive, safe-area | ✅ |
+| ✅ Server Actions | Migración de operaciones de escritura | ✅ |
+| ✅ Dark Mode | Premium (Linear.app/Vercel), toggle en Header, persistente | ✅ |
+| ✅ Confirmaciones | Modal Tailwind en vez de window.confirm() | ✅ |
+| ✅ Código defensivo | try/catch redundantes eliminados en toda la app | ✅ |
+| ✅ Tests | Tests unitarios para aceite, maquinaria, facturación, nómina, auditoría, órdenes mtto | ✅ |
+| ✅ Sin límites duros | .limit(100) removido de ubicación, anuncios y calendario | ✅ |
+| ✅ Umbrales | Configurables por módulo con UI en Configuración | ✅ |
 
 ---
 
-## Mejoras a módulos existentes
-
-| Módulo | Mejora pendiente | Prioridad |
-|--------|------------------|-----------|
-| ✅ Dashboard | Conectar cumplimiento real desde módulo Auditorías | 🟡 Media |
-| 🔶 Dashboard | Conectar alertas reales al panel de actividad reciente | 🟢 Baja |
-| ✅ Ubicación | GPS real con Geolocation API + tabla posiciones_maquinaria | 🟡 Media |
-| ✅ Calendario | Refiltrar eventos al cambiar de mes (año como dependencia) | 🟢 Baja |
-| 🔶 Auditorías | Implementar checklist diario (`checklist_diario` retorna `sin_dato`) | 🟢 Baja |
-| 🔶 Auditorías | Generalizar a múltiples frentes (hoy hardcodeado a Santa Rosa) | 🟢 Baja |
-| 🔶 Turnos | Generalizar a múltiples frentes (hoy hardcodeado a Santa Rosa) | 🟢 Baja |
-| ✅ Seguridad | Migrar operaciones de escritura a Server Actions | 🟡 Media |
-| ✅ Mobile | Sidebar como overlay drawer, MainLayout responsive, Ubicación mobile | 🟢 Baja |
-
----
-
-## Resumen cuantitativo
+## Estado del proyecto
 
 | Métrica | Valor |
 |---------|-------|
-| Módulos funcionales | 21 |
-| Módulos con mejoras pendientes | 5 (Ubicación, Calendario, Dashboard, Auditorías, Turnos) |
-| Módulos por implementar (ERP completo) | ~8 |
-| Archivos fuente | ~140+ |
+| Módulos funcionales | 18 |
+| Mejoras aplicadas | 14 |
+| Archivos fuente | ~155+ |
 | Páginas (page.js) | 60 |
 | Scripts SQL | 18 migraciones |
-| Dependencias técnicas | Supabase, Next.js 16, Tailwind 4, shadcn/ui, Recharts, Leaflet |
+| Tests unitarios | 5 suites + aceite |
 
 ---
 
@@ -108,24 +78,21 @@
 ```
 plataforma-corporativa/
 ├── src/
-│   ├── app/           → 15 módulos con App Router
+│   ├── app/           → 18 módulos con App Router
 │   ├── components/
-│   │   └── layout/    → Sidebar, Header, MainLayout
-│   ├── context/       → RoleContext (auth + roles)
-│   ├── hooks/         → useAlertas, usePaginacion
+│   │   ├── layout/    → Sidebar, Header, MainLayout
+│   │   └── ui/        → StatsCard, ProgressRing, Pagination, etc.
+│   ├── context/       → RoleContext, ThemeContext, AlertContext, ToastContext
+│   ├── hooks/         → useAlertas, usePaginacion, useUmbrales
 │   └── lib/
 │       ├── supabase/  → client.js, server.js, paginacion.js
-│       │               auditoria.js, turnos.js
+│       │               y módulos server actions
 │       ├── utils/     → helpers por módulo
+│       ├── validaciones/ → esquemas Zod por módulo
+│       ├── __tests__/ → tests unitarios (Vitest)
 │       └── sql/       → migraciones SQL
 ```
 
-## Recomendación estratégica
+---
 
-Para llegar a un ERP corporativo completo el orden recomendado es:
-
-1. **Fase 1 (Corto plazo)**: Nómina + Contabilidad básica — son los módulos que generan el ROI más inmediato y son requisito legal en Colombia
-2. **Fase 2 (Mediano plazo)**: Facturación + Cartera + Inventario — cierran el ciclo operativo-financiero
-3. **Fase 3 (Largo plazo)**: Compras + Proveedores + Proyectos + SST — expansión vertical
-
-El proyecto ya tiene una base técnica sólida: Next.js 16 + Supabase + Tailwind 4 + shadcn/ui. Los próximos módulos deberían seguir el mismo patrón de componentes compartidos (paginación server-side, hooks reutilizables) para mantener consistencia.
+> Proyecto considerado completo en su alcance actual. No se contemplan nuevos módulos. Solo mantenimiento correctivo y mejoras menores sobre los existentes.

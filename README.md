@@ -18,6 +18,7 @@ Sistema de gestión empresarial desarrollado para **Serviequipos Mantenimiento L
 - **Amarillo Corporativo**: `#FFC107`
 - **Negro Profesional**: `#1A1A1A`
 - **Grises**: `#212121` a `#F5F5F5`
+- **Dark Mode**: Premium (inspirado en Linear.app/Vercel) con toggle persistente en Header
 
 ## 📦 Instalación Local
 
