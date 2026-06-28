@@ -92,9 +92,9 @@ CREATE TRIGGER audit_asientos_contables
   FOR EACH ROW EXECUTE FUNCTION audit_trigger_func();
 
 -- Tablas de nómina
-DROP TRIGGER IF EXISTS audit_nomina ON nomina;
-CREATE TRIGGER audit_nomina
-  AFTER INSERT OR UPDATE OR DELETE ON nomina
+DROP TRIGGER IF EXISTS audit_nominas ON nominas;
+CREATE TRIGGER audit_nominas
+  AFTER INSERT OR UPDATE OR DELETE ON nominas
   FOR EACH ROW EXECUTE FUNCTION audit_trigger_func();
 
 DROP TRIGGER IF EXISTS audit_novedades_nomina ON novedades_nomina;
