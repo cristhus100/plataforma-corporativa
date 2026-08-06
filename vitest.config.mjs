@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    include: ['src/lib/__tests__/**/*.test.js'],
+    include: ['src/lib/__tests__/**/*.test.js', 'tradovate/__tests__/**/*.test.js'],
   },
   resolve: {
     alias: {
