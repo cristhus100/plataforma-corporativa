@@ -1217,7 +1217,7 @@ function createGraphicsBuilder() {
                     fontWeight: style.weight || "normal",
                     fill: style.color
                 },
-                textAlignment: style.align || "leftMiddle"
+                textAlignment: style.align || "rightMiddle"
             });
         },
 
@@ -1241,7 +1241,9 @@ function createGraphicsBuilder() {
                     fontWeight: style.weight || "normal",
                     fill: style.color
                 },
-                textAlignment: corner.h === "right" ? "rightMiddle" : "leftMiddle"
+                // El texto se dibuja al lado que indica el valor, asi que para
+                // una esquina derecha hay que mandarlo hacia la izquierda.
+                textAlignment: corner.h === "right" ? "leftMiddle" : "rightMiddle"
             });
         },
 
@@ -1412,15 +1414,16 @@ function addProfile(builder, instance, record, id) {
     }
 
     if (props.showProfileLabels) {
-        const labelX = record.endX + 1;
+        const labelX = lineX2 + props.labelGap;
         const size = props.fontSize;
         builder.text(id + "-t-poc", labelX, profile.poc, "POC", { color: colors.poc, size: size });
         builder.text(id + "-t-vah", labelX, profile.vah, "VAH", { color: colors.vahVal, size: size });
         builder.text(id + "-t-val", labelX, profile.val, "VAL", { color: colors.vahVal, size: size });
     }
 
+    const range = profile.high - profile.low;
+
     if (props.showProfileStats) {
-        const range = profile.high - profile.low;
         builder.text(
             id + "-t-sum",
             record.startX,
@@ -1428,10 +1431,13 @@ function addProfile(builder, instance, record, id) {
             "Σ " + formatVolume(profile.total) + " / " + formatPrice(range, instance.cfg.decimals),
             { color: safeColor(props.statsTextColor, "#DCDCDC"), size: props.fontSize }
         );
+    }
+
+    if (props.showProfileDelta) {
         builder.text(
             id + "-t-delta",
             record.startX,
-            profile.low - range * 0.1,
+            profile.low - range * (props.showProfileStats ? 0.1 : 0.06),
             "Delta: " + Math.round(profile.delta),
             {
                 color:
@@ -1476,7 +1482,7 @@ function addKeyLevel(builder, instance, id, options) {
             options.probability === null || options.probability === undefined
                 ? options.text
                 : options.text + " " + probabilityText(options.probability);
-        builder.text(id + "-t", endX + 1, options.price, text, {
+        builder.text(id + "-t", endX + props.labelGap, options.price, text, {
             color: options.color,
             size: props.fontSize,
             weight: "bold"
@@ -1861,6 +1867,7 @@ module.exports = {
         showVal: boolSpec(true),
         showProfileLabels: boolSpec(true),
         showProfileStats: boolSpec(true),
+        showProfileDelta: boolSpec(false),
         extendRight: boolSpec(false),
         profileSide: enumSpec({ left: "Left", right: "Right" }, "left"),
         widthPercent: numberSpec(50, 5, 5),
@@ -1889,6 +1896,7 @@ module.exports = {
         // --- Key Levels ---
         showKeyLevelLabels: boolSpec(true),
         labelOffset: numberSpec(8, 1, 0),
+        labelGap: numberSpec(3, 1, 0),
         showDashboard: boolSpec(true),
         dashboardPosition: enumSpec(
             {

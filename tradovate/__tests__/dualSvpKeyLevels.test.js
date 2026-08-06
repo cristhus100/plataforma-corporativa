@@ -917,7 +917,9 @@ describe('graphics', () => {
       expect(onh.text.startsWith('ONH')).toBe(true)
       expect(typeof onh.style.fontSize).toBe('number')
       expect(typeof onh.style.fill).toBe('string')
-      expect(onh.textAlignment).toBe('leftMiddle')
+      // "rightMiddle" = el texto se dibuja a la derecha del punto, que es lo que
+      // evita que la linea del nivel lo atraviese.
+      expect(onh.textAlignment).toBe('rightMiddle')
     }
 
     // Las probabilidades solo se muestran dentro del RTH.
@@ -937,7 +939,8 @@ describe('graphics', () => {
       expect(item.origin).toEqual({ cs: 'grid', h: 'right', v: 'top' })
       expect(Number.isFinite(item.point.x.px)).toBe(true)
       expect(Number.isFinite(item.point.y.px)).toBe(true)
-      expect(item.textAlignment).toBe('rightMiddle')
+      // Esquina derecha: el texto va hacia dentro, es decir a la izquierda.
+      expect(item.textAlignment).toBe('leftMiddle')
     }
     expect(texts[0].text.startsWith('Session:')).toBe(true)
 
@@ -945,7 +948,44 @@ describe('graphics', () => {
     const blResult = runAndDraw(bottomLeft, bars)
     const blTexts = collect(blResult.graphics.items, 'Text').filter((t) => t.key.startsWith('dash-'))
     expect(blTexts[0].origin).toEqual({ cs: 'grid', h: 'left', v: 'bottom' })
-    expect(blTexts[0].textAlignment).toBe('leftMiddle')
+    expect(blTexts[0].textAlignment).toBe('rightMiddle')
+  })
+
+  it('separa la etiqueta del final de la linea del nivel', () => {
+    const groups = collect(result.graphics.items, 'LineSegments')
+    const texts = collect(result.graphics.items, 'Text')
+    const line = groups.find((g) => g.key === 'kl-onh')
+    const label = texts.find((t) => t.key === 'kl-onh-t')
+    const lineEnd = Math.max(line.lines[0].a.x.du, line.lines[0].b.x.du)
+
+    expect(label.point.x.du).toBe(lineEnd + instance.props.labelGap)
+    expect(instance.props.labelGap).toBeGreaterThan(0)
+    expect(label.textAlignment).toBe('rightMiddle')
+
+    // Las etiquetas del perfil arrancan despues del final de sus lineas.
+    const pocLine = groups.find((g) => g.key === 'r0-l-poc')
+    const pocLabel = texts.find((t) => t.key === 'r0-t-poc')
+    expect(pocLabel.point.x.du).toBeGreaterThan(
+      Math.max(pocLine.lines[0].a.x.du, pocLine.lines[0].b.x.du)
+    )
+  })
+
+  it('no dibuja las etiquetas de delta salvo que se activen', () => {
+    const texts = collect(result.graphics.items, 'Text')
+    expect(texts.some((t) => t.key.endsWith('-t-delta'))).toBe(false)
+    expect(texts.some((t) => t.key.endsWith('-t-sum'))).toBe(true)
+    expect(indicator.params.showProfileDelta.def).toBe(false)
+
+    const withDelta = makeCalculator(indicator, { showProfileDelta: true })
+    const deltaTexts = collect(runAndDraw(withDelta, bars).graphics.items, 'Text')
+    const delta = deltaTexts.find((t) => t.key.endsWith('-t-delta'))
+    expect(delta.text.startsWith('Delta:')).toBe(true)
+
+    // Sin estadisticas ni delta no queda ninguna de las dos.
+    const bare = makeCalculator(indicator, { showProfileStats: false, showProfileDelta: false })
+    const bareTexts = collect(runAndDraw(bare, bars).graphics.items, 'Text')
+    expect(bareTexts.some((t) => t.key.endsWith('-t-sum'))).toBe(false)
+    expect(bareTexts.some((t) => t.key.endsWith('-t-delta'))).toBe(false)
   })
 
   it('respeta las opciones de visualizacion', () => {

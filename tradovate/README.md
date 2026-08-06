@@ -35,7 +35,8 @@ contrato. `tickSizeOverride` existe solo por si quieres forzar otro valor.
   fuera del value area (`vaFadeOutside`).
 - Perfil en desarrollo de la sesión en curso, más los últimos `maxSessions`
   perfiles cerrados de cada sesión.
-- Estadísticas bajo cada perfil: `Σ volumen / rango` y `Delta` (verde/rojo).
+- Estadísticas bajo cada perfil: `Σ volumen / rango` (`showProfileStats`) y
+  `Delta` (`showProfileDelta`, desactivado por defecto).
 
 ### Key Levels
 ONH, ONL, PDH/PDL del RTH previo (YEH/YEL), IBH/IBL (Initial Balance de
@@ -157,6 +158,10 @@ Dos detalles que se descubrieron probando contra la aplicación real:
   `Rectangle`. El primitivo `Rectangle` se define con `size`, y el renderer no
   dibuja nada cuando ese tamaño va en unidades de dominio — los ejemplos de la API
   solo lo usan en píxeles. Los puntos de un `Polygon` sí aceptan `du()`.
+- **`textAlignment` indica de qué lado del punto se dibuja el texto**, no cómo se
+  alinea respecto a él: `"rightMiddle"` pone el texto a la derecha del ancla. Las
+  etiquetas de nivel lo usan para no quedar debajo de su propia línea, separadas
+  además por `labelGap` velas.
 - El dashboard se ancla con `cs: "grid"`, no `"frame"`: el marco incluye la escala
   de precios, así que anclar a él deja el panel encima del eje y recortado.
 - **La opacidad va en escala 0–100, no 0–1.** Las definiciones de tipos dicen
