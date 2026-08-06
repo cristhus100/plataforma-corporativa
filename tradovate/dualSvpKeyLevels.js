@@ -1725,20 +1725,58 @@ function buildGraphics(instance) {
 // 7. Exports
 // ===========================================================================
 
-const boolSpec = predef.paramSpecs.bool;
-const numberSpec = predef.paramSpecs.number;
-const enumSpec = predef.paramSpecs.enum;
+// Todo acceso a predef/meta va con fallback: si una build no expone alguna de
+// estas funciones, el modulo debe seguir cargando. Un throw aqui haria que el
+// indicador no se registrase y no apareciera en el menu del grafico.
+const SPECS = predef && predef.paramSpecs ? predef.paramSpecs : {};
+
+function boolSpec(def) {
+    return typeof SPECS.bool === "function" ? SPECS.bool(def) : { type: "boolean", def: def };
+}
+
+function numberSpec(def, step, min) {
+    return typeof SPECS.number === "function"
+        ? SPECS.number(def, step, min)
+        : { type: "number", def: def, restrictions: { step: step, min: min } };
+}
+
+function enumSpec(enumSet, def) {
+    return typeof SPECS.enum === "function"
+        ? SPECS.enum(enumSet, def)
+        : { type: "enum", enumSet: enumSet, def: def };
+}
+
 // meta.ParamType no define COLOR, asi que los colores son parametros de texto
 // (hex o color web con nombre).
-const colorSpec = predef.paramSpecs.text;
+function colorSpec(def) {
+    return typeof SPECS.text === "function" ? SPECS.text(def) : { type: "text", def: def };
+}
+
+const VWAP_FIELDS = ["vwap", "vwapUpper1", "vwapLower1", "vwapUpper2", "vwapLower2"];
+
+const PLOTTERS = predef && predef.plotters ? predef.plotters : {};
+const SCALERS = predef && predef.scalers ? predef.scalers : {};
+const TAGS = predef && predef.tags ? predef.tags : {};
+
+const vwapPlotter =
+    typeof PLOTTERS.multiline === "function"
+        ? PLOTTERS.multiline(VWAP_FIELDS)
+        : { type: "multiline", fields: VWAP_FIELDS };
+
+const vwapScaler =
+    typeof SCALERS.multiPath === "function"
+        ? SCALERS.multiPath(["vwap"])
+        : { type: "multiPath", fields: ["vwap"] };
 
 module.exports = {
     name: "dualSvpKeyLevels",
     description: "Dual SVP HD + Key Levels Pro",
     calculator: DualSvpKeyLevels,
-    inputType: meta.InputType.BARS,
-    areaChoice: meta.AreaChoice.OVERLAY,
-    tags: ["Volume Profile", "Key Levels"],
+    inputType: (meta && meta.InputType && meta.InputType.BARS) || "bars",
+    areaChoice: (meta && meta.AreaChoice && meta.AreaChoice.OVERLAY) || "overlay",
+    // Cada tag es una categoria del menu de indicadores del grafico. Se incluye
+    // tambien la categoria estandar de volumen para que sea facil de encontrar.
+    tags: ["Key Levels", "Volume Profile", TAGS.Volumes || "Volume-based"],
 
     // Pide al grafico que incluya el perfil de volumen por vela (modo HD).
     requirements: {
@@ -1893,15 +1931,9 @@ module.exports = {
         ypoc: { title: "YPOC" }
     },
 
-    plotter: predef.plotters.multiline([
-        "vwap",
-        "vwapUpper1",
-        "vwapLower1",
-        "vwapUpper2",
-        "vwapLower2"
-    ]),
+    plotter: vwapPlotter,
 
-    scaler: predef.scalers.multiPath(["vwap"]),
+    scaler: vwapScaler,
 
     schemeStyles: {
         dark: {
@@ -1912,10 +1944,14 @@ module.exports = {
             vwapLower2: { color: "#9598A1", lineWidth: 1, lineStyle: 5 },
             ypoc: { color: "#E91E63", lineWidth: 1 }
         }
-    },
+    }
+};
 
-    // Solo para los tests unitarios del repositorio.
-    _internals: {
+// Solo para los tests unitarios del repositorio. Se define como propiedad no
+// enumerable para que la app no lo vea al recorrer los campos del indicador.
+Object.defineProperty(module.exports, "_internals", {
+    enumerable: false,
+    value: {
         nthSundayUtc,
         easternOffsetHours,
         exchangeTime,
@@ -1937,4 +1973,4 @@ module.exports = {
         buildGraphics,
         SESSION_BREAK_MS
     }
-};
+});

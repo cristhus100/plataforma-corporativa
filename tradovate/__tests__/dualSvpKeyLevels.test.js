@@ -40,12 +40,16 @@ const graphicsStub = {
   op: (a, operator, b) => ({ op: [a, operator, b] }),
 }
 
-function loadIndicator() {
+function loadIndicator(modules = {}) {
   const source = fs.readFileSync(INDICATOR_FILE, 'utf8')
+  const table = {
+    './tools/predef': predefStub,
+    './tools/meta': metaStub,
+    './tools/graphics': graphicsStub,
+    ...modules,
+  }
   const requireStub = (id) => {
-    if (id === './tools/predef') return predefStub
-    if (id === './tools/meta') return metaStub
-    if (id === './tools/graphics') return graphicsStub
+    if (id in table) return table[id]
     throw new Error(`require no soportado en el sandbox de test: ${id}`)
   }
   const sandbox = { exports: {} }
@@ -173,6 +177,64 @@ describe('exports del indicador', () => {
     for (const style of Object.values(indicator.schemeStyles.dark)) {
       expect(typeof style.color).toBe('string')
       expect(typeof style.lineWidth).toBe('number')
+    }
+  })
+
+  it('se registra en las categorias del menu de indicadores', () => {
+    expect(indicator.description).toBe('Dual SVP HD + Key Levels Pro')
+    expect(indicator.tags).toContain('Key Levels')
+    expect(indicator.tags).toContain('Volume Profile')
+    expect(indicator.tags).toContain('Volume-based')
+  })
+
+  it('no expone campos ajenos a la interfaz Indicator', () => {
+    const known = new Set([
+      'name',
+      'calculator',
+      'description',
+      'params',
+      'inputType',
+      'areaChoice',
+      'plots',
+      'plotter',
+      'tags',
+      'schemeStyles',
+      'scaler',
+      'dlls',
+      'requirements',
+      'shifts',
+    ])
+    for (const key of Object.keys(indicator)) {
+      expect(known, `campo exportado ${key}`).toContain(key)
+    }
+    // _internals sigue siendo accesible para los tests, pero no es enumerable.
+    expect(Object.keys(indicator)).not.toContain('_internals')
+    expect(indicator._internals).toBeDefined()
+  })
+
+  it('carga aunque la build de predef no traiga las funciones mas nuevas', () => {
+    // Sin paramSpecs.text, sin plotters.multiline, sin scalers y sin tags.
+    const minimalPredef = {
+      paramSpecs: {
+        bool: predefStub.paramSpecs.bool,
+        number: predefStub.paramSpecs.number,
+        enum: predefStub.paramSpecs.enum,
+      },
+      plotters: {},
+    }
+    let degraded
+    expect(() => {
+      degraded = loadIndicator({ './tools/predef': minimalPredef, './tools/meta': {} })
+    }).not.toThrow()
+
+    expect(degraded.inputType).toBe('bars')
+    expect(degraded.areaChoice).toBe('overlay')
+    expect(degraded.tags).toContain('Volume-based')
+    expect(degraded.plotter).toEqual({ type: 'multiline', fields: expect.any(Array) })
+    expect(degraded.scaler).toEqual({ type: 'multiPath', fields: ['vwap'] })
+    expect(degraded.params.rthPocColor).toEqual({ type: 'text', def: '#FF6B6B' })
+    for (const [key, spec] of Object.entries(degraded.params)) {
+      expect(spec.def, `parametro ${key}`).toBeDefined()
     }
   })
 
