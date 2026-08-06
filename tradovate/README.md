@@ -111,7 +111,7 @@ los modos degradados.
 | Límite de 500 boxes | Sin ese límite | Se eliminó la reducción automática de sesiones visibles; `maxSessions` se respeta tal cual. |
 | `input.color` | `ParamType` no tiene `COLOR` | Los colores son parámetros de **texto**: acepta hex (`#FF6B6B`) o nombre web (`red`). Si se deja vacío se usa el color por defecto. |
 | Textos de etiqueta configurables | — | Fijos (`ONH`, `ONL`, `YEH`, `YEL`, `IBH`, `IBL`, `YPOC`, `PWH`, `PWL`, `P2WH`, `P2WL`, `OPEN`, `GAP`, `HALF GAP`). |
-| Transparencia 0–100 por color | `opacity` 0–1 | `histogramOpacity` (0.45 ≈ transparencia 58 del original) y `vaFadeOutside` en %. |
+| Transparencia 0–100 por color | `opacity` 0–100 | `histogramOpacity` (45 ≈ transparencia 55 del original) y `vaFadeOutside` en %. |
 
 ### Detalle: fin de sesión y fin de semana
 Pine detecta la sesión con `time(session)`, que ya excluye días no hábiles. Aquí la
@@ -159,6 +159,11 @@ Dos detalles que se descubrieron probando contra la aplicación real:
   solo lo usan en píxeles. Los puntos de un `Polygon` sí aceptan `du()`.
 - El dashboard se ancla con `cs: "grid"`, no `"frame"`: el marco incluye la escala
   de precios, así que anclar a él deja el panel encima del eje y recortado.
+- **La opacidad va en escala 0–100, no 0–1.** Las definiciones de tipos dicen
+  "0..1 fraction", pero el código real de `tools/predef.js` usa
+  `opacity: style.opacity || 100`. Pasar `opacity: 1` pinta al 1 % y el trazo es
+  invisible — que no es lo mismo que omitir el campo, lo cual da opaco. Por eso
+  el indicador omite `opacity` en lo que va opaco y usa 0–100 en lo demás.
 
 ---
 

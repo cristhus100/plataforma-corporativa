@@ -1097,6 +1097,43 @@ function safeColor(value, fallback) {
 }
 
 /**
+ * La opacidad de la aplicacion va en escala 0..100, no 0..1: tools/predef.js
+ * usa `opacity: style.opacity || 100`. Pasar 1 pinta al 1 % (invisible), que es
+ * distinto de no pasar nada (opaco). Por eso el campo se omite cuando el trazo
+ * debe ir opaco, y cuando se envia va siempre en 0..100.
+ */
+function normalizeOpacity(value) {
+    if (typeof value !== "number" || !isFinite(value)) {
+        return null;
+    }
+    if (value >= 100) {
+        return null; // opaco: mejor no enviar el campo
+    }
+    return Math.max(1, Math.min(100, value));
+}
+
+function fillStyleOf(style) {
+    const result = { color: style.color };
+    const opacity = normalizeOpacity(style.opacity);
+    if (opacity !== null) {
+        result.opacity = opacity;
+    }
+    return result;
+}
+
+function lineStyleOf(style) {
+    const result = { color: style.color, lineWidth: style.width };
+    if (style.dash) {
+        result.lineStyle = style.dash;
+    }
+    const opacity = normalizeOpacity(style.opacity);
+    if (opacity !== null) {
+        result.opacity = opacity;
+    }
+    return result;
+}
+
+/**
  * Acumulador de objetos graficos. Agrupa formas y lineas por estilo para no
  * emitir miles de items sueltos.
  */
@@ -1128,7 +1165,7 @@ function createGraphicsBuilder() {
                     key: groupKey,
                     global: true,
                     primitives: [],
-                    fillStyle: { color: style.color, opacity: style.opacity }
+                    fillStyle: fillStyleOf(style)
                 };
                 shapeOrder.push(groupKey);
             }
@@ -1153,12 +1190,7 @@ function createGraphicsBuilder() {
                     key: groupKey,
                     global: true,
                     lines: [],
-                    lineStyle: {
-                        color: style.color,
-                        lineWidth: style.width,
-                        opacity: style.opacity,
-                        lineStyle: style.dash
-                    }
+                    lineStyle: lineStyleOf(style)
                 };
                 lineOrder.push(groupKey);
             }
@@ -1274,7 +1306,7 @@ function addProfile(builder, instance, record, id) {
     const anchorX = rightSide ? record.endX - gap : record.startX + gap;
 
     if (props.showHistogram) {
-        const opacity = Math.min(1, Math.max(0.05, props.histogramOpacity));
+        const opacity = Math.min(100, Math.max(5, props.histogramOpacity));
         const fadedOpacity = opacity * Math.max(0, 1 - cfg.vaFadeOutside / 100);
 
         for (let r = 0; r < profile.numRows; r += 1) {
@@ -1351,7 +1383,7 @@ function addProfile(builder, instance, record, id) {
     if (props.showPoc) {
         builder.line(
             id + "-l-poc",
-            { color: colors.poc, width: props.profileLineWidth + 1, dash: DASH_SOLID, opacity: 1 },
+            { color: colors.poc, width: props.profileLineWidth + 1, dash: DASH_SOLID },
             lineX1,
             profile.poc,
             lineX2,
@@ -1361,7 +1393,7 @@ function addProfile(builder, instance, record, id) {
     if (props.showVah) {
         builder.line(
             id + "-l-va",
-            { color: colors.vahVal, width: props.profileLineWidth, dash: DASH_DOTTED, opacity: 1 },
+            { color: colors.vahVal, width: props.profileLineWidth, dash: DASH_DOTTED },
             lineX1,
             profile.vah,
             lineX2,
@@ -1371,7 +1403,7 @@ function addProfile(builder, instance, record, id) {
     if (props.showVal) {
         builder.line(
             id + "-l-va",
-            { color: colors.vahVal, width: props.profileLineWidth, dash: DASH_DOTTED, opacity: 1 },
+            { color: colors.vahVal, width: props.profileLineWidth, dash: DASH_DOTTED },
             lineX1,
             profile.val,
             lineX2,
@@ -1431,8 +1463,7 @@ function addKeyLevel(builder, instance, id, options) {
         {
             color: options.color,
             width: options.width,
-            dash: options.dash || DASH_SOLID,
-            opacity: 1
+            dash: options.dash || DASH_SOLID
         },
         startX,
         options.price,
@@ -1716,7 +1747,7 @@ function buildGraphics(instance) {
         const ypocColor = safeColor(props.ypocColor, "#E91E63");
         for (let i = 0; i < pocs.length; i += 1) {
             const age = pocs.length - 1 - i;
-            const opacity = Math.max(0.15, 1 - (0.75 * age) / Math.max(1, pocs.length - 1));
+            const opacity = Math.max(20, 100 - (75 * age) / Math.max(1, pocs.length - 1));
             builder.line(
                 "poc-hist-" + i,
                 { color: ypocColor, width: 1, dash: DASH_SOLID, opacity: opacity },
@@ -1835,7 +1866,7 @@ module.exports = {
         widthPercent: numberSpec(50, 5, 5),
         gapBars: numberSpec(0, 1, 0),
         profileLineWidth: numberSpec(2, 1, 1),
-        histogramOpacity: numberSpec(0.45, 0.05, 0.05),
+        histogramOpacity: numberSpec(45, 5, 5),
         fontSize: numberSpec(11, 1, 6),
 
         // --- Colores del perfil (hex o color web) ---

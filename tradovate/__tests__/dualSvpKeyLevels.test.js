@@ -856,8 +856,9 @@ describe('graphics', () => {
     let rectangles = 0
     for (const group of shapes) {
       expect(typeof group.fillStyle.color).toBe('string')
-      expect(group.fillStyle.opacity).toBeGreaterThan(0)
-      expect(group.fillStyle.opacity).toBeLessThanOrEqual(1)
+      // Escala 0..100: predef usa `opacity || 100`, asi que 1 seria el 1 %.
+      expect(group.fillStyle.opacity).toBeGreaterThanOrEqual(1)
+      expect(group.fillStyle.opacity).toBeLessThanOrEqual(100)
       for (const primitive of group.primitives) {
         // Polygon y no Rectangle: el renderer ignora `size` en unidades de dominio.
         expect(primitive.tag).toBe('Polygon')
@@ -884,6 +885,14 @@ describe('graphics', () => {
     expect(keys).toContain('r0-l-poc')
     expect(keys).toContain('r0-l-va')
     expect(keys.some((k) => k.startsWith('kl-'))).toBe(true)
+
+    // Las lineas opacas no llevan el campo opacity: enviarlo con valor 1
+    // equivaldria al 1 % y no se verian.
+    for (const group of groups) {
+      expect(group.lineStyle.opacity === undefined || group.lineStyle.opacity > 1).toBe(true)
+      expect(typeof group.lineStyle.lineWidth).toBe('number')
+    }
+    expect(groups.find((g) => g.key === 'kl-onh').lineStyle.opacity).toBeUndefined()
 
     const poc = groups.find((g) => g.key === 'r0-l-poc')
     expect(poc.lines).toHaveLength(1)
@@ -1012,6 +1021,25 @@ describe('graphics', () => {
   it('no emite graphics antes de la primera vela', () => {
     const empty = makeCalculator(indicator)
     expect(internals.buildGraphics(empty)).toBeUndefined()
+  })
+
+  it('omite opacity cuando el trazo es opaco y la envia en escala 0..100', () => {
+    // tools/predef.js usa `opacity: style.opacity || 100`, asi que la escala de
+    // la app es 0..100: enviar 1 pinta al 1 % y el trazo es invisible.
+    const builder = internals.createGraphicsBuilder()
+    builder.line('sin', { color: '#fff', width: 1, dash: 1 }, 0, 1, 1, 1)
+    builder.line('opaca', { color: '#fff', width: 1, dash: 1, opacity: 100 }, 0, 1, 1, 1)
+    builder.line('media', { color: '#fff', width: 1, dash: 1, opacity: 45 }, 0, 1, 1, 1)
+    builder.line('minima', { color: '#fff', width: 1, dash: 1, opacity: 0.45 }, 0, 1, 1, 1)
+    builder.rect('relleno', { color: '#fff', opacity: 45 }, 0, 2, 1, 1)
+
+    const byKey = Object.fromEntries(builder.build().map((item) => [item.key, item]))
+    expect(byKey.sin.lineStyle.opacity).toBeUndefined()
+    expect(byKey.opaca.lineStyle.opacity).toBeUndefined()
+    expect(byKey.media.lineStyle.opacity).toBe(45)
+    // Un valor pensado en escala 0..1 se eleva al minimo visible en vez de desaparecer.
+    expect(byKey.minima.lineStyle.opacity).toBe(1)
+    expect(byKey.relleno.fillStyle.opacity).toBe(45)
   })
 
   it('el constructor descarta rectangulos y lineas degenerados', () => {
