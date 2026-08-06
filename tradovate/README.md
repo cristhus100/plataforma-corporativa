@@ -78,6 +78,15 @@ Dos modos, con `labelPlacement`:
 - **`chart`**: el texto sobre el gráfico, al final de la línea del nivel y
   separado de ella `labelLift` píxeles hacia arriba.
 
+Un indicador que ya esté colocado en un gráfico conserva sus parámetros
+guardados, así que **al añadir parámetros nuevos hay que abrir su configuración y
+fijarlos**, o quitar y volver a poner el indicador: si no, llegan vacíos.
+
+`debugGraphics` dibuja siete construcciones numeradas a la vez (texto dentro y
+fuera del rango de velas, anclado al marco con la `y` en precio o en píxeles, y
+formas de ambos tipos) para comprobar de una sola pasada cuáles dibuja una build
+concreta.
+
 ### Dashboard
 Sesión activa (RTH / ON / Outside), Gap en puntos y ticks, rango del IB, rango del
 overnight y Expected Range. Va anclado a una esquina del marco del gráfico

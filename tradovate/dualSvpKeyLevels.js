@@ -1343,6 +1343,11 @@ function createGraphicsBuilder() {
             });
         },
 
+        /** Empuja un objeto tal cual. Solo lo usa el diagnostico. */
+        raw: function (item) {
+            items.push(item);
+        },
+
         build: function () {
             const result = [];
             for (let i = 0; i < shapeOrder.length; i += 1) {
@@ -1580,7 +1585,10 @@ function addKeyLevel(builder, instance, id, options) {
                 ? options.text
                 : options.text + " " + probabilityText(options.probability);
 
-        if (props.labelPlacement === "axis") {
+        // Un indicador ya puesto en el grafico conserva sus parametros guardados,
+        // asi que un parametro nuevo puede llegar vacio: solo "chart" desactiva
+        // el modo del eje.
+        if (props.labelPlacement !== "chart") {
             const size = props.fontSize;
             builder.axisBadge(
                 id,
@@ -1682,6 +1690,161 @@ function addDashboard(builder, instance) {
             rows[i].label + ": " + rows[i].value,
             { color: rows[i].color, size: props.fontSize, weight: i === 0 ? "bold" : "normal" }
         );
+    }
+}
+
+/**
+ * Diagnostico: dibuja varias construcciones a la vez, cada una numerada con un
+ * texto anclado dentro del rango de velas (que es donde se sabe que el texto se
+ * dibuja siempre). Sirve para ver de una sola pasada cuales renderiza la
+ * aplicacion, en vez de ir probando de una en una.
+ */
+function addDebugProbe(builder, instance) {
+    const range = instance.recentRange(200);
+    if (!range) {
+        return;
+    }
+
+    const lastX = instance.lastBarIndex;
+    const offset = instance.props.labelOffset;
+    const size = instance.props.fontSize + 1;
+    const step = range.size / 12;
+    const center = (range.high + range.low) / 2;
+    const priceOf = (row) => center + (3 - row) * step;
+
+    const variants = [
+        { name: "1 texto dentro", color: "#FFFFFF" },
+        { name: "2 texto fuera, cuerpo dentro", color: "#FFEE58" },
+        { name: "3 texto fuera, cuerpo fuera", color: "#FF7043" },
+        { name: "4 texto marco x:px y:precio", color: "#66BB6A" },
+        { name: "5 texto marco x:px y:px", color: "#29B6F6" },
+        { name: "6 forma en velas", color: "#AB47BC" },
+        { name: "7 forma marco x:px y:precio", color: "#EC407A" }
+    ];
+
+    const textItem = (key, point, value, color, alignment, origin) => {
+        const item = {
+            tag: "Text",
+            key: key,
+            global: true,
+            point: point,
+            text: value,
+            style: { fontFamily: FONT_FAMILY, fontSize: size, fontWeight: "bold", fill: color },
+            textAlignment: alignment
+        };
+        if (origin) {
+            item.origin = origin;
+        }
+        return item;
+    };
+
+    const frameOrigin = { cs: "frame", h: "right", v: "top" };
+
+    for (let i = 0; i < variants.length; i += 1) {
+        const variant = variants[i];
+        const price = priceOf(i);
+
+        // Rotulo de control: dentro del rango de velas, siempre visible.
+        builder.raw(
+            textItem(
+                "dbg-name-" + i,
+                { x: du(lastX - 2), y: du(price) },
+                variant.name,
+                variant.color,
+                "leftMiddle"
+            )
+        );
+
+        if (i === 0) {
+            builder.raw(
+                textItem(
+                    "dbg-v0",
+                    { x: du(lastX - 1), y: op(du(price), "-", px(11)) },
+                    "<<< OK",
+                    variant.color,
+                    "rightMiddle"
+                )
+            );
+        } else if (i === 1) {
+            builder.raw(
+                textItem(
+                    "dbg-v1",
+                    { x: du(lastX + offset), y: du(price) },
+                    "<<< OK",
+                    variant.color,
+                    "leftMiddle"
+                )
+            );
+        } else if (i === 2) {
+            builder.raw(
+                textItem(
+                    "dbg-v2",
+                    { x: du(lastX + offset), y: du(price) },
+                    "OK >>>",
+                    variant.color,
+                    "rightMiddle"
+                )
+            );
+        } else if (i === 3) {
+            builder.raw(
+                textItem(
+                    "dbg-v3",
+                    { x: px(80), y: du(price) },
+                    "OK 4",
+                    variant.color,
+                    "centerMiddle",
+                    frameOrigin
+                )
+            );
+        } else if (i === 4) {
+            builder.raw(
+                textItem(
+                    "dbg-v4",
+                    { x: px(80), y: px(120) },
+                    "OK 5",
+                    variant.color,
+                    "centerMiddle",
+                    frameOrigin
+                )
+            );
+        } else if (i === 5) {
+            builder.raw({
+                tag: "Shapes",
+                key: "dbg-v5",
+                global: true,
+                primitives: [
+                    {
+                        tag: "Polygon",
+                        points: [
+                            { x: du(lastX - 12), y: du(price + step * 0.3) },
+                            { x: du(lastX - 1), y: du(price + step * 0.3) },
+                            { x: du(lastX - 1), y: du(price - step * 0.3) },
+                            { x: du(lastX - 12), y: du(price - step * 0.3) }
+                        ]
+                    }
+                ],
+                fillStyle: { color: variant.color }
+            });
+        } else if (i === 6) {
+            builder.raw({
+                tag: "Shapes",
+                key: "dbg-v6",
+                global: true,
+                origin: frameOrigin,
+                primitives: [
+                    {
+                        tag: "Polygon",
+                        points: [
+                            { x: px(140), y: op(du(price), "-", px(9)) },
+                            { x: px(80), y: op(du(price), "-", px(9)) },
+                            { x: px(80), y: op(du(price), "+", px(9)) },
+                            { x: px(140), y: op(du(price), "+", px(9)) }
+                        ]
+                    }
+                ],
+                fillStyle: { color: variant.color }
+            });
+        }
     }
 }
 
@@ -1887,6 +2050,11 @@ function buildGraphics(instance) {
         addDashboard(builder, instance);
     }
 
+    // 5. Diagnostico opcional.
+    if (props.debugGraphics) {
+        addDebugProbe(builder, instance);
+    }
+
     const items = builder.build();
     return items.length > 0 ? { items: items } : undefined;
 }
@@ -2079,6 +2247,8 @@ module.exports = {
         gapDownColor: colorSpec("#FF5252"),
         gapLineWidth: numberSpec(1, 1, 1),
 
+        debugGraphics: boolSpec(false),
+
         showExpectedRange: boolSpec(true),
         manualVxn: numberSpec(0, 0.5, 0),
 
@@ -2148,6 +2318,7 @@ Object.defineProperty(module.exports, "_internals", {
         safeColor,
         contrastingTextColor,
         createGraphicsBuilder,
+        addDebugProbe,
         buildGraphics,
         SESSION_BREAK_MS
     }

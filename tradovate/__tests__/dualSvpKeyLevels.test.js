@@ -1109,6 +1109,14 @@ describe('graphics', () => {
     expect(widthOf('kl-ypoc')).toBeGreaterThan(widthOf('kl-onh'))
   })
 
+  it('trata un labelPlacement ausente como modo eje', () => {
+    // Un indicador ya colocado en el grafico puede no traer los parametros
+    // nuevos: el modo del eje tiene que seguir siendo el comportamiento base.
+    const legacy = makeCalculator(indicator, { labelPlacement: undefined })
+    const keys = runAndDraw(legacy, bars).graphics.items.map((item) => item.key)
+    expect(keys).toContain('kl-onh-bg')
+  })
+
   it('permite volver a las etiquetas sobre el grafico', () => {
     const onChart = makeCalculator(indicator, { labelPlacement: 'chart' })
     const items = runAndDraw(onChart, bars).graphics.items
