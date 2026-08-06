@@ -68,6 +68,16 @@ Se dibuja como **plot nativo**, así que su color, grosor y estilo de línea se
 editan desde la sección de estilos del editor de indicadores, como cualquier
 indicador de Tradovate.
 
+### Etiquetas de nivel
+Dos modos, con `labelPlacement`:
+
+- **`axis`** (por defecto): pastilla de color con el texto dentro, pegada al eje de
+  precio y siguiendo al nivel verticalmente, al estilo NinjaTrader. La distancia
+  al borde se ajusta con `axisLabelMargin` (70 px). El color del texto se elige
+  solo, negro o blanco, según el contraste con el fondo de la pastilla.
+- **`chart`**: el texto sobre el gráfico, al final de la línea del nivel y
+  separado de ella `labelLift` píxeles hacia arriba.
+
 ### Dashboard
 Sesión activa (RTH / ON / Outside), Gap en puntos y ticks, rango del IB, rango del
 overnight y Expected Range. Va anclado a una esquina del marco del gráfico

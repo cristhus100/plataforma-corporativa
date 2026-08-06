@@ -903,7 +903,8 @@ describe('graphics', () => {
   })
 
   it('agrupa el histograma en objetos Shapes con rectangulos validos', () => {
-    const shapes = collect(result.graphics.items, 'Shapes')
+    // Las pastillas del eje tambien son Shapes, pero van ancladas al marco.
+    const shapes = collect(result.graphics.items, 'Shapes').filter((item) => !item.origin)
     expect(shapes.length).toBeGreaterThan(0)
 
     let rectangles = 0
@@ -966,14 +967,9 @@ describe('graphics', () => {
     expect(byKey['r0-t-poc'].text).toBe('POC')
 
     const onh = byKey['kl-onh-t']
-    if (onh) {
-      expect(onh.text.startsWith('ONH')).toBe(true)
-      expect(typeof onh.style.fontSize).toBe('number')
-      expect(typeof onh.style.fill).toBe('string')
-      // El cuerpo del texto se dibuja hacia la izquierda, apoyado sobre el
-      // grafico: mas alla de la ultima vela el renderer no lo dibuja.
-      expect(onh.textAlignment).toBe('leftMiddle')
-    }
+    expect(onh.text.startsWith('ONH')).toBe(true)
+    expect(typeof onh.style.fontSize).toBe('number')
+    expect(typeof onh.style.fill).toBe('string')
 
     // Las probabilidades solo se muestran dentro del RTH.
     const inRth = makeCalculator(indicator)
@@ -1007,8 +1003,11 @@ describe('graphics', () => {
   })
 
   it('separa la etiqueta de su linea en vertical, no en horizontal', () => {
-    const groups = collect(result.graphics.items, 'LineSegments')
-    const texts = collect(result.graphics.items, 'Text')
+    // Comportamiento del modo "chart", donde la etiqueta va sobre el grafico.
+    const onChart = makeCalculator(indicator, { labelPlacement: 'chart' })
+    const chartItems = runAndDraw(onChart, bars).graphics.items
+    const groups = collect(chartItems, 'LineSegments')
+    const texts = collect(chartItems, 'Text')
     const line = groups.find((g) => g.key === 'kl-onh')
     const label = texts.find((t) => t.key === 'kl-onh-t')
     const lineEnd = Math.max(line.lines[0].a.x.du, line.lines[0].b.x.du)
@@ -1020,29 +1019,32 @@ describe('graphics', () => {
     // La separacion es un desplazamiento en pixeles hacia arriba: op(du(y), '-', px(n)).
     const [base, operator, offset] = label.point.y.op
     expect(operator).toBe('-')
-    expect(base.du).toBeCloseTo(instance.activeOvnHigh, 10)
-    expect(offset.px).toBe(instance.props.labelLift)
-    expect(instance.props.labelLift).toBeGreaterThan(0)
+    expect(base.du).toBeCloseTo(onChart.activeOvnHigh, 10)
+    expect(offset.px).toBe(onChart.props.labelLift)
+    expect(onChart.props.labelLift).toBeGreaterThan(0)
 
     // Las estadisticas del perfil no se levantan: van bajo el perfil.
     const stats = texts.find((t) => t.key === 'r0-t-sum')
-    expect(stats.point.y.du).toBeLessThan(instance.completedRth[0].profile.low)
+    expect(stats.point.y.du).toBeLessThan(onChart.completedRth[0].profile.low)
     expect(stats.textAlignment).toBe('rightMiddle')
   })
 
   it('mantiene las etiquetas de nivel dentro del alcance del dibujo', () => {
-    // Todo texto se ancla como mucho una vela mas alla del final de su linea.
+    // En modo "chart" todo texto se ancla como mucho una vela mas alla del
+    // final de su linea, que es hasta donde llega el dibujo.
+    const onChart = makeCalculator(indicator, { labelPlacement: 'chart' })
+    const chartItems = runAndDraw(onChart, bars).graphics.items
     const lineEnds = {}
-    for (const group of collect(result.graphics.items, 'LineSegments')) {
+    for (const group of collect(chartItems, 'LineSegments')) {
       lineEnds[group.key] = Math.max(
         ...group.lines.map((line) => Math.max(line.a.x.du, line.b.x.du))
       )
     }
-    for (const text of collect(result.graphics.items, 'Text')) {
+    for (const text of collect(chartItems, 'Text')) {
       if (text.origin) continue // el dashboard va en coordenadas de marco
       const x = text.point.x.du
       expect(Number.isFinite(x)).toBe(true)
-      expect(x).toBeLessThanOrEqual(instance.lastBarIndex + instance.props.labelOffset + 1)
+      expect(x).toBeLessThanOrEqual(onChart.lastBarIndex + onChart.props.labelOffset + 1)
     }
     expect(Object.keys(lineEnds).length).toBeGreaterThan(0)
   })
@@ -1063,6 +1065,60 @@ describe('graphics', () => {
     const bareTexts = collect(runAndDraw(bare, bars).graphics.items, 'Text')
     expect(bareTexts.some((t) => t.key.endsWith('-t-sum'))).toBe(false)
     expect(bareTexts.some((t) => t.key.endsWith('-t-delta'))).toBe(false)
+  })
+
+  it('dibuja las etiquetas de nivel como pastillas ancladas al eje de precio', () => {
+    const items = result.graphics.items
+    const badge = items.find((item) => item.key === 'kl-onh-bg')
+    const text = items.find((item) => item.key === 'kl-onh-t')
+
+    // Ancladas al marco: la x va en pixeles desde el borde derecho...
+    expect(badge.origin).toEqual({ cs: 'frame', h: 'right', v: 'top' })
+    expect(text.origin).toEqual({ cs: 'frame', h: 'right', v: 'top' })
+    for (const point of badge.primitives[0].points) {
+      expect(Number.isFinite(point.x.px)).toBe(true)
+      expect(point.x.px).toBeGreaterThanOrEqual(instance.props.axisLabelMargin)
+    }
+    expect(text.point.x.px).toBeGreaterThan(instance.props.axisLabelMargin)
+
+    // ...y la y sigue al precio del nivel.
+    expect(text.point.y.du).toBeCloseTo(instance.activeOvnHigh, 10)
+    const [base, operator, offset] = badge.primitives[0].points[0].y.op
+    expect(base.du).toBeCloseTo(instance.activeOvnHigh, 10)
+    expect(operator).toBe('-')
+    expect(offset.px).toBeGreaterThan(0)
+
+    // El texto va centrado dentro de la pastilla y con color legible.
+    expect(text.textAlignment).toBe('centerMiddle')
+    expect(text.text).toMatch(/^ONH( \d+%)?$/)
+    expect(text.style.fill).toBe(internals.contrastingTextColor(badge.fillStyle.color))
+
+    // La pastilla se dibuja antes que su texto, para quedar debajo.
+    expect(items.indexOf(badge)).toBeLessThan(items.indexOf(text))
+  })
+
+  it('la pastilla es mas ancha cuanto mas largo es el texto', () => {
+    const widthOf = (label) => {
+      const withProb = makeCalculator(indicator)
+      const items = runAndDraw(withProb, bars).graphics.items
+      const badge = items.find((item) => item.key === label + '-bg')
+      const xs = badge.primitives[0].points.map((p) => p.x.px)
+      return Math.max(...xs) - Math.min(...xs)
+    }
+    // "YPOC 55%" ocupa mas que "ONH".
+    expect(widthOf('kl-ypoc')).toBeGreaterThan(widthOf('kl-onh'))
+  })
+
+  it('permite volver a las etiquetas sobre el grafico', () => {
+    const onChart = makeCalculator(indicator, { labelPlacement: 'chart' })
+    const items = runAndDraw(onChart, bars).graphics.items
+    const keys = items.map((item) => item.key)
+
+    expect(keys).not.toContain('kl-onh-bg')
+    const label = items.find((item) => item.key === 'kl-onh-t')
+    expect(label.origin).toBeUndefined()
+    expect(label.point.x.du).toBeGreaterThan(0)
+    expect(label.textAlignment).toBe('leftMiddle')
   })
 
   it('respeta las opciones de visualizacion', () => {

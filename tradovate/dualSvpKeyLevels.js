@@ -1110,6 +1110,20 @@ class DualSvpKeyLevels {
 
 const FONT_FAMILY = "Arial, Helvetica, sans-serif";
 
+/** Negro o blanco, el que mas contraste da sobre el color de fondo indicado. */
+function contrastingTextColor(background) {
+    const match = /^#?([0-9a-fA-F]{6})$/.exec(String(background).trim());
+    if (!match) {
+        return "#FFFFFF";
+    }
+    const value = parseInt(match[1], 16);
+    const r = (value >> 16) & 255;
+    const g = (value >> 8) & 255;
+    const b = value & 255;
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.6 ? "#101010" : "#FFFFFF";
+}
+
 /** Normaliza un color escrito por el usuario; vacio o invalido -> color por defecto. */
 function safeColor(value, fallback) {
     if (typeof value !== "string") {
@@ -1275,6 +1289,57 @@ function createGraphicsBuilder() {
                 // El texto se dibuja al lado que indica el valor, asi que para
                 // una esquina derecha hay que mandarlo hacia la izquierda.
                 textAlignment: corner.h === "right" ? "leftMiddle" : "rightMiddle"
+            });
+        },
+
+        /**
+         * Etiqueta al estilo NinjaTrader: una pastilla de color pegada al eje de
+         * precio, con el texto dentro.
+         *
+         * La x va en pixeles desde el borde derecho del marco y la y en unidades
+         * de precio, asi que la etiqueta sigue al nivel verticalmente pero se
+         * queda fija en el borde. Anclar al marco es ademas lo unico que se ha
+         * visto dibujar fuera del rango de velas.
+         */
+        axisBadge: function (key, marginPx, widthPx, halfHeightPx, price, value, style) {
+            const near = marginPx;
+            const far = marginPx + widthPx;
+            const top = op(du(price), "-", px(halfHeightPx));
+            const bottom = op(du(price), "+", px(halfHeightPx));
+
+            items.push({
+                tag: "Shapes",
+                key: key + "-bg",
+                global: true,
+                origin: { cs: "frame", h: "right", v: "top" },
+                primitives: [
+                    {
+                        tag: "Polygon",
+                        points: [
+                            { x: px(far), y: top },
+                            { x: px(near), y: top },
+                            { x: px(near), y: bottom },
+                            { x: px(far), y: bottom }
+                        ]
+                    }
+                ],
+                fillStyle: { color: style.color }
+            });
+
+            items.push({
+                tag: "Text",
+                key: key + "-t",
+                global: true,
+                origin: { cs: "frame", h: "right", v: "top" },
+                point: { x: px(marginPx + widthPx / 2), y: du(price) },
+                text: value,
+                style: {
+                    fontFamily: FONT_FAMILY,
+                    fontSize: style.size,
+                    fontWeight: "bold",
+                    fill: style.textColor
+                },
+                textAlignment: "centerMiddle"
             });
         },
 
@@ -1514,13 +1579,31 @@ function addKeyLevel(builder, instance, id, options) {
             options.probability === null || options.probability === undefined
                 ? options.text
                 : options.text + " " + probabilityText(options.probability);
-        builder.text(id + "-t", endX + 1, options.price, text, {
-            color: options.color,
-            size: props.fontSize,
-            weight: "bold",
-            align: "leftMiddle",
-            lift: props.labelLift
-        });
+
+        if (props.labelPlacement === "axis") {
+            const size = props.fontSize;
+            builder.axisBadge(
+                id,
+                props.axisLabelMargin,
+                Math.max(30, Math.round(text.length * size * 0.6) + 12),
+                Math.round(size * 0.5) + 3,
+                options.price,
+                text,
+                {
+                    color: options.color,
+                    textColor: contrastingTextColor(options.color),
+                    size: size
+                }
+            );
+        } else {
+            builder.text(id + "-t", endX + 1, options.price, text, {
+                color: options.color,
+                size: props.fontSize,
+                weight: "bold",
+                align: "leftMiddle",
+                lift: props.labelLift
+            });
+        }
     }
 }
 
@@ -1929,6 +2012,11 @@ module.exports = {
 
         // --- Key Levels ---
         showKeyLevelLabels: boolSpec(true),
+        labelPlacement: enumSpec(
+            { axis: "Price axis (NinjaTrader)", chart: "On chart" },
+            "axis"
+        ),
+        axisLabelMargin: numberSpec(70, 5, 0),
         labelOffset: numberSpec(8, 1, 0),
         labelLift: numberSpec(10, 1, 0),
         showDashboard: boolSpec(true),
@@ -2058,6 +2146,7 @@ Object.defineProperty(module.exports, "_internals", {
         decimalsForTick,
         readBar,
         safeColor,
+        contrastingTextColor,
         createGraphicsBuilder,
         buildGraphics,
         SESSION_BREAK_MS
