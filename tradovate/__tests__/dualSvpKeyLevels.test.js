@@ -717,6 +717,59 @@ describe('niveles semanales', () => {
     // El ancla de las lineas semanales avanza con cada semana nueva.
     expect(instance.week.startX).toBe(3 * 24 * 7)
   })
+
+  it('descarta la primera semana si el historial empieza a mitad de semana', () => {
+    // El historial del grafico casi nunca empieza en lunes: esa primera semana
+    // es un fragmento y no puede contar como semana completa.
+    const instance = makeCalculator(indicator)
+    // Miercoles 10 de enero de 2024, 00:00 NY.
+    const start = Date.UTC(2024, 0, 10, 5, 0)
+    let index = 0
+    const emit = (hourOffset, base) => {
+      const ms = start + hourOffset * 60 * MINUTE
+      instance.map(makeBar(index, ms, base, base + 5, base - 5, base, 100), index)
+      index += 1
+    }
+
+    // Fragmento miercoles-sabado (base 100), luego dos semanas completas.
+    for (let hour = 0; hour < 24 * 4; hour += 1) emit(hour, 100)
+    for (let hour = 0; hour < 24 * 7; hour += 1) emit(24 * 4 + hour, 110)
+    for (let hour = 0; hour < 24 * 7; hour += 1) emit(24 * 11 + hour, 120)
+    emit(24 * 18, 130) // una vela de la semana siguiente para cerrar la ultima
+
+    const weekly = instance.prevWeekLevels()
+    // El fragmento (95..105) no aparece por ningun lado.
+    expect(weekly.high).toBeCloseTo(125, 10)
+    expect(weekly.low).toBeCloseTo(115, 10)
+    expect(weekly.high2).toBeCloseTo(115, 10)
+    expect(weekly.low2).toBeCloseTo(105, 10)
+    expect(instance.week.closed).toHaveLength(2)
+  })
+
+  it('no dibuja P2W si no hay suficientes semanas completas', () => {
+    const instance = makeCalculator(indicator)
+    const start = Date.UTC(2024, 0, 7, 5, 0) // domingo
+    let index = 0
+    for (let hour = 0; hour < 24 * 8; hour += 1) {
+      const ms = start + hour * 60 * MINUTE
+      instance.map(makeBar(index, ms, 100, 105, 95, 100, 100), index)
+      index += 1
+    }
+    const weekly = instance.prevWeekLevels()
+    expect(weekly.high).toBeCloseTo(105, 10)
+    expect(weekly.high2).toBeNull()
+    expect(weekly.low2).toBeNull()
+
+    // Y sin valor, la linea y su etiqueta no se emiten.
+    const last = makeBar(index, start + 24 * 8 * 60 * MINUTE, 100, 105, 95, 100, 100, {
+      isLast: true,
+    })
+    const items = instance.map(last, index).graphics.items
+    const keys = items.map((item) => item.key)
+    expect(keys).toContain('kl-pwh')
+    expect(keys).not.toContain('kl-p2wh')
+    expect(keys).not.toContain('kl-p2wh-t')
+  })
 })
 
 describe('perfil de volumen real (d.profile)', () => {

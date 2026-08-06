@@ -104,7 +104,7 @@ los modos degradados.
 | Pine | Tradovate | Consecuencia |
 |------|-----------|--------------|
 | `request.security_lower_tf` (modo HD) | `d.profile()` | **Mejor**: perfil real por precio en vez de aproximación. Se eliminaron `useHD` / `lowerTf`. |
-| `request.security(..., "W", ...)` | No existe | PWH/PWL y P2WH/P2WL se calculan con el historial del propio gráfico. **Requiere al menos 3 semanas de velas cargadas** para mostrar P2WH/P2WL. |
+| `request.security(..., "W", ...)` | No existe | PWH/PWL y P2WH/P2WL se calculan con el historial del propio gráfico. Solo cuentan las semanas vistas **desde su inicio**: la primera semana del historial suele ser un fragmento y se descarta. Hacen falta ~3 semanas completas cargadas para ver P2WH/P2WL; si no las hay, esas líneas no se dibujan en vez de mostrar un valor falso. |
 | `request.security("CBOE:VXN")` | No hay símbolos externos | El Expected Range usa el parámetro `manualVxn`. Con `manualVxn = 0` queda en `n/a`. Fórmula sin cambios: `(VXN/100)/16 × open RTH`, congelado en la apertura. |
 | `table.new()` | No hay tablas | El dashboard son objetos `Text` globales anclados a una esquina del marco. |
 | `alertcondition()` | Modelo de alertas distinto | No portado. Las alertas se configuran desde Tradovate sobre los niveles. |

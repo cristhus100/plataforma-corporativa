@@ -530,7 +530,15 @@ class DualSvpKeyLevels {
         this.prevProfile = { poc: null, vah: null, val: null };
 
         this.kl = newKeyLevelsState();
-        this.week = { key: null, high: null, low: null, close: null, startX: null, closed: [] };
+        this.week = {
+            key: null,
+            complete: false,
+            high: null,
+            low: null,
+            close: null,
+            startX: null,
+            closed: []
+        };
 
         this.vwapState = newVwapState();
         this.series = [];
@@ -579,6 +587,7 @@ class DualSvpKeyLevels {
             kl: Object.assign({}, this.kl),
             week: {
                 key: this.week.key,
+                complete: this.week.complete,
                 high: this.week.high,
                 low: this.week.low,
                 close: this.week.close,
@@ -616,6 +625,7 @@ class DualSvpKeyLevels {
         this.kl = Object.assign({}, snap.kl);
         this.week = {
             key: snap.week.key,
+            complete: snap.week.complete,
             high: snap.week.high,
             low: snap.week.low,
             close: snap.week.close,
@@ -901,13 +911,25 @@ class DualSvpKeyLevels {
 
     // -- Semanas -------------------------------------------------------------
 
+    /**
+     * Solo cuenta como semana cerrada la que se ha visto desde su principio.
+     *
+     * El historial del grafico casi nunca empieza en lunes, asi que su primera
+     * semana es un fragmento de unos pocos dias. Guardarlo como semana completa
+     * desplaza toda la serie: PWH/PWL siguen saliendo bien porque son la ultima
+     * semana entera, pero P2WH/P2WL toman el fragmento y caen practicamente
+     * encima de los anteriores.
+     */
     updateWeek(bar, t) {
         const week = this.week;
+        const seenFromStart = t.dow === 0 || t.dow === 1;
+
         if (week.key === null) {
             week.key = t.weekKey;
             week.startX = bar.x;
+            week.complete = seenFromStart;
         } else if (week.key !== t.weekKey) {
-            if (week.high !== null) {
+            if (week.high !== null && week.complete) {
                 week.closed.push({ high: week.high, low: week.low, close: week.close });
                 while (week.closed.length > 4) {
                     week.closed.shift();
@@ -915,6 +937,7 @@ class DualSvpKeyLevels {
             }
             week.key = t.weekKey;
             week.startX = bar.x;
+            week.complete = seenFromStart;
             week.high = null;
             week.low = null;
             week.close = null;
