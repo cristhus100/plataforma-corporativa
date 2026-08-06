@@ -970,9 +970,9 @@ describe('graphics', () => {
       expect(onh.text.startsWith('ONH')).toBe(true)
       expect(typeof onh.style.fontSize).toBe('number')
       expect(typeof onh.style.fill).toBe('string')
-      // "rightMiddle" = el texto se dibuja a la derecha del punto, que es lo que
-      // evita que la linea del nivel lo atraviese.
-      expect(onh.textAlignment).toBe('rightMiddle')
+      // El cuerpo del texto se dibuja hacia la izquierda, apoyado sobre el
+      // grafico: mas alla de la ultima vela el renderer no lo dibuja.
+      expect(onh.textAlignment).toBe('leftMiddle')
     }
 
     // Las probabilidades solo se muestran dentro del RTH.
@@ -988,10 +988,12 @@ describe('graphics', () => {
     const texts = collect(result.graphics.items, 'Text').filter((t) => t.key.startsWith('dash-'))
     expect(texts.length).toBeGreaterThanOrEqual(4)
     for (const item of texts) {
-      // grid y no frame: el marco incluye la escala de precios.
-      expect(item.origin).toEqual({ cs: 'grid', h: 'right', v: 'top' })
+      // "frame" es el unico origen que se ha visto dibujar.
+      expect(item.origin).toEqual({ cs: 'frame', h: 'right', v: 'top' })
       expect(Number.isFinite(item.point.x.px)).toBe(true)
       expect(Number.isFinite(item.point.y.px)).toBe(true)
+      // Margen suficiente para librar la escala de precios del marco.
+      expect(item.point.x.px).toBeGreaterThanOrEqual(60)
       // Esquina derecha: el texto va hacia dentro, es decir a la izquierda.
       expect(item.textAlignment).toBe('leftMiddle')
     }
@@ -1000,27 +1002,49 @@ describe('graphics', () => {
     const bottomLeft = makeCalculator(indicator, { dashboardPosition: 'bottomLeft' })
     const blResult = runAndDraw(bottomLeft, bars)
     const blTexts = collect(blResult.graphics.items, 'Text').filter((t) => t.key.startsWith('dash-'))
-    expect(blTexts[0].origin).toEqual({ cs: 'grid', h: 'left', v: 'bottom' })
+    expect(blTexts[0].origin).toEqual({ cs: 'frame', h: 'left', v: 'bottom' })
     expect(blTexts[0].textAlignment).toBe('rightMiddle')
   })
 
-  it('separa la etiqueta del final de la linea del nivel', () => {
+  it('separa la etiqueta de su linea en vertical, no en horizontal', () => {
     const groups = collect(result.graphics.items, 'LineSegments')
     const texts = collect(result.graphics.items, 'Text')
     const line = groups.find((g) => g.key === 'kl-onh')
     const label = texts.find((t) => t.key === 'kl-onh-t')
     const lineEnd = Math.max(line.lines[0].a.x.du, line.lines[0].b.x.du)
 
-    expect(label.point.x.du).toBe(lineEnd + instance.props.labelGap)
-    expect(instance.props.labelGap).toBeGreaterThan(0)
-    expect(label.textAlignment).toBe('rightMiddle')
+    // La etiqueta queda apoyada sobre el final de la linea, no mas alla.
+    expect(label.point.x.du).toBe(lineEnd + 1)
+    expect(label.textAlignment).toBe('leftMiddle')
 
-    // Las etiquetas del perfil arrancan despues del final de sus lineas.
-    const pocLine = groups.find((g) => g.key === 'r0-l-poc')
-    const pocLabel = texts.find((t) => t.key === 'r0-t-poc')
-    expect(pocLabel.point.x.du).toBeGreaterThan(
-      Math.max(pocLine.lines[0].a.x.du, pocLine.lines[0].b.x.du)
-    )
+    // La separacion es un desplazamiento en pixeles hacia arriba: op(du(y), '-', px(n)).
+    const [base, operator, offset] = label.point.y.op
+    expect(operator).toBe('-')
+    expect(base.du).toBeCloseTo(instance.activeOvnHigh, 10)
+    expect(offset.px).toBe(instance.props.labelLift)
+    expect(instance.props.labelLift).toBeGreaterThan(0)
+
+    // Las estadisticas del perfil no se levantan: van bajo el perfil.
+    const stats = texts.find((t) => t.key === 'r0-t-sum')
+    expect(stats.point.y.du).toBeLessThan(instance.completedRth[0].profile.low)
+    expect(stats.textAlignment).toBe('rightMiddle')
+  })
+
+  it('mantiene las etiquetas de nivel dentro del alcance del dibujo', () => {
+    // Todo texto se ancla como mucho una vela mas alla del final de su linea.
+    const lineEnds = {}
+    for (const group of collect(result.graphics.items, 'LineSegments')) {
+      lineEnds[group.key] = Math.max(
+        ...group.lines.map((line) => Math.max(line.a.x.du, line.b.x.du))
+      )
+    }
+    for (const text of collect(result.graphics.items, 'Text')) {
+      if (text.origin) continue // el dashboard va en coordenadas de marco
+      const x = text.point.x.du
+      expect(Number.isFinite(x)).toBe(true)
+      expect(x).toBeLessThanOrEqual(instance.lastBarIndex + instance.props.labelOffset + 1)
+    }
+    expect(Object.keys(lineEnds).length).toBeGreaterThan(0)
   })
 
   it('no dibuja las etiquetas de delta salvo que se activen', () => {

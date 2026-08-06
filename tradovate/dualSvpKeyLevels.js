@@ -1224,15 +1224,22 @@ function createGraphicsBuilder() {
             });
         },
 
+        /**
+         * `lift` separa el texto de su linea en pixeles, hacia arriba. Se separa
+         * en vertical y no en horizontal a proposito: el texto anclado mas alla
+         * de la ultima vela deja de dibujarse, asi que la etiqueta tiene que
+         * seguir apoyada sobre el rango de datos.
+         */
         text: function (key, x, y, value, style) {
             if (!isFinite(y) || !isFinite(x) || !value) {
                 return;
             }
+            const lift = style.lift > 0 ? style.lift : 0;
             items.push({
                 tag: "Text",
                 key: key,
                 global: true,
-                point: { x: du(x), y: du(y) },
+                point: { x: du(x), y: lift > 0 ? op(du(y), "-", px(lift)) : du(y) },
                 text: value,
                 style: {
                     fontFamily: FONT_FAMILY,
@@ -1245,17 +1252,18 @@ function createGraphicsBuilder() {
         },
 
         /**
-         * Texto anclado a una esquina del area de dibujo, en pixeles.
+         * Texto anclado a una esquina del marco, en pixeles.
          *
-         * cs: "grid" y no "frame": el marco incluye la escala de precios, asi que
-         * anclar a el deja el texto encima del eje y recortado.
+         * Se usa cs "frame" porque es el unico que se ha visto dibujar. Como el
+         * marco incluye la escala de precios, el margen horizontal tiene que ser
+         * suficiente para librarla (dashboardMarginX).
          */
         frameText: function (key, corner, dx, dy, value, style) {
             items.push({
                 tag: "Text",
                 key: key,
                 global: true,
-                origin: { cs: "grid", h: corner.h, v: corner.v },
+                origin: { cs: "frame", h: corner.h, v: corner.v },
                 point: { x: px(dx), y: px(dy) },
                 text: value,
                 style: {
@@ -1437,11 +1445,11 @@ function addProfile(builder, instance, record, id) {
     }
 
     if (props.showProfileLabels) {
-        const labelX = lineX2 + props.labelGap;
-        const size = props.fontSize;
-        builder.text(id + "-t-poc", labelX, profile.poc, "POC", { color: colors.poc, size: size });
-        builder.text(id + "-t-vah", labelX, profile.vah, "VAH", { color: colors.vahVal, size: size });
-        builder.text(id + "-t-val", labelX, profile.val, "VAL", { color: colors.vahVal, size: size });
+        const labelX = lineX2 + 1;
+        const label = { size: props.fontSize, align: "leftMiddle", lift: props.labelLift };
+        builder.text(id + "-t-poc", labelX, profile.poc, "POC", { ...label, color: colors.poc });
+        builder.text(id + "-t-vah", labelX, profile.vah, "VAH", { ...label, color: colors.vahVal });
+        builder.text(id + "-t-val", labelX, profile.val, "VAL", { ...label, color: colors.vahVal });
     }
 
     const range = profile.high - profile.low;
@@ -1452,7 +1460,7 @@ function addProfile(builder, instance, record, id) {
             record.startX,
             profile.low - range * 0.06,
             "Σ " + formatVolume(profile.total) + " / " + formatPrice(range, instance.cfg.decimals),
-            { color: safeColor(props.statsTextColor, "#DCDCDC"), size: props.fontSize }
+            { color: safeColor(props.statsTextColor, "#DCDCDC"), size: props.fontSize, align: "rightMiddle" }
         );
     }
 
@@ -1467,7 +1475,8 @@ function addProfile(builder, instance, record, id) {
                     profile.delta >= 0
                         ? safeColor(props.deltaUpColor, "#00E676")
                         : safeColor(props.deltaDownColor, "#FF5252"),
-                size: props.fontSize
+                size: props.fontSize,
+                align: "rightMiddle"
             }
         );
     }
@@ -1505,10 +1514,12 @@ function addKeyLevel(builder, instance, id, options) {
             options.probability === null || options.probability === undefined
                 ? options.text
                 : options.text + " " + probabilityText(options.probability);
-        builder.text(id + "-t", endX + props.labelGap, options.price, text, {
+        builder.text(id + "-t", endX + 1, options.price, text, {
             color: options.color,
             size: props.fontSize,
-            weight: "bold"
+            weight: "bold",
+            align: "leftMiddle",
+            lift: props.labelLift
         });
     }
 }
@@ -1919,7 +1930,7 @@ module.exports = {
         // --- Key Levels ---
         showKeyLevelLabels: boolSpec(true),
         labelOffset: numberSpec(8, 1, 0),
-        labelGap: numberSpec(3, 1, 0),
+        labelLift: numberSpec(10, 1, 0),
         showDashboard: boolSpec(true),
         dashboardPosition: enumSpec(
             {
@@ -1930,7 +1941,7 @@ module.exports = {
             },
             "topRight"
         ),
-        dashboardMarginX: numberSpec(14, 1, 0),
+        dashboardMarginX: numberSpec(95, 5, 0),
         dashboardMarginY: numberSpec(16, 1, 0),
         dashboardTextColor: colorSpec("#FFFFFF"),
 

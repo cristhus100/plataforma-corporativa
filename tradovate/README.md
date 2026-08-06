@@ -159,11 +159,16 @@ Dos detalles que se descubrieron probando contra la aplicación real:
   dibuja nada cuando ese tamaño va en unidades de dominio — los ejemplos de la API
   solo lo usan en píxeles. Los puntos de un `Polygon` sí aceptan `du()`.
 - **`textAlignment` indica de qué lado del punto se dibuja el texto**, no cómo se
-  alinea respecto a él: `"rightMiddle"` pone el texto a la derecha del ancla. Las
-  etiquetas de nivel lo usan para no quedar debajo de su propia línea, separadas
-  además por `labelGap` velas.
-- El dashboard se ancla con `cs: "grid"`, no `"frame"`: el marco incluye la escala
-  de precios, así que anclar a él deja el panel encima del eje y recortado.
+  alinea respecto a él: `"rightMiddle"` pone el texto a la derecha del ancla.
+- **El texto cuyo cuerpo cae más allá de la última vela no se dibuja.** Por eso
+  las etiquetas de nivel se anclan justo al final de su línea y se dibujan hacia
+  la izquierda (`"leftMiddle"`), apoyadas sobre el gráfico. Para que no queden
+  encima de la línea se separan **en vertical**, con `labelLift` píxeles vía
+  `op(du(precio), '-', px(n))` — mover el texto a la derecha lo sacaría de la
+  zona que el renderer dibuja.
+- El dashboard usa `cs: "frame"`, el único origen que se ha visto dibujar. Como el
+  marco incluye la escala de precios, `dashboardMarginX` (95 px por defecto) es el
+  margen que la libra para que el panel caiga dentro del área de dibujo.
 - **La opacidad va en escala 0–100, no 0–1.** Las definiciones de tipos dicen
   "0..1 fraction", pero el código real de `tools/predef.js` usa
   `opacity: style.opacity || 100`. Pasar `opacity: 1` pinta al 1 % y el trazo es
