@@ -11,12 +11,21 @@
  *      P2WH/P2WL, Open, GAP y Half Gap, con sistema de probabilidades.
  *   3. VWAP con dos bandas de desviacion estandar.
  *
+ * Modo HD: si el grafico se pide con histograma (requirements.volumeProfiles),
+ * cada vela trae su perfil real por precio via d.profile(), con volumen de bid y
+ * de ask. En ese caso el perfil es exacto, no una aproximacion. Si no esta
+ * disponible se reparte el volumen de la vela proporcionalmente al solapamiento
+ * con cada fila, usando offerVolume/bidVolume para el reparto up/down.
+ *
  * Diferencias inevitables respecto de Pine (ver README.md):
- *   - No existe request.security_lower_tf: el perfil se construye con las velas
- *     del grafico. Usar 1m o 30s para una precision equivalente al modo HD.
  *   - No existe request.security: los niveles semanales se calculan a partir del
  *     historial del propio grafico y el VXN se introduce manualmente.
- *   - No existen tablas: el dashboard se dibuja como texto anclado al precio.
+ *   - No existen tablas: el dashboard se dibuja con objetos Text globales
+ *     anclados a una esquina del marco.
+ *
+ * El dibujo usa la API declarativa `graphics` del retorno de map(), no el
+ * plotter de canvas: el canvas solo expone drawLine/drawPath/drawHeatmap,
+ * mientras que graphics ofrece Rectangle, Text y LineSegments.
  *
  * El objeto module.exports._internals se expone unicamente para los tests
  * unitarios del repositorio; Tradovate lo ignora.
@@ -24,6 +33,7 @@
 
 const predef = require("./tools/predef");
 const meta = require("./tools/meta");
+const { op, px, du } = require("./tools/graphics");
 
 // ===========================================================================
 // 1. Utilidades de tiempo (zona horaria del exchange, sin dependencias)
@@ -101,12 +111,26 @@ function rowIndexOf(price, low, rowSize, numRows) {
 }
 
 /**
+ * Fraccion del volumen de una vela que cuenta como compradora.
+ * Usa offerVolume/bidVolume reales si el feed los trae; si no, el signo de la vela.
+ */
+function upShareOf(bar) {
+    const upVol = typeof bar.up === "number" && bar.up >= 0 ? bar.up : null;
+    const downVol = typeof bar.down === "number" && bar.down >= 0 ? bar.down : null;
+    if (upVol !== null && downVol !== null && upVol + downVol > 0) {
+        return upVol / (upVol + downVol);
+    }
+    return bar.dir >= 0 ? 1 : 0;
+}
+
+/**
  * Construye el perfil de volumen de una sesion.
  *
- * Reparte el volumen de cada vela proporcionalmente al solapamiento entre el
- * rango de la vela y cada fila del perfil (identico al Pine original).
+ * Si la vela trae su perfil real (`bar.levels`, de d.profile()), se acumula
+ * precio a precio. Si no, reparte el volumen proporcionalmente al solapamiento
+ * entre el rango de la vela y cada fila (identico al Pine original).
  *
- * @param {Array} bars  {h, l, v, dir}
+ * @param {Array} bars  {h, l, v, dir, up?, down?, levels?}
  * @returns {Object|null} perfil o null si no hay datos utilizables.
  */
 function buildProfile(bars, low, high, numRows, valueAreaPct) {
@@ -121,21 +145,44 @@ function buildProfile(bars, low, high, numRows, valueAreaPct) {
 
     for (let i = 0; i < bars.length; i += 1) {
         const bar = bars[i];
+
+        // Perfil real de la vela: reparto exacto por precio.
+        if (bar.levels && bar.levels.length > 0) {
+            for (let k = 0; k < bar.levels.length; k += 1) {
+                const level = bar.levels[k];
+                const levelVol = level.vol > 0 ? level.vol : 0;
+                if (levelVol <= 0) {
+                    continue;
+                }
+                const r = rowIndexOf(level.price, low, rowSize, numRows);
+                vol[r] += levelVol;
+                const ask = level.askVol > 0 ? level.askVol : 0;
+                const bid = level.bidVol > 0 ? level.bidVol : 0;
+                if (ask + bid > 0) {
+                    up[r] += ask;
+                    down[r] += bid;
+                } else if (bar.dir >= 0) {
+                    up[r] += levelVol;
+                } else {
+                    down[r] += levelVol;
+                }
+            }
+            continue;
+        }
+
         const barVol = bar.v > 0 ? bar.v : 0;
         if (barVol <= 0) {
             continue;
         }
         const barHigh = Math.max(bar.h, bar.l);
         const barLow = Math.min(bar.h, bar.l);
+        const upShare = upShareOf(bar);
 
         if (barHigh === barLow) {
             const r = rowIndexOf(barHigh, low, rowSize, numRows);
             vol[r] += barVol;
-            if (bar.dir >= 0) {
-                up[r] += barVol;
-            } else {
-                down[r] += barVol;
-            }
+            up[r] += barVol * upShare;
+            down[r] += barVol * (1 - upShare);
             continue;
         }
 
@@ -152,11 +199,8 @@ function buildProfile(bars, low, high, numRows, valueAreaPct) {
             }
             const part = (barVol * overlap) / range;
             vol[r] += part;
-            if (bar.dir >= 0) {
-                up[r] += part;
-            } else {
-                down[r] += part;
-            }
+            up[r] += part * upShare;
+            down[r] += part * (1 - upShare);
         }
     }
 
@@ -308,6 +352,20 @@ function formatVolume(value) {
     return String(Math.round(value));
 }
 
+/** Decimales necesarios para representar un tick (0.25 -> 2, 0.00005 -> 5). */
+function decimalsForTick(tick) {
+    if (!(tick > 0)) {
+        return 2;
+    }
+    let decimals = 0;
+    let value = tick;
+    while (decimals < 10 && Math.abs(value - Math.round(value)) > 1e-9) {
+        value *= 10;
+        decimals += 1;
+    }
+    return decimals;
+}
+
 function formatTicks(value, tickSize) {
     if (value === null || value === undefined || !isFinite(value) || !(tickSize > 0)) {
         return "n/a";
@@ -320,31 +378,7 @@ function probabilityText(prob) {
 }
 
 // ===========================================================================
-// 5. Parametros
-// ===========================================================================
-
-/** predef.paramSpecs.color no existe en builds antiguos: se degrada con gracia. */
-function colorSpec(defaultValue) {
-    if (predef && predef.paramSpecs && typeof predef.paramSpecs.color === "function") {
-        return predef.paramSpecs.color(defaultValue);
-    }
-    return { type: "color", def: defaultValue };
-}
-
-function boolSpec(defaultValue) {
-    return predef.paramSpecs.bool(defaultValue);
-}
-
-function numberSpec(defaultValue, step, min) {
-    return predef.paramSpecs.number(defaultValue, step, min);
-}
-
-function enumSpec(options, defaultValue) {
-    return predef.paramSpecs.enum(options, defaultValue);
-}
-
-// ===========================================================================
-// 6. Calculadora
+// 5. Calculadora
 // ===========================================================================
 
 const SESSION_BREAK_MS = 6 * MS_HOUR; // corte forzado de sesion (fin de semana)
@@ -433,6 +467,15 @@ function readBar(d, fallbackIndex) {
         x = d.index;
     }
 
+    // Perfil real de la vela (solo si el grafico se pidio con histograma).
+    let levels = null;
+    if (typeof d.profile === "function") {
+        const raw = d.profile();
+        if (raw && raw.length > 0) {
+            levels = raw;
+        }
+    }
+
     return {
         x: typeof x === "number" && isFinite(x) ? x : fallbackIndex,
         ms,
@@ -440,7 +483,11 @@ function readBar(d, fallbackIndex) {
         high: value("high"),
         low: value("low"),
         close: value("close"),
-        volume: value("volume") || 0
+        volume: value("volume") || 0,
+        offerVolume: value("offerVolume"),
+        bidVolume: value("bidVolume"),
+        levels: levels,
+        isLast: typeof d.isLast === "function" ? d.isLast() : false
     };
 }
 
@@ -462,9 +509,17 @@ class DualSvpKeyLevels {
             splitVolume: p.volumeMode === "updown",
             valueAreaPct: Math.min(99, Math.max(50, p.valueAreaPct)),
             maxSessions: Math.max(1, Math.round(p.maxSessions)),
-            tickSize: p.tickSize > 0 ? p.tickSize : 0.25,
-            decimals: Math.max(0, Math.round(p.priceDecimals))
+            vaFadeOutside: Math.min(90, Math.max(0, p.vaFadeOutside))
         };
+
+        // El tick sale del contrato; el parametro solo actua como override.
+        const contractTick =
+            this.contractInfo && this.contractInfo.tickSize > 0 ? this.contractInfo.tickSize : 0;
+        this.cfg.tickSize = p.tickSizeOverride > 0 ? p.tickSizeOverride : contractTick || 0.25;
+        this.cfg.decimals = decimalsForTick(this.cfg.tickSize);
+
+        // Perfil real por vela, disponible solo si el grafico incluye histograma.
+        this.hasVolumeProfiles = !!(this.chartDescription && this.chartDescription.withHistogram);
 
         this.rth = newSessionState("rth");
         this.ovn = newSessionState("ovn");
@@ -681,7 +736,10 @@ class DualSvpKeyLevels {
                 h: bar.high,
                 l: bar.low,
                 v: bar.volume,
-                dir: bar.close !== null && bar.open !== null && bar.close >= bar.open ? 1 : -1
+                dir: bar.close !== null && bar.open !== null && bar.close >= bar.open ? 1 : -1,
+                up: bar.offerVolume,
+                down: bar.bidVolume,
+                levels: bar.levels
             });
         }
 
@@ -965,13 +1023,16 @@ class DualSvpKeyLevels {
             this.series.shift();
         }
 
+        // Todo el dibujo se emite una sola vez, en la ultima vela, como objetos
+        // globales con coordenadas absolutas de indice/precio.
         return {
             vwap: vwap ? vwap.value : undefined,
             vwapUpper1: vwap && p.vwapShowBand1 ? vwap.upper1 : undefined,
             vwapLower1: vwap && p.vwapShowBand1 ? vwap.lower1 : undefined,
             vwapUpper2: vwap && p.vwapShowBand2 ? vwap.upper2 : undefined,
             vwapLower2: vwap && p.vwapShowBand2 ? vwap.lower2 : undefined,
-            ypoc: this.prevProfile.poc === null ? undefined : this.prevProfile.poc
+            ypoc: this.prevProfile.poc === null ? undefined : this.prevProfile.poc,
+            graphics: bar.isLast ? buildGraphics(this) : undefined
         };
     }
 
@@ -1012,131 +1073,178 @@ class DualSvpKeyLevels {
     }
 }
 
+
 // ===========================================================================
-// 7. Dibujo
+// 6. Dibujo declarativo (graphics)
 // ===========================================================================
+//
+// Coordenadas: du(v) = unidades de dominio (indice de vela en X, precio en Y),
+// px(v) = pixeles, op(a, '-', b) = combinacion de ambas.
+//
+// Los objetos se agrupan por estilo: un unico "Shapes" por color reune todos
+// los rectangulos del histograma que comparten relleno, y un unico
+// "LineSegments" por estilo reune todas las lineas de ese color/grosor.
+
+const FONT_FAMILY = "Arial, Helvetica, sans-serif";
+
+/** Normaliza un color escrito por el usuario; vacio o invalido -> color por defecto. */
+function safeColor(value, fallback) {
+    if (typeof value !== "string") {
+        return fallback;
+    }
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : fallback;
+}
 
 /**
- * Envoltura sobre el canvas de Tradovate. Detecta que primitivas existen y
- * degrada con gracia (rectangulo -> poligono -> linea gruesa) para no romper
- * el render completo si una build no expone alguna de ellas.
+ * Acumulador de objetos graficos. Agrupa formas y lineas por estilo para no
+ * emitir miles de items sueltos.
  */
-function makePainter(canvas, errors) {
-    const has = function (name) {
-        return canvas && typeof canvas[name] === "function";
-    };
-    const caps = {
-        line: has("drawLine"),
-        rect: has("drawRectangle"),
-        polygon: has("drawPolygon"),
-        text: has("drawText")
-    };
-
-    const report = function (where, error) {
-        if (errors.length < 5) {
-            errors.push(where + ": " + (error && error.message ? error.message : String(error)));
-        }
-    };
+function createGraphicsBuilder() {
+    const items = [];
+    const shapeGroups = {};
+    const shapeOrder = [];
+    const lineGroups = {};
+    const lineOrder = [];
 
     return {
-        caps: caps,
-
-        line: function (x1, y1, x2, y2, style) {
-            if (!caps.line) {
+        /** Rectangulo definido por dos esquinas; el objeto Rectangle se centra en `position`. */
+        rect: function (groupKey, style, x1, yTop, x2, yBottom) {
+            const width = Math.abs(x2 - x1);
+            const height = Math.abs(yTop - yBottom);
+            if (!(width > 0) || !(height > 0)) {
                 return;
             }
-            try {
-                canvas.drawLine(
-                    { x: x1, y: y1 },
-                    { x: x2, y: y2 },
-                    Object.assign({ relativeX: false, relativeY: false, lineStyle: "solid", lineWidth: 1 }, style)
-                );
-            } catch (e) {
-                report("drawLine", e);
+            if (!shapeGroups[groupKey]) {
+                shapeGroups[groupKey] = {
+                    tag: "Shapes",
+                    key: groupKey,
+                    global: true,
+                    primitives: [],
+                    fillStyle: { color: style.color, opacity: style.opacity }
+                };
+                shapeOrder.push(groupKey);
             }
+            shapeGroups[groupKey].primitives.push({
+                tag: "Rectangle",
+                position: { x: du((x1 + x2) / 2), y: du((yTop + yBottom) / 2) },
+                size: { width: du(width), height: du(height) }
+            });
         },
 
-        rect: function (x1, yTop, x2, yBottom, style) {
-            const opts = Object.assign({ relativeX: false, relativeY: false }, style);
-            try {
-                if (caps.rect) {
-                    canvas.drawRectangle({ x: x1, y: yTop }, { x: x2, y: yBottom }, opts);
-                    return;
-                }
-                if (caps.polygon) {
-                    canvas.drawPolygon(
-                        [
-                            { x: x1, y: yTop },
-                            { x: x2, y: yTop },
-                            { x: x2, y: yBottom },
-                            { x: x1, y: yBottom }
-                        ],
-                        opts
-                    );
-                    return;
-                }
-                if (caps.line) {
-                    // Ultimo recurso: una linea horizontal en el centro de la fila.
-                    canvas.drawLine(
-                        { x: x1, y: (yTop + yBottom) / 2 },
-                        { x: x2, y: (yTop + yBottom) / 2 },
-                        Object.assign({ lineWidth: 2, lineStyle: "solid" }, opts)
-                    );
-                }
-            } catch (e) {
-                report("drawRectangle", e);
-            }
-        },
-
-        text: function (x, y, value, style) {
-            if (!caps.text) {
+        line: function (groupKey, style, x1, y1, x2, y2) {
+            if (!isFinite(y1) || !isFinite(y2) || !isFinite(x1) || !isFinite(x2)) {
                 return;
             }
-            try {
-                canvas.drawText(
-                    { x: x, y: y },
-                    value,
-                    Object.assign(
-                        {
-                            relativeX: false,
-                            relativeY: false,
-                            textAlign: "left",
-                            textBaseline: "middle",
-                            fontSize: 11,
-                            fontFamily: "11px Arial"
-                        },
-                        style
-                    )
-                );
-            } catch (e) {
-                report("drawText", e);
+            if (!lineGroups[groupKey]) {
+                lineGroups[groupKey] = {
+                    tag: "LineSegments",
+                    key: groupKey,
+                    global: true,
+                    lines: [],
+                    lineStyle: {
+                        color: style.color,
+                        lineWidth: style.width,
+                        opacity: style.opacity,
+                        lineStyle: style.dash
+                    }
+                };
+                lineOrder.push(groupKey);
             }
+            lineGroups[groupKey].lines.push({
+                tag: "Line",
+                a: { x: du(x1), y: du(y1) },
+                b: { x: du(x2), y: du(y2) }
+            });
+        },
+
+        text: function (key, x, y, value, style) {
+            if (!isFinite(y) || !isFinite(x) || !value) {
+                return;
+            }
+            items.push({
+                tag: "Text",
+                key: key,
+                global: true,
+                point: { x: du(x), y: du(y) },
+                text: value,
+                style: {
+                    fontFamily: FONT_FAMILY,
+                    fontSize: style.size,
+                    fontWeight: style.weight || "normal",
+                    fill: style.color
+                },
+                textAlignment: style.align || "leftMiddle"
+            });
+        },
+
+        /** Texto anclado a una esquina del marco del grafico, en pixeles. */
+        frameText: function (key, corner, dx, dy, value, style) {
+            items.push({
+                tag: "Text",
+                key: key,
+                global: true,
+                origin: { cs: "frame", h: corner.h, v: corner.v },
+                point: { x: px(dx), y: px(dy) },
+                text: value,
+                style: {
+                    fontFamily: FONT_FAMILY,
+                    fontSize: style.size,
+                    fontWeight: style.weight || "normal",
+                    fill: style.color
+                },
+                textAlignment: corner.h === "right" ? "rightMiddle" : "leftMiddle"
+            });
+        },
+
+        build: function () {
+            const result = [];
+            for (let i = 0; i < shapeOrder.length; i += 1) {
+                const group = shapeGroups[shapeOrder[i]];
+                if (group.primitives.length > 0) {
+                    result.push(group);
+                }
+            }
+            for (let i = 0; i < lineOrder.length; i += 1) {
+                const group = lineGroups[lineOrder[i]];
+                if (group.lines.length > 0) {
+                    result.push(group);
+                }
+            }
+            for (let i = 0; i < items.length; i += 1) {
+                result.push(items[i]);
+            }
+            return result;
         }
     };
 }
+
+const DASH_SOLID = 1;
+const DASH_DOTTED = 3;
+const DASH_DASHED = 4;
 
 function profileColors(props, kind) {
     if (kind === "rth") {
         return {
-            poc: props.rthPocColor,
-            vahVal: props.rthVahValColor,
-            up: props.rthUpVolColor,
-            down: props.rthDownVolColor,
-            total: props.rthTotalVolColor,
-            valueArea: props.rthValueAreaColor
+            poc: safeColor(props.rthPocColor, "#FF6B6B"),
+            vahVal: safeColor(props.rthVahValColor, "#4ECDC4"),
+            up: safeColor(props.rthUpVolColor, "#26A69A"),
+            down: safeColor(props.rthDownVolColor, "#EF5350"),
+            total: safeColor(props.rthTotalVolColor, "#8A8A8A"),
+            valueArea: safeColor(props.rthValueAreaColor, "#00BCD4")
         };
     }
     return {
-        poc: props.ovnPocColor,
-        vahVal: props.ovnVahValColor,
-        up: props.ovnUpVolColor,
-        down: props.ovnDownVolColor,
-        total: props.ovnTotalVolColor,
-        valueArea: props.ovnValueAreaColor
+        poc: safeColor(props.ovnPocColor, "#FFB74D"),
+        vahVal: safeColor(props.ovnVahValColor, "#B39DDB"),
+        up: safeColor(props.ovnUpVolColor, "#42A5F5"),
+        down: safeColor(props.ovnDownVolColor, "#FF8A65"),
+        total: safeColor(props.ovnTotalVolColor, "#607D8B"),
+        valueArea: safeColor(props.ovnValueAreaColor, "#7E57C2")
     };
 }
 
-function drawProfile(painter, instance, record) {
+function addProfile(builder, instance, record, id) {
     const props = instance.props;
     const cfg = instance.cfg;
     const profile = record.profile;
@@ -1146,17 +1254,20 @@ function drawProfile(painter, instance, record) {
     const sessionBars = Math.max(1, record.endX - record.startX + 1);
     const gap = Math.min(props.gapBars, Math.max(0, sessionBars - 1));
     const availableWidth = Math.max(1, sessionBars - 1 - gap);
-    const width = Math.max(1, Math.round((availableWidth * props.widthPercent) / 100));
+    const width = Math.max(1, (availableWidth * props.widthPercent) / 100);
     const anchorX = rightSide ? record.endX - gap : record.startX + gap;
 
     if (props.showHistogram) {
+        const opacity = Math.min(1, Math.max(0.05, props.histogramOpacity));
+        const fadedOpacity = opacity * Math.max(0, 1 - cfg.vaFadeOutside / 100);
+
         for (let r = 0; r < profile.numRows; r += 1) {
             const rowVol = profile.vol[r];
             if (!(rowVol > 0)) {
                 continue;
             }
-            const len = Math.round((rowVol / profile.maxVol) * width);
-            if (len <= 0) {
+            const len = (rowVol / profile.maxVol) * width;
+            if (!(len > 0)) {
                 continue;
             }
 
@@ -1171,32 +1282,47 @@ function drawProfile(painter, instance, record) {
                 const downVol = profile.down[r];
                 let upLen;
                 if (upVol > 0 && downVol > 0) {
-                    upLen = Math.round((len * upVol) / rowVol);
+                    upLen = (len * upVol) / rowVol;
                 } else {
                     upLen = upVol > 0 ? len : 0;
                 }
                 upLen = Math.max(0, Math.min(len, upLen));
-                const downLen = len - upLen;
 
-                const fade = inValueArea ? 1 : Math.max(0, 1 - props.vaFadeOutside / 100);
+                const suffix = inValueArea ? "va" : "out";
+                const rowOpacity = inValueArea ? opacity : fadedOpacity;
 
                 if (upLen > 0) {
-                    painter.rect(leftX, rowHigh, leftX + upLen, rowLow, {
-                        color: colors.up,
-                        opacity: props.histogramOpacity * fade
-                    });
+                    builder.rect(
+                        id + "-s-up-" + suffix,
+                        { color: colors.up, opacity: rowOpacity },
+                        leftX,
+                        rowHigh,
+                        leftX + upLen,
+                        rowLow
+                    );
                 }
-                if (downLen > 0) {
-                    painter.rect(leftX + upLen, rowHigh, rightX, rowLow, {
-                        color: colors.down,
-                        opacity: props.histogramOpacity * fade
-                    });
+                if (len - upLen > 0) {
+                    builder.rect(
+                        id + "-s-dn-" + suffix,
+                        { color: colors.down, opacity: rowOpacity },
+                        leftX + upLen,
+                        rowHigh,
+                        rightX,
+                        rowLow
+                    );
                 }
             } else {
-                painter.rect(leftX, rowHigh, rightX, rowLow, {
-                    color: inValueArea ? colors.valueArea : colors.total,
-                    opacity: inValueArea ? props.histogramOpacity : props.histogramOpacity * 0.75
-                });
+                builder.rect(
+                    id + (inValueArea ? "-s-va" : "-s-total"),
+                    {
+                        color: inValueArea ? colors.valueArea : colors.total,
+                        opacity: inValueArea ? opacity : opacity * 0.75
+                    },
+                    leftX,
+                    rowHigh,
+                    rightX,
+                    rowLow
+                );
             }
         }
     }
@@ -1207,157 +1333,164 @@ function drawProfile(painter, instance, record) {
         : Math.max(record.endX, record.startX + 1);
 
     if (props.showPoc) {
-        painter.line(lineX1, profile.poc, lineX2, profile.poc, {
-            color: colors.poc,
-            lineWidth: props.profileLineWidth + 1,
-            lineStyle: "solid",
-            opacity: 1
-        });
+        builder.line(
+            id + "-l-poc",
+            { color: colors.poc, width: props.profileLineWidth + 1, dash: DASH_SOLID, opacity: 1 },
+            lineX1,
+            profile.poc,
+            lineX2,
+            profile.poc
+        );
     }
     if (props.showVah) {
-        painter.line(lineX1, profile.vah, lineX2, profile.vah, {
-            color: colors.vahVal,
-            lineWidth: props.profileLineWidth,
-            lineStyle: "dotted",
-            opacity: 1
-        });
+        builder.line(
+            id + "-l-va",
+            { color: colors.vahVal, width: props.profileLineWidth, dash: DASH_DOTTED, opacity: 1 },
+            lineX1,
+            profile.vah,
+            lineX2,
+            profile.vah
+        );
     }
     if (props.showVal) {
-        painter.line(lineX1, profile.val, lineX2, profile.val, {
-            color: colors.vahVal,
-            lineWidth: props.profileLineWidth,
-            lineStyle: "dotted",
-            opacity: 1
-        });
+        builder.line(
+            id + "-l-va",
+            { color: colors.vahVal, width: props.profileLineWidth, dash: DASH_DOTTED, opacity: 1 },
+            lineX1,
+            profile.val,
+            lineX2,
+            profile.val
+        );
     }
 
     if (props.showProfileLabels) {
         const labelX = record.endX + 1;
-        painter.text(labelX, profile.poc, "POC", { color: colors.poc });
-        painter.text(labelX, profile.vah, "VAH", { color: colors.vahVal });
-        painter.text(labelX, profile.val, "VAL", { color: colors.vahVal });
+        const size = props.fontSize;
+        builder.text(id + "-t-poc", labelX, profile.poc, "POC", { color: colors.poc, size: size });
+        builder.text(id + "-t-vah", labelX, profile.vah, "VAH", { color: colors.vahVal, size: size });
+        builder.text(id + "-t-val", labelX, profile.val, "VAL", { color: colors.vahVal, size: size });
     }
 
     if (props.showProfileStats) {
         const range = profile.high - profile.low;
-        painter.text(
+        builder.text(
+            id + "-t-sum",
             record.startX,
-            profile.low - range * 0.09,
+            profile.low - range * 0.06,
             "Σ " + formatVolume(profile.total) + " / " + formatPrice(range, instance.cfg.decimals),
-            { color: props.statsTextColor }
+            { color: safeColor(props.statsTextColor, "#DCDCDC"), size: props.fontSize }
         );
-        painter.text(record.startX, profile.low - range * 0.13, "Delta: " + Math.round(profile.delta), {
-            color: profile.delta >= 0 ? props.deltaUpColor : props.deltaDownColor
-        });
+        builder.text(
+            id + "-t-delta",
+            record.startX,
+            profile.low - range * 0.1,
+            "Delta: " + Math.round(profile.delta),
+            {
+                color:
+                    profile.delta >= 0
+                        ? safeColor(props.deltaUpColor, "#00E676")
+                        : safeColor(props.deltaDownColor, "#FF5252"),
+                size: props.fontSize
+            }
+        );
     }
 }
 
-function drawKeyLevel(painter, instance, options) {
-    if (!options.visible || options.price === null || options.price === undefined || !isFinite(options.price)) {
+function addKeyLevel(builder, instance, id, options) {
+    if (!options.visible || options.price === null || options.price === undefined) {
         return;
     }
+    if (!isFinite(options.price)) {
+        return;
+    }
+
     const props = instance.props;
     const lastX = instance.lastBarIndex;
-    const startX = options.startX === null || options.startX === undefined ? lastX : Math.min(options.startX, lastX);
+    const startX =
+        options.startX === null || options.startX === undefined ? lastX : Math.min(options.startX, lastX);
     const endX = Math.max(lastX + props.labelOffset, startX + 1);
 
-    painter.line(startX, options.price, endX, options.price, {
-        color: options.color,
-        lineWidth: options.width,
-        lineStyle: options.lineStyle || "solid",
-        opacity: 1
-    });
+    builder.line(
+        id,
+        {
+            color: options.color,
+            width: options.width,
+            dash: options.dash || DASH_SOLID,
+            opacity: 1
+        },
+        startX,
+        options.price,
+        endX,
+        options.price
+    );
 
     if (props.showKeyLevelLabels) {
         const text =
             options.probability === null || options.probability === undefined
                 ? options.text
                 : options.text + " " + probabilityText(options.probability);
-        painter.text(endX + 1, options.price, text, { color: options.color });
+        builder.text(id + "-t", endX + 1, options.price, text, {
+            color: options.color,
+            size: props.fontSize,
+            weight: "bold"
+        });
     }
 }
 
-function drawVwap(painter, instance) {
-    const props = instance.props;
-    const series = instance.series;
-    if (!props.showVwap || series.length < 2) {
-        return;
-    }
-
-    const segments = [
-        { key: "vwap", color: props.vwapColor, width: props.vwapLineWidth, show: true },
-        { key: "u1", color: props.vwapBandColor, width: 1, show: props.vwapShowBand1 },
-        { key: "l1", color: props.vwapBandColor, width: 1, show: props.vwapShowBand1 },
-        { key: "u2", color: props.vwapBandColor, width: 1, show: props.vwapShowBand2 },
-        { key: "l2", color: props.vwapBandColor, width: 1, show: props.vwapShowBand2 }
-    ];
-
-    for (let s = 0; s < segments.length; s += 1) {
-        const segment = segments[s];
-        if (!segment.show) {
-            continue;
-        }
-        for (let i = 1; i < series.length; i += 1) {
-            const previous = series[i - 1];
-            const current = series[i];
-            const a = previous[segment.key];
-            const b = current[segment.key];
-            if (a === null || b === null || a === undefined || b === undefined) {
-                continue;
-            }
-            if (current.x - previous.x !== 1) {
-                continue; // corte de ancla o hueco de datos
-            }
-            painter.line(previous.x, a, current.x, b, {
-                color: segment.color,
-                lineWidth: segment.width,
-                lineStyle: "solid",
-                opacity: 1
-            });
-        }
+function dashboardCorner(position) {
+    switch (position) {
+        case "topLeft":
+            return { h: "left", v: "top" };
+        case "bottomRight":
+            return { h: "right", v: "bottom" };
+        case "bottomLeft":
+            return { h: "left", v: "bottom" };
+        default:
+            return { h: "right", v: "top" };
     }
 }
 
-function drawDashboard(painter, instance) {
+function addDashboard(builder, instance) {
     const props = instance.props;
-    if (!props.showDashboard || instance.lastBarIndex === null) {
-        return;
-    }
-
     const kl = instance.kl;
     const cfg = instance.cfg;
     const gap = instance.gapInfo();
-    const recent = instance.recentRange(200);
-    if (!recent) {
-        return;
-    }
-
-    const step = recent.size * 0.06;
-    const x = instance.lastBarIndex + props.labelOffset + props.dashboardOffset;
-    let y = recent.high + step * 2;
+    const corner = dashboardCorner(props.dashboardPosition);
 
     const rows = [
-        { label: "Levels Pro", value: instance.inRth ? "RTH" : instance.inOvn ? "ON" : "Outside", color: props.dashboardTextColor },
+        {
+            label: "Session",
+            value: instance.inRth ? "RTH" : instance.inOvn ? "ON" : "Outside",
+            color: safeColor(props.dashboardTextColor, "#FFFFFF")
+        },
         {
             label: "Gap",
             value: formatPrice(gap.size, cfg.decimals) + " / " + formatTicks(gap.size, cfg.tickSize) + "t",
-            color: gap.size === null ? props.openColor : gap.size >= 0 ? props.gapUpColor : props.gapDownColor
+            color:
+                gap.size === null
+                    ? safeColor(props.openColor, "#2196F3")
+                    : gap.size >= 0
+                      ? safeColor(props.gapUpColor, "#00C853")
+                      : safeColor(props.gapDownColor, "#FF5252")
         },
         {
-            label: "IB Range",
+            label: "IB",
             value:
                 kl.ibHigh === null || kl.ibLow === null
                     ? "n/a"
                     : formatPrice(kl.ibHigh - kl.ibLow, cfg.decimals),
-            color: props.ibHighColor
+            color: safeColor(props.ibHighColor, "#5EC3B2")
         },
         {
-            label: "ON Range",
+            label: "ON",
             value:
-                instance.activeOvnHigh === null || instance.activeOvnLow === null || instance.activeOvnHigh === undefined
+                instance.activeOvnHigh === null ||
+                instance.activeOvnLow === null ||
+                instance.activeOvnHigh === undefined ||
+                instance.activeOvnLow === undefined
                     ? "n/a"
                     : formatPrice(instance.activeOvnHigh - instance.activeOvnLow, cfg.decimals),
-            color: props.onHighColor
+            color: safeColor(props.onHighColor, "#5EC3B2")
         }
     ];
 
@@ -1365,224 +1498,252 @@ function drawDashboard(painter, instance) {
         rows.push({
             label: "Exp Range",
             value: formatPrice(kl.expectedRange, cfg.decimals),
-            color: props.dashboardTextColor
+            color: safeColor(props.dashboardTextColor, "#FFFFFF")
         });
     }
 
+    const lineHeight = props.fontSize + 5;
     for (let i = 0; i < rows.length; i += 1) {
-        painter.text(x, y, rows[i].label + ": " + rows[i].value, { color: rows[i].color });
-        y -= step;
+        builder.frameText(
+            "dash-" + i,
+            corner,
+            props.dashboardMarginX,
+            props.dashboardMarginY + i * lineHeight,
+            rows[i].label + ": " + rows[i].value,
+            { color: rows[i].color, size: props.fontSize, weight: i === 0 ? "bold" : "normal" }
+        );
     }
 }
 
-const plotter = predef.plotters.custom(function (canvas, instance) {
-    if (!instance || !instance.cfg || instance.lastBarIndex === null) {
-        return;
+/**
+ * Construye la lista completa de objetos graficos a partir del estado del
+ * calculador. Se invoca una sola vez, en la ultima vela.
+ */
+function buildGraphics(instance) {
+    if (instance.lastBarIndex === null || instance.lastBarIndex === undefined) {
+        return undefined;
     }
 
-    instance.drawErrors = [];
-    const painter = makePainter(canvas, instance.drawErrors);
     const props = instance.props;
+    const builder = createGraphicsBuilder();
 
-    // 1. Perfiles completados y en desarrollo.
-    const records = [];
+    // 1. Perfiles cerrados y en desarrollo.
     if (props.showRth) {
         for (let i = 0; i < instance.completedRth.length; i += 1) {
-            records.push(instance.completedRth[i]);
+            addProfile(builder, instance, instance.completedRth[i], "r" + i);
         }
     }
     if (props.showOvernight) {
         for (let i = 0; i < instance.completedOvn.length; i += 1) {
-            records.push(instance.completedOvn[i]);
+            addProfile(builder, instance, instance.completedOvn[i], "o" + i);
         }
     }
     if (props.showDeveloping) {
         if (props.showRth) {
             const dev = instance.developingProfile(instance.rth);
             if (dev) {
-                records.push(dev);
+                addProfile(builder, instance, dev, "rdev");
             }
         }
         if (props.showOvernight) {
             const dev = instance.developingProfile(instance.ovn);
             if (dev) {
-                records.push(dev);
+                addProfile(builder, instance, dev, "odev");
             }
         }
-    }
-
-    for (let i = 0; i < records.length; i += 1) {
-        drawProfile(painter, instance, records[i]);
     }
 
     // 2. Key Levels.
     const kl = instance.kl;
     const weekly = instance.prevWeekLevels();
     const gap = instance.gapInfo();
-    const showProbabilities = instance.inRth;
+    const showProb = instance.inRth;
 
-    drawKeyLevel(painter, instance, {
+    const onHigh = safeColor(props.onHighColor, "#5EC3B2");
+    const onLow = safeColor(props.onLowColor, "#F77C80");
+    const gapClose = safeColor(props.gapCloseColor, "#FF9800");
+    const weekColor = safeColor(props.weekColor, "#2962FF");
+
+    addKeyLevel(builder, instance, "kl-onh", {
         visible: props.showOvernightLevels && props.showOnHigh,
         price: instance.activeOvnHigh,
         startX: instance.activeOvnStartX,
-        color: props.onHighColor,
+        color: onHigh,
         width: props.onLineWidth,
         text: "ONH",
-        probability: showProbabilities ? kl.probOnHigh : null
+        probability: showProb ? kl.probOnHigh : null
     });
-    drawKeyLevel(painter, instance, {
+    addKeyLevel(builder, instance, "kl-onl", {
         visible: props.showOvernightLevels && props.showOnLow,
         price: instance.activeOvnLow,
         startX: instance.activeOvnStartX,
-        color: props.onLowColor,
+        color: onLow,
         width: props.onLineWidth,
         text: "ONL",
-        probability: showProbabilities ? kl.probOnLow : null
+        probability: showProb ? kl.probOnLow : null
     });
-    drawKeyLevel(painter, instance, {
+    addKeyLevel(builder, instance, "kl-pdh", {
         visible: props.showPrevRth && props.showPdh,
         price: kl.prevRthHigh,
         startX: kl.cycleStartX,
-        color: props.prevRthHighColor,
+        color: safeColor(props.prevRthHighColor, "#5EC3B2"),
         width: props.prevRthLineWidth,
         text: "YEH",
-        probability: showProbabilities ? kl.probPdh : null
+        probability: showProb ? kl.probPdh : null
     });
-    drawKeyLevel(painter, instance, {
+    addKeyLevel(builder, instance, "kl-pdl", {
         visible: props.showPrevRth && props.showPdl,
         price: kl.prevRthLow,
         startX: kl.cycleStartX,
-        color: props.prevRthLowColor,
+        color: safeColor(props.prevRthLowColor, "#F77C80"),
         width: props.prevRthLineWidth,
         text: "YEL",
-        probability: showProbabilities ? kl.probPdl : null
+        probability: showProb ? kl.probPdl : null
     });
-    drawKeyLevel(painter, instance, {
+    addKeyLevel(builder, instance, "kl-gap", {
         visible: props.showGapLevels && props.showGapClose,
         price: kl.prevRthClose,
         startX: kl.cycleStartX,
-        color: props.gapCloseColor,
+        color: gapClose,
         width: props.gapLineWidth,
         text: "GAP",
-        probability: showProbabilities ? kl.probGapClose : null
+        probability: showProb ? kl.probGapClose : null
     });
-    drawKeyLevel(painter, instance, {
+    addKeyLevel(builder, instance, "kl-ibh", {
         visible: props.showIbLevels && props.showIbHigh,
         price: kl.ibHigh,
         startX: kl.rthStartX,
-        color: props.ibHighColor,
+        color: safeColor(props.ibHighColor, "#5EC3B2"),
         width: props.ibLineWidth,
         text: "IBH",
-        probability: showProbabilities ? kl.probIbHigh : null
+        probability: showProb ? kl.probIbHigh : null
     });
-    drawKeyLevel(painter, instance, {
+    addKeyLevel(builder, instance, "kl-ibl", {
         visible: props.showIbLevels && props.showIbLow,
         price: kl.ibLow,
         startX: kl.rthStartX,
-        color: props.ibLowColor,
+        color: safeColor(props.ibLowColor, "#F77C80"),
         width: props.ibLineWidth,
         text: "IBL",
-        probability: showProbabilities ? kl.probIbLow : null
+        probability: showProb ? kl.probIbLow : null
     });
-    drawKeyLevel(painter, instance, {
+    addKeyLevel(builder, instance, "kl-ypoc", {
         visible: props.showYpoc,
         price: instance.prevProfile.poc,
         startX: kl.cycleStartX,
-        color: props.ypocColor,
+        color: safeColor(props.ypocColor, "#E91E63"),
         width: props.ypocLineWidth,
         text: "YPOC",
-        probability: showProbabilities ? kl.probYpoc : null
+        probability: showProb ? kl.probYpoc : null
     });
-    drawKeyLevel(painter, instance, {
+    addKeyLevel(builder, instance, "kl-pwh", {
         visible: props.showPrevWeek && props.showPwh,
         price: weekly.high,
         startX: instance.week.startX,
-        color: props.weekHighColor,
+        color: weekColor,
         width: props.weekLineWidth,
         text: "PWH",
         probability: null
     });
-    drawKeyLevel(painter, instance, {
+    addKeyLevel(builder, instance, "kl-pwl", {
         visible: props.showPrevWeek && props.showPwl,
         price: weekly.low,
         startX: instance.week.startX,
-        color: props.weekLowColor,
+        color: weekColor,
         width: props.weekLineWidth,
         text: "PWL",
         probability: null
     });
-    drawKeyLevel(painter, instance, {
+    addKeyLevel(builder, instance, "kl-p2wh", {
         visible: props.showWeek2 && props.showP2wh,
         price: weekly.high2,
         startX: instance.week.startX,
-        color: props.week2HighColor,
-        width: props.week2LineWidth,
+        color: weekColor,
+        width: props.weekLineWidth,
+        dash: DASH_DASHED,
         text: "P2WH",
         probability: null
     });
-    drawKeyLevel(painter, instance, {
+    addKeyLevel(builder, instance, "kl-p2wl", {
         visible: props.showWeek2 && props.showP2wl,
         price: weekly.low2,
         startX: instance.week.startX,
-        color: props.week2LowColor,
-        width: props.week2LineWidth,
+        color: weekColor,
+        width: props.weekLineWidth,
+        dash: DASH_DASHED,
         text: "P2WL",
         probability: null
     });
-    drawKeyLevel(painter, instance, {
+    addKeyLevel(builder, instance, "kl-open", {
         visible: props.showGapLevels && props.showTodayOpen,
         price: kl.todayOpen,
         startX: kl.rthStartX,
-        color: props.openColor,
+        color: safeColor(props.openColor, "#2196F3"),
         width: props.gapLineWidth,
         text: "OPEN",
         probability: null
     });
-    drawKeyLevel(painter, instance, {
+    addKeyLevel(builder, instance, "kl-halfgap", {
         visible: props.showGapLevels && props.showHalfGap && gap.valid,
         price: kl.halfGap,
         startX: kl.rthStartX,
-        color: props.gapCloseColor,
+        color: gapClose,
         width: props.gapLineWidth,
-        lineStyle: "dashed",
+        dash: DASH_DASHED,
         text: "HALF GAP",
-        probability: showProbabilities ? kl.probHalfGap : null
+        probability: showProb ? kl.probHalfGap : null
     });
 
     // 3. POCs historicos, con opacidad decreciente (el mas antiguo, mas tenue).
-    if (props.showYpoc && props.showKeyLevelLabels) {
+    if (props.showYpoc && props.showHistoricPocs) {
         const pocs = instance.historicPocs;
+        const ypocColor = safeColor(props.ypocColor, "#E91E63");
         for (let i = 0; i < pocs.length; i += 1) {
             const age = pocs.length - 1 - i;
             const opacity = Math.max(0.15, 1 - (0.75 * age) / Math.max(1, pocs.length - 1));
-            painter.line(
+            builder.line(
+                "poc-hist-" + i,
+                { color: ypocColor, width: 1, dash: DASH_SOLID, opacity: opacity },
                 instance.lastBarIndex - props.labelOffset,
                 pocs[i],
                 instance.lastBarIndex + props.labelOffset,
-                pocs[i],
-                { color: props.ypocColor, lineWidth: 1, lineStyle: "solid", opacity: opacity }
+                pocs[i]
             );
         }
     }
 
-    // 4. VWAP y bandas.
-    drawVwap(painter, instance);
+    // 4. Dashboard.
+    if (props.showDashboard) {
+        addDashboard(builder, instance);
+    }
 
-    // 5. Dashboard.
-    drawDashboard(painter, instance);
-});
+    const items = builder.build();
+    return items.length > 0 ? { items: items } : undefined;
+}
 
 // ===========================================================================
-// 8. Exports
+// 7. Exports
 // ===========================================================================
+
+const boolSpec = predef.paramSpecs.bool;
+const numberSpec = predef.paramSpecs.number;
+const enumSpec = predef.paramSpecs.enum;
+// meta.ParamType no define COLOR, asi que los colores son parametros de texto
+// (hex o color web con nombre).
+const colorSpec = predef.paramSpecs.text;
 
 module.exports = {
     name: "dualSvpKeyLevels",
     description: "Dual SVP HD + Key Levels Pro",
     calculator: DualSvpKeyLevels,
     inputType: meta.InputType.BARS,
-    plotter: plotter,
+    areaChoice: meta.AreaChoice.OVERLAY,
     tags: ["Volume Profile", "Key Levels"],
+
+    // Pide al grafico que incluya el perfil de volumen por vela (modo HD).
+    requirements: {
+        volumeProfiles: true
+    },
 
     params: {
         // --- Sesiones ---
@@ -1621,23 +1782,21 @@ module.exports = {
         gapBars: numberSpec(0, 1, 0),
         profileLineWidth: numberSpec(2, 1, 1),
         histogramOpacity: numberSpec(0.45, 0.05, 0.05),
+        fontSize: numberSpec(11, 1, 6),
 
-        // --- Colores RTH ---
+        // --- Colores del perfil (hex o color web) ---
         rthPocColor: colorSpec("#FF6B6B"),
         rthVahValColor: colorSpec("#4ECDC4"),
         rthUpVolColor: colorSpec("#26A69A"),
         rthDownVolColor: colorSpec("#EF5350"),
         rthTotalVolColor: colorSpec("#8A8A8A"),
         rthValueAreaColor: colorSpec("#00BCD4"),
-
-        // --- Colores Overnight ---
         ovnPocColor: colorSpec("#FFB74D"),
         ovnVahValColor: colorSpec("#B39DDB"),
         ovnUpVolColor: colorSpec("#42A5F5"),
         ovnDownVolColor: colorSpec("#FF8A65"),
         ovnTotalVolColor: colorSpec("#607D8B"),
         ovnValueAreaColor: colorSpec("#7E57C2"),
-
         statsTextColor: colorSpec("#DCDCDC"),
         deltaUpColor: colorSpec("#00E676"),
         deltaDownColor: colorSpec("#FF5252"),
@@ -1646,7 +1805,17 @@ module.exports = {
         showKeyLevelLabels: boolSpec(true),
         labelOffset: numberSpec(8, 1, 0),
         showDashboard: boolSpec(true),
-        dashboardOffset: numberSpec(4, 1, 0),
+        dashboardPosition: enumSpec(
+            {
+                topRight: "Top Right",
+                topLeft: "Top Left",
+                bottomRight: "Bottom Right",
+                bottomLeft: "Bottom Left"
+            },
+            "topRight"
+        ),
+        dashboardMarginX: numberSpec(14, 1, 0),
+        dashboardMarginY: numberSpec(16, 1, 0),
         dashboardTextColor: colorSpec("#FFFFFF"),
 
         showOvernightLevels: boolSpec(true),
@@ -1671,22 +1840,18 @@ module.exports = {
         ibLineWidth: numberSpec(1, 1, 1),
 
         showYpoc: boolSpec(true),
+        showHistoricPocs: boolSpec(true),
         ypocColor: colorSpec("#E91E63"),
         ypocLineWidth: numberSpec(2, 1, 1),
 
         showPrevWeek: boolSpec(true),
         showPwh: boolSpec(true),
         showPwl: boolSpec(true),
-        weekHighColor: colorSpec("#2962FF"),
-        weekLowColor: colorSpec("#2962FF"),
-        weekLineWidth: numberSpec(2, 1, 1),
-
         showWeek2: boolSpec(true),
         showP2wh: boolSpec(true),
         showP2wl: boolSpec(true),
-        week2HighColor: colorSpec("#2962FF"),
-        week2LowColor: colorSpec("#2962FF"),
-        week2LineWidth: numberSpec(2, 1, 1),
+        weekColor: colorSpec("#2962FF"),
+        weekLineWidth: numberSpec(2, 1, 1),
 
         showGapLevels: boolSpec(true),
         showTodayOpen: boolSpec(true),
@@ -1712,15 +1877,13 @@ module.exports = {
         vwapMultiplier1: numberSpec(1, 0.5, 0),
         vwapShowBand2: boolSpec(true),
         vwapMultiplier2: numberSpec(2, 0.5, 0),
-        vwapColor: colorSpec("#2962FF"),
-        vwapBandColor: colorSpec("#9598A1"),
-        vwapLineWidth: numberSpec(1, 1, 1),
 
         // --- Instrumento ---
-        tickSize: numberSpec(0.25, 0.01, 0.0001),
-        priceDecimals: numberSpec(2, 1, 0)
+        tickSizeOverride: numberSpec(0, 0.01, 0)
     },
 
+    // El VWAP se dibuja como plot nativo (estilos editables desde la UI);
+    // el resto del indicador se dibuja con graphics desde map().
     plots: {
         vwap: { title: "VWAP" },
         vwapUpper1: { title: "VWAP +1" },
@@ -1728,6 +1891,27 @@ module.exports = {
         vwapUpper2: { title: "VWAP +2" },
         vwapLower2: { title: "VWAP -2" },
         ypoc: { title: "YPOC" }
+    },
+
+    plotter: predef.plotters.multiline([
+        "vwap",
+        "vwapUpper1",
+        "vwapLower1",
+        "vwapUpper2",
+        "vwapLower2"
+    ]),
+
+    scaler: predef.scalers.multiPath(["vwap"]),
+
+    schemeStyles: {
+        dark: {
+            vwap: { color: "#2962FF", lineWidth: 2 },
+            vwapUpper1: { color: "#9598A1", lineWidth: 1, lineStyle: 3 },
+            vwapLower1: { color: "#9598A1", lineWidth: 1, lineStyle: 3 },
+            vwapUpper2: { color: "#9598A1", lineWidth: 1, lineStyle: 5 },
+            vwapLower2: { color: "#9598A1", lineWidth: 1, lineStyle: 5 },
+            ypoc: { color: "#E91E63", lineWidth: 1 }
+        }
     },
 
     // Solo para los tests unitarios del repositorio.
@@ -1738,6 +1922,7 @@ module.exports = {
         inWindow,
         tradingDayKey,
         rowIndexOf,
+        upShareOf,
         buildProfile,
         newVwapState,
         vwapUpdate,
@@ -1745,8 +1930,11 @@ module.exports = {
         formatPrice,
         formatVolume,
         formatTicks,
+        decimalsForTick,
         readBar,
-        makePainter,
+        safeColor,
+        createGraphicsBuilder,
+        buildGraphics,
         SESSION_BREAK_MS
     }
 };

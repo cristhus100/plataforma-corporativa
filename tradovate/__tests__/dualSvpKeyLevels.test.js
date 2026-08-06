@@ -8,27 +8,44 @@ const INDICATOR_FILE = path.resolve(HERE, '../dualSvpKeyLevels.js')
 
 // --- Stubs del entorno de Tradovate -----------------------------------------
 
+// Reproducen tools/predef.js, tools/meta.js y tools/graphics.js de Tradovate.
 const predefStub = {
   paramSpecs: {
-    bool: (def) => ({ type: 'bool', def }),
-    number: (def, step, min) => ({ type: 'number', def, step, min }),
-    color: (def) => ({ type: 'color', def }),
-    enum: (options, def) => ({ type: 'enum', options, def }),
-    period: (def) => ({ type: 'period', def }),
+    bool: (def) => ({ type: 'boolean', def }),
+    number: (def, step, min) => ({ type: 'number', def, restrictions: { step, min } }),
+    text: (def) => ({ type: 'text', def }),
+    enum: (enumSet, def) => ({ type: 'enum', enumSet, def }),
+    period: (def) => ({ type: 'number', def, restrictions: { step: 1, min: 1 } }),
   },
   plotters: {
-    custom: (fn) => ({ type: 'custom', fn }),
+    custom: (fn) => ({ type: 'custom', function: fn }),
+    multiline: (fields) => ({ type: 'multiline', fields }),
+  },
+  scalers: {
+    multiPath: (fields) => ({ type: 'multiPath', fields }),
   },
   styles: { plot: (o) => o },
 }
 
-const metaStub = { InputType: { BARS: 'bars' } }
+const metaStub = {
+  InputType: { BARS: 'bars', VOLUME: 'volume', OHLC: 'ohlc', ANY: 'any' },
+  AreaChoice: { OVERLAY: 'overlay', NEW: 'new' },
+  ParamType: { NUMBER: 'number', BOOLEAN: 'boolean', TEXT: 'text', ENUM: 'enum' },
+}
+
+// du/px/op devuelven objetos etiquetados para poder inspeccionarlos en los tests.
+const graphicsStub = {
+  du: (value) => ({ du: value }),
+  px: (value) => ({ px: value }),
+  op: (a, operator, b) => ({ op: [a, operator, b] }),
+}
 
 function loadIndicator() {
   const source = fs.readFileSync(INDICATOR_FILE, 'utf8')
   const requireStub = (id) => {
     if (id === './tools/predef') return predefStub
     if (id === './tools/meta') return metaStub
+    if (id === './tools/graphics') return graphicsStub
     throw new Error(`require no soportado en el sandbox de test: ${id}`)
   }
   const sandbox = { exports: {} }
@@ -45,10 +62,19 @@ function defaultProps(params) {
   return props
 }
 
-function makeCalculator(indicator, overrides = {}) {
+function makeCalculator(indicator, overrides = {}, environment = {}) {
   const Calculator = indicator.calculator
   const instance = new Calculator()
   instance.props = { ...defaultProps(indicator.params), ...overrides }
+  // La app asigna estas propiedades antes de llamar a init().
+  instance.contractInfo = { contract: 'MESU6', product: 'MES', tickSize: 0.25, ...environment.contractInfo }
+  instance.chartDescription = {
+    underlyingType: 'MinuteBar',
+    elementSize: 1,
+    elementSizeUnit: 'UnderlyingUnits',
+    withHistogram: false,
+    ...environment.chartDescription,
+  }
   instance.init()
   return instance
 }
@@ -66,8 +92,8 @@ function makeRandom(seed) {
   }
 }
 
-function makeBar(index, ms, open, high, low, close, volume) {
-  return {
+function makeBar(index, ms, open, high, low, close, volume, extra = {}) {
+  const bar = {
     index: () => index,
     timestamp: () => new Date(ms),
     open: () => open,
@@ -75,7 +101,13 @@ function makeBar(index, ms, open, high, low, close, volume) {
     low: () => low,
     close: () => close,
     volume: () => volume,
+    value: () => close,
+    isLast: () => extra.isLast === true,
   }
+  if (extra.offerVolume !== undefined) bar.offerVolume = () => extra.offerVolume
+  if (extra.bidVolume !== undefined) bar.bidVolume = () => extra.bidVolume
+  if (extra.levels !== undefined) bar.profile = () => extra.levels
+  return bar
 }
 
 /**
@@ -127,14 +159,31 @@ describe('exports del indicador', () => {
     expect(indicator.name).toBe('dualSvpKeyLevels')
     expect(typeof indicator.calculator).toBe('function')
     expect(indicator.inputType).toBe('bars')
-    expect(indicator.plotter.type).toBe('custom')
-    expect(typeof indicator.plotter.fn).toBe('function')
+    expect(indicator.areaChoice).toBe('overlay')
+    expect(indicator.requirements.volumeProfiles).toBe(true)
     expect(Object.keys(indicator.params).length).toBeGreaterThan(40)
   })
 
-  it('define un default para cada parametro', () => {
+  it('dibuja el VWAP como plot nativo con estilos declarados', () => {
+    expect(indicator.plotter.type).toBe('multiline')
+    for (const field of indicator.plotter.fields) {
+      expect(Object.keys(indicator.plots), `plot ${field}`).toContain(field)
+      expect(indicator.schemeStyles.dark[field], `estilo ${field}`).toBeDefined()
+    }
+    for (const style of Object.values(indicator.schemeStyles.dark)) {
+      expect(typeof style.color).toBe('string')
+      expect(typeof style.lineWidth).toBe('number')
+    }
+  })
+
+  it('solo usa tipos de parametro soportados por la app', () => {
+    const allowed = new Set(['number', 'boolean', 'text', 'enum'])
     for (const [key, spec] of Object.entries(indicator.params)) {
       expect(spec.def, `parametro ${key}`).toBeDefined()
+      expect(allowed, `tipo de ${key}`).toContain(spec.type)
+      if (spec.type === 'enum') {
+        expect(Object.keys(spec.enumSet), `enumSet de ${key}`).toContain(spec.def)
+      }
     }
   })
 })
@@ -608,149 +657,323 @@ describe('niveles semanales', () => {
   })
 })
 
-describe('plotter', () => {
-  function makeCanvasSpy(capabilities = ['drawLine', 'drawRectangle', 'drawText']) {
-    const calls = { drawLine: [], drawRectangle: [], drawText: [], drawPolygon: [] }
-    const canvas = {}
-    for (const name of capabilities) {
-      canvas[name] = (...args) => calls[name].push(args)
-    }
-    return { canvas, calls }
+describe('perfil de volumen real (d.profile)', () => {
+  it('acumula precio a precio y separa ask/bid cuando la vela trae su perfil', () => {
+    const bars = [
+      {
+        h: 10,
+        l: 0,
+        v: 1000,
+        dir: 1,
+        levels: [
+          { price: 5.5, vol: 900, askVol: 600, bidVol: 300 },
+          { price: 1.5, vol: 100, askVol: 40, bidVol: 60 },
+        ],
+      },
+    ]
+    const profile = internals.buildProfile(bars, 0, 10, 10, 68)
+    expect(profile.vol[5]).toBeCloseTo(900, 10)
+    expect(profile.vol[1]).toBeCloseTo(100, 10)
+    expect(profile.up[5]).toBeCloseTo(600, 10)
+    expect(profile.down[5]).toBeCloseTo(300, 10)
+    expect(profile.pocRow).toBe(5)
+    expect(profile.delta).toBeCloseTo(640 - 360, 10)
+    // Sin reparto proporcional: las filas no tocadas quedan vacias.
+    expect(profile.vol[0]).toBe(0)
+    expect(profile.vol[9]).toBe(0)
+  })
+
+  it('usa offerVolume/bidVolume para el reparto up/down si no hay perfil', () => {
+    expect(internals.upShareOf({ dir: 1 })).toBe(1)
+    expect(internals.upShareOf({ dir: -1 })).toBe(0)
+    expect(internals.upShareOf({ dir: -1, up: 75, down: 25 })).toBeCloseTo(0.75, 10)
+    expect(internals.upShareOf({ dir: 1, up: 0, down: 0 })).toBe(1)
+
+    const profile = internals.buildProfile(
+      [{ h: 1, l: 1, v: 100, dir: -1, up: 80, down: 20 }],
+      0,
+      2,
+      4,
+      68
+    )
+    expect(profile.upTotal).toBeCloseTo(80, 10)
+    expect(profile.downTotal).toBeCloseTo(20, 10)
+  })
+
+  it('el calculador propaga el perfil y los volumenes reales de cada vela', () => {
+    const instance = makeCalculator(indicator, {}, { chartDescription: { withHistogram: true } })
+    expect(instance.hasVolumeProfiles).toBe(true)
+
+    const start = Date.UTC(2024, 0, 8, 14, 30) // 09:30 NY
+    instance.map(
+      makeBar(0, start, 100, 101, 99, 100.5, 500, {
+        offerVolume: 300,
+        bidVolume: 200,
+        levels: [{ price: 100, vol: 500, askVol: 300, bidVol: 200 }],
+      }),
+      0
+    )
+    const stored = instance.rth.bars[0]
+    expect(stored.up).toBe(300)
+    expect(stored.down).toBe(200)
+    expect(stored.levels).toHaveLength(1)
+  })
+
+  it('toma el tick size del contrato salvo override explicito', () => {
+    expect(makeCalculator(indicator).cfg.tickSize).toBe(0.25)
+    expect(makeCalculator(indicator).cfg.decimals).toBe(2)
+    expect(
+      makeCalculator(indicator, {}, { contractInfo: { tickSize: 0.00005 } }).cfg.decimals
+    ).toBe(5)
+    expect(makeCalculator(indicator, { tickSizeOverride: 0.1 }).cfg.tickSize).toBe(0.1)
+    expect(internals.decimalsForTick(0.25)).toBe(2)
+    expect(internals.decimalsForTick(1)).toBe(0)
+    expect(internals.decimalsForTick(0.01)).toBe(2)
+  })
+})
+
+describe('graphics', () => {
+  const START = Date.UTC(2024, 0, 8, 5, 0)
+
+  function asLast(bar) {
+    return Object.assign({}, bar, { isLast: () => true })
   }
 
-  it('dibuja perfiles, niveles, VWAP y dashboard sin lanzar', () => {
-    const bars = generateBars({ startMs: Date.UTC(2024, 0, 8, 5, 0), minutes: 2 * 24 * 60 })
-    const instance = makeCalculator(indicator)
-    runAll(instance, bars)
+  /** Ejecuta el historial y devuelve el resultado de map() sobre la ultima vela. */
+  function runAndDraw(instance, bars) {
+    for (let i = 0; i < bars.length - 1; i += 1) {
+      instance.map(bars[i], i)
+    }
+    const lastIndex = bars.length - 1
+    return instance.map(asLast(bars[lastIndex]), lastIndex)
+  }
 
-    const { canvas, calls } = makeCanvasSpy()
-    expect(() => indicator.plotter.fn(canvas, instance, null)).not.toThrow()
+  function collect(items, tag, out = []) {
+    for (const item of items) {
+      if (item.tag === tag) out.push(item)
+      if (item.tag === 'Container' && item.children) collect(item.children, tag, out)
+    }
+    return out
+  }
 
-    expect(calls.drawRectangle.length).toBeGreaterThan(0) // histograma
-    expect(calls.drawLine.length).toBeGreaterThan(0) // POC/VAH/VAL + niveles + VWAP
-    expect(calls.drawText.length).toBeGreaterThan(0) // etiquetas + dashboard
-    expect(instance.drawErrors).toEqual([])
+  let bars
+  let instance
+  let result
 
-    for (const [from, to, style] of calls.drawLine) {
-      expect(Number.isFinite(from.x)).toBe(true)
-      expect(Number.isFinite(from.y)).toBe(true)
-      expect(Number.isFinite(to.x)).toBe(true)
-      expect(Number.isFinite(to.y)).toBe(true)
-      expect(style.relativeX).toBe(false)
-      expect(style.relativeY).toBe(false)
+  beforeAll(() => {
+    bars = generateBars({ startMs: START, minutes: 2 * 24 * 60 })
+    instance = makeCalculator(indicator)
+    result = runAndDraw(instance, bars)
+  })
+
+  it('solo emite graphics en la ultima vela', () => {
+    const other = makeCalculator(indicator)
+    expect(other.map(bars[10], 10).graphics).toBeUndefined()
+    expect(result.graphics).toBeDefined()
+    expect(Array.isArray(result.graphics.items)).toBe(true)
+    expect(result.graphics.items.length).toBeGreaterThan(0)
+  })
+
+  it('usa solo tags validos y claves unicas', () => {
+    const validTags = new Set(['Shapes', 'ContourShapes', 'LineSegments', 'Text', 'Container', 'Dots'])
+    const keys = new Set()
+    for (const item of result.graphics.items) {
+      expect(validTags, `tag ${item.tag}`).toContain(item.tag)
+      expect(typeof item.key).toBe('string')
+      expect(item.key.length).toBeGreaterThan(0)
+      expect(keys.has(item.key), `clave duplicada: ${item.key}`).toBe(false)
+      keys.add(item.key)
+      expect(item.global).toBe(true)
     }
   })
 
-  it('degrada a poligono cuando no existe drawRectangle', () => {
-    const bars = generateBars({ startMs: Date.UTC(2024, 0, 8, 5, 0), minutes: 24 * 60 })
-    const instance = makeCalculator(indicator)
-    runAll(instance, bars)
+  it('agrupa el histograma en objetos Shapes con rectangulos validos', () => {
+    const shapes = collect(result.graphics.items, 'Shapes')
+    expect(shapes.length).toBeGreaterThan(0)
 
-    const { canvas, calls } = makeCanvasSpy(['drawLine', 'drawPolygon', 'drawText'])
-    indicator.plotter.fn(canvas, instance, null)
-    expect(calls.drawPolygon.length).toBeGreaterThan(0)
-    for (const [points] of calls.drawPolygon) {
-      expect(points.length).toBe(4)
+    let rectangles = 0
+    for (const group of shapes) {
+      expect(typeof group.fillStyle.color).toBe('string')
+      expect(group.fillStyle.opacity).toBeGreaterThan(0)
+      expect(group.fillStyle.opacity).toBeLessThanOrEqual(1)
+      for (const primitive of group.primitives) {
+        expect(primitive.tag).toBe('Rectangle')
+        // Coordenadas en unidades de dominio: indice de vela y precio.
+        expect(Number.isFinite(primitive.position.x.du)).toBe(true)
+        expect(Number.isFinite(primitive.position.y.du)).toBe(true)
+        expect(primitive.size.width.du).toBeGreaterThan(0)
+        expect(primitive.size.height.du).toBeGreaterThan(0)
+        rectangles += 1
+      }
     }
+    // Agrupar por color evita emitir un objeto por fila.
+    expect(rectangles).toBeGreaterThan(shapes.length)
   })
 
-  it('no lanza cuando el canvas solo soporta lineas', () => {
-    const bars = generateBars({ startMs: Date.UTC(2024, 0, 8, 5, 0), minutes: 24 * 60 })
-    const instance = makeCalculator(indicator)
-    runAll(instance, bars)
+  it('dibuja POC, VAH/VAL y niveles clave como LineSegments', () => {
+    const groups = collect(result.graphics.items, 'LineSegments')
+    const keys = groups.map((g) => g.key)
+    expect(keys).toContain('r0-l-poc')
+    expect(keys).toContain('r0-l-va')
+    expect(keys.some((k) => k.startsWith('kl-'))).toBe(true)
 
-    const { canvas, calls } = makeCanvasSpy(['drawLine'])
-    expect(() => indicator.plotter.fn(canvas, instance, null)).not.toThrow()
-    expect(calls.drawLine.length).toBeGreaterThan(0)
+    const poc = groups.find((g) => g.key === 'r0-l-poc')
+    expect(poc.lines).toHaveLength(1)
+    expect(poc.lines[0].tag).toBe('Line')
+    expect(poc.lines[0].a.y.du).toBeCloseTo(instance.completedRth[0].profile.poc, 10)
+    expect(poc.lines[0].b.y.du).toBeCloseTo(instance.completedRth[0].profile.poc, 10)
+    expect(poc.lineStyle.lineWidth).toBe(instance.props.profileLineWidth + 1)
+
+    // VAH y VAL comparten estilo, asi que van en el mismo grupo.
+    const va = groups.find((g) => g.key === 'r0-l-va')
+    expect(va.lines).toHaveLength(2)
+    expect(va.lineStyle.lineStyle).toBe(3) // punteado
   })
 
-  it('captura errores del canvas en lugar de romper el render', () => {
-    const bars = generateBars({ startMs: Date.UTC(2024, 0, 8, 5, 0), minutes: 24 * 60 })
-    const instance = makeCalculator(indicator)
-    runAll(instance, bars)
+  it('etiqueta los niveles con su probabilidad cuando corresponde', () => {
+    const texts = collect(result.graphics.items, 'Text')
+    const byKey = Object.fromEntries(texts.map((t) => [t.key, t]))
+    expect(byKey['r0-t-poc'].text).toBe('POC')
 
-    const canvas = {
-      drawLine: () => {
-        throw new Error('no soportado')
-      },
-      drawRectangle: () => {},
-      drawText: () => {},
+    const onh = byKey['kl-onh-t']
+    if (onh) {
+      expect(onh.text.startsWith('ONH')).toBe(true)
+      expect(typeof onh.style.fontSize).toBe('number')
+      expect(typeof onh.style.fill).toBe('string')
+      expect(onh.textAlignment).toBe('leftMiddle')
     }
-    expect(() => indicator.plotter.fn(canvas, instance, null)).not.toThrow()
-    expect(instance.drawErrors.length).toBeGreaterThan(0)
-    expect(instance.drawErrors.length).toBeLessThanOrEqual(5)
+
+    // Las probabilidades solo se muestran dentro del RTH.
+    const inRth = makeCalculator(indicator)
+    const rthBars = generateBars({ startMs: START, minutes: 24 * 60 + 700 })
+    const rthResult = runAndDraw(inRth, rthBars)
+    expect(inRth.inRth).toBe(true)
+    const label = collect(rthResult.graphics.items, 'Text').find((t) => t.key === 'kl-onh-t')
+    expect(label.text).toMatch(/^ONH \d+%$/)
   })
 
-  it('no dibuja nada antes de la primera vela', () => {
-    const instance = makeCalculator(indicator)
-    const { canvas, calls } = makeCanvasSpy()
-    indicator.plotter.fn(canvas, instance, null)
-    expect(calls.drawLine.length).toBe(0)
-    expect(calls.drawRectangle.length).toBe(0)
+  it('ancla el dashboard a una esquina del marco en pixeles', () => {
+    const texts = collect(result.graphics.items, 'Text').filter((t) => t.key.startsWith('dash-'))
+    expect(texts.length).toBeGreaterThanOrEqual(4)
+    for (const item of texts) {
+      expect(item.origin).toEqual({ cs: 'frame', h: 'right', v: 'top' })
+      expect(Number.isFinite(item.point.x.px)).toBe(true)
+      expect(Number.isFinite(item.point.y.px)).toBe(true)
+      expect(item.textAlignment).toBe('rightMiddle')
+    }
+    expect(texts[0].text.startsWith('Session:')).toBe(true)
+
+    const bottomLeft = makeCalculator(indicator, { dashboardPosition: 'bottomLeft' })
+    const blResult = runAndDraw(bottomLeft, bars)
+    const blTexts = collect(blResult.graphics.items, 'Text').filter((t) => t.key.startsWith('dash-'))
+    expect(blTexts[0].origin).toEqual({ cs: 'frame', h: 'left', v: 'bottom' })
+    expect(blTexts[0].textAlignment).toBe('leftMiddle')
   })
 
   it('respeta las opciones de visualizacion', () => {
-    const bars = generateBars({ startMs: Date.UTC(2024, 0, 8, 5, 0), minutes: 24 * 60 })
-    const instance = makeCalculator(indicator, {
+    const minimal = makeCalculator(indicator, {
       showHistogram: false,
-      showVwap: false,
       showDashboard: false,
       showKeyLevelLabels: false,
       showProfileLabels: false,
       showProfileStats: false,
     })
-    runAll(instance, bars)
+    const minimalResult = runAndDraw(minimal, bars)
+    expect(collect(minimalResult.graphics.items, 'Shapes')).toHaveLength(0)
+    expect(collect(minimalResult.graphics.items, 'Text')).toHaveLength(0)
+    expect(collect(minimalResult.graphics.items, 'LineSegments').length).toBeGreaterThan(0)
 
-    const { canvas, calls } = makeCanvasSpy()
-    indicator.plotter.fn(canvas, instance, null)
-    expect(calls.drawRectangle.length).toBe(0)
-    expect(calls.drawText.length).toBe(0)
-    expect(calls.drawLine.length).toBeGreaterThan(0) // POC/VAH/VAL y niveles clave
-  })
-
-  it('extendRight prolonga POC/VAH/VAL hasta el borde derecho', () => {
-    const bars = generateBars({ startMs: Date.UTC(2024, 0, 8, 5, 0), minutes: 2 * 24 * 60 })
-    const options = { showHistogram: false, showVwap: false, showDashboard: false }
-
-    const plain = makeCalculator(indicator, options)
-    runAll(plain, bars)
-    const plainSpy = makeCanvasSpy()
-    indicator.plotter.fn(plainSpy.canvas, plain, null)
-
-    const extended = makeCalculator(indicator, { ...options, extendRight: true })
-    runAll(extended, bars)
-    const extendedSpy = makeCanvasSpy()
-    indicator.plotter.fn(extendedSpy.canvas, extended, null)
-
-    const record = plain.completedRth[0]
-    const pocLine = ([from]) => Math.abs(from.y - record.profile.poc) < 1e-9 && from.x === record.startX
-    const plainPoc = plainSpy.calls.drawLine.find(pocLine)
-    const extendedPoc = extendedSpy.calls.drawLine.find(pocLine)
-
-    expect(plainPoc[1].x).toBe(record.endX)
-    expect(extendedPoc[1].x).toBe(extended.lastBarIndex + extended.props.labelOffset)
+    const nothing = makeCalculator(indicator, {
+      showRth: false,
+      showOvernight: false,
+      showHistogram: false,
+      showDashboard: false,
+      showKeyLevelLabels: false,
+      showProfileLabels: false,
+      showProfileStats: false,
+      showOvernightLevels: false,
+      showPrevRth: false,
+      showIbLevels: false,
+      showYpoc: false,
+      showPrevWeek: false,
+      showWeek2: false,
+      showGapLevels: false,
+    })
+    expect(runAndDraw(nothing, bars).graphics).toBeUndefined()
   })
 
   it('coloca el perfil a la izquierda o a la derecha segun el parametro', () => {
-    const bars = generateBars({ startMs: Date.UTC(2024, 0, 8, 5, 0), minutes: 24 * 60 })
-
-    const left = makeCalculator(indicator, { profileSide: 'left', showVwap: false })
-    runAll(left, bars)
-    const leftSpy = makeCanvasSpy()
-    indicator.plotter.fn(leftSpy.canvas, left, null)
-
-    const right = makeCalculator(indicator, { profileSide: 'right', showVwap: false })
-    runAll(right, bars)
-    const rightSpy = makeCanvasSpy()
-    indicator.plotter.fn(rightSpy.canvas, right, null)
+    const left = makeCalculator(indicator, { profileSide: 'left' })
+    const leftItems = runAndDraw(left, bars).graphics.items
+    const right = makeCalculator(indicator, { profileSide: 'right' })
+    const rightItems = runAndDraw(right, bars).graphics.items
 
     const record = left.completedRth[0]
-    const leftBoxes = leftSpy.calls.drawRectangle.filter(([a]) => a.x >= record.startX && a.x <= record.endX)
-    const rightBoxes = rightSpy.calls.drawRectangle.filter(([a]) => a.x >= record.startX && a.x <= record.endX)
-    const minLeft = Math.min(...leftBoxes.map(([a]) => a.x))
-    const maxRight = Math.max(...rightBoxes.map(([, b]) => b.x))
-    expect(minLeft).toBe(record.startX)
-    expect(maxRight).toBe(record.endX)
+    const edges = (items, pick) => {
+      const values = []
+      for (const group of collect(items, 'Shapes')) {
+        if (!group.key.startsWith('r0-')) continue
+        for (const primitive of group.primitives) {
+          const half = primitive.size.width.du / 2
+          values.push(pick(primitive.position.x.du - half, primitive.position.x.du + half))
+        }
+      }
+      return values
+    }
+
+    expect(Math.min(...edges(leftItems, (a) => a))).toBeCloseTo(record.startX, 6)
+    expect(Math.max(...edges(rightItems, (a, b) => b))).toBeCloseTo(record.endX, 6)
+  })
+
+  it('extendRight prolonga POC/VAH/VAL hasta el borde derecho', () => {
+    const plain = makeCalculator(indicator)
+    const plainResult = runAndDraw(plain, bars)
+    const extended = makeCalculator(indicator, { extendRight: true })
+    const extendedResult = runAndDraw(extended, bars)
+
+    const pocLine = (items) =>
+      collect(items, 'LineSegments').find((g) => g.key === 'r0-l-poc').lines[0]
+
+    expect(pocLine(plainResult.graphics.items).b.x.du).toBe(plain.completedRth[0].endX)
+    expect(pocLine(extendedResult.graphics.items).b.x.du).toBe(
+      extended.lastBarIndex + extended.props.labelOffset
+    )
+  })
+
+  it('no emite graphics antes de la primera vela', () => {
+    const empty = makeCalculator(indicator)
+    expect(internals.buildGraphics(empty)).toBeUndefined()
+  })
+
+  it('el constructor descarta rectangulos y lineas degenerados', () => {
+    const builder = internals.createGraphicsBuilder()
+    builder.rect('g', { color: '#fff', opacity: 1 }, 5, 10, 5, 10) // ancho y alto cero
+    builder.line('l', { color: '#fff', width: 1, dash: 1, opacity: 1 }, 0, NaN, 1, 2)
+    builder.text('t', 0, NaN, 'x', { color: '#fff', size: 11 })
+    expect(builder.build()).toEqual([])
+  })
+})
+
+describe('colores', () => {
+  it('acepta hex y nombres web, y cae al valor por defecto si viene vacio', () => {
+    expect(internals.safeColor('#123456', '#000')).toBe('#123456')
+    expect(internals.safeColor('  red  ', '#000')).toBe('red')
+    expect(internals.safeColor('', '#000')).toBe('#000')
+    expect(internals.safeColor(undefined, '#000')).toBe('#000')
+    expect(internals.safeColor(42, '#000')).toBe('#000')
+  })
+
+  it('un color vacio en los parametros no rompe el dibujo', () => {
+    const bars = generateBars({ startMs: Date.UTC(2024, 0, 8, 5, 0), minutes: 24 * 60 })
+    const instance = makeCalculator(indicator, { rthPocColor: '', onHighColor: '   ' })
+    for (let i = 0; i < bars.length - 1; i += 1) instance.map(bars[i], i)
+    const last = Object.assign({}, bars[bars.length - 1], { isLast: () => true })
+    const items = instance.map(last, bars.length - 1).graphics.items
+    for (const item of items) {
+      const color = (item.fillStyle && item.fillStyle.color) || (item.lineStyle && item.lineStyle.color) || (item.style && item.style.fill)
+      expect(typeof color).toBe('string')
+      expect(color.trim().length).toBeGreaterThan(0)
+    }
   })
 })
 

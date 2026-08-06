@@ -3,30 +3,25 @@
 Port a JavaScript del indicador Pine v6 `DualSVP_KeyLevels_Integrated.pine`, para
 cargarlo como **Custom Indicator** en Tradovate Trader.
 
-Archivo a subir: [`dualSvpKeyLevels.js`](./dualSvpKeyLevels.js) (autocontenido, sin dependencias
-más allá de `./tools/predef` y `./tools/meta`, que provee el propio Tradovate).
+Archivo a subir: [`dualSvpKeyLevels.js`](./dualSvpKeyLevels.js) (autocontenido; solo
+requiere `./tools/predef`, `./tools/meta` y `./tools/graphics`, que provee Tradovate).
 
 ---
 
 ## 1. Instalación
 
-1. En Tradovate Trader, abrir el menú de la aplicación → **Custom Indicators** (o
-   *Chart → Indicators → Custom*, según la versión).
-2. Crear un indicador nuevo y nombrarlo `dualSvpKeyLevels`.
-3. Pegar el contenido completo de `dualSvpKeyLevels.js` y guardar.
-4. Añadirlo al gráfico desde la lista de indicadores (aparece bajo las etiquetas
-   *Volume Profile* / *Key Levels*).
+1. En Tradovate Trader: menú **Archivo → Custom Indicators** (el editor de código).
+2. Crear un indicador nuevo, pegar el contenido completo del archivo y **guardar**.
+   El panel *Errores de sintaxis* debe quedar vacío.
+3. **Para añadirlo al gráfico**: en la barra del gráfico, botón de **indicadores**
+   (`f(x)` / *Indicators*) → buscar **"Dual SVP HD + Key Levels Pro"**, agrupado bajo
+   las etiquetas *Volume Profile* / *Key Levels* → doble clic para añadirlo.
+4. Ajustar los parámetros con el engranaje del indicador en la leyenda del gráfico.
 
-**Timeframe recomendado: 1 minuto** (o 30 segundos). El perfil se construye con las
-velas del gráfico, así que cuanto menor sea el timeframe más se parece al modo "HD"
-del original. En 5m o superior el perfil sigue funcionando, pero pierde resolución.
+**Timeframe recomendado: 1 minuto** (o 30 segundos). Ver el punto 3 sobre el modo HD.
 
-Antes de operar, ajustar dos parámetros al instrumento:
-
-| Parámetro       | ES / NQ / MES / MNQ | CL   | GC  | 6E      |
-|-----------------|---------------------|------|-----|---------|
-| `tickSize`      | 0.25                | 0.01 | 0.1 | 0.00005 |
-| `priceDecimals` | 2                   | 2    | 1   | 5       |
+No hace falta configurar el tick size: se toma de `contractInfo.tickSize` del propio
+contrato. `tickSizeOverride` existe solo por si quieres forzar otro valor.
 
 ---
 
@@ -34,8 +29,6 @@ Antes de operar, ajustar dos parámetros al instrumento:
 
 ### Perfil de volumen doble (SVP)
 - Sesión **RTH** (por defecto 09:30–17:00 NY) y **Overnight** (17:00–09:30 NY).
-- Reparto **proporcional al solapamiento** del rango de cada vela con cada fila,
-  igual que el Pine original (no es "volumen entero por fila tocada").
 - **POC** (fila de mayor volumen, desempate por cercanía al precio ponderado),
   **VAH** y **VAL** por expansión desde el POC hasta cubrir el % de value area.
 - Histograma **Total** o **Up / Down**, con atenuación configurable de las filas
@@ -70,28 +63,55 @@ VWAP acumulado con dos bandas de desviación estándar, fuente `hlc3`, anclaje
 **día de negociación de futuros**: rota a la hora de apertura del overnight
 (17:00 NY por defecto), no a medianoche.
 
+Se dibuja como **plot nativo**, así que su color, grosor y estilo de línea se
+editan desde la sección de estilos del editor de indicadores, como cualquier
+indicador de Tradovate.
+
 ### Dashboard
 Sesión activa (RTH / ON / Outside), Gap en puntos y ticks, rango del IB, rango del
-overnight y Expected Range.
+overnight y Expected Range. Va anclado a una esquina del marco del gráfico
+(`dashboardPosition`), no al precio.
 
 ---
 
-## 3. Diferencias respecto del Pine original
+## 3. Modo HD: perfil de volumen real
 
-Tradovate no expone algunas de las APIs de TradingView. Estos son los ajustes, y
-son deliberados:
+El indicador declara `requirements: { volumeProfiles: true }`, así que Tradovate
+carga el historial **con el perfil de volumen de cada vela**. Cuando está
+disponible, cada vela aporta su distribución real precio a precio vía
+`d.profile()`, incluyendo `askVol` y `bidVol`:
+
+- El perfil es **exacto**, no una aproximación — mejor que el original en Pine,
+  que tenía que repartir el volumen de la vela entre filas.
+- El reparto **Up / Down** usa volumen real ejecutado en ask vs bid, no la
+  heurística `close >= open`.
+
+Si el gráfico no trae perfiles, hay dos niveles de degradación automática:
+
+1. Reparto **proporcional al solapamiento** del rango de la vela con cada fila
+   (idéntico al Pine original), con el split up/down tomado de
+   `offerVolume()` / `bidVolume()` si el feed los expone.
+2. Si tampoco hay esos volúmenes, el split cae a `close >= open`.
+
+Por eso conviene un timeframe bajo: cuanto más fina la vela, mejor el perfil en
+los modos degradados.
+
+---
+
+## 4. Diferencias respecto del Pine original
 
 | Pine | Tradovate | Consecuencia |
 |------|-----------|--------------|
-| `request.security_lower_tf` (modo HD) | No existe | El perfil usa las velas del gráfico. Usar 1m/30s para precisión equivalente. Se eliminaron los parámetros `useHD` / `lowerTf`. |
+| `request.security_lower_tf` (modo HD) | `d.profile()` | **Mejor**: perfil real por precio en vez de aproximación. Se eliminaron `useHD` / `lowerTf`. |
 | `request.security(..., "W", ...)` | No existe | PWH/PWL y P2WH/P2WL se calculan con el historial del propio gráfico. **Requiere al menos 3 semanas de velas cargadas** para mostrar P2WH/P2WL. |
-| `request.security("CBOE:VXN")` | No hay símbolos externos | El Expected Range usa el parámetro `manualVxn`. Con `manualVxn = 0` el Expected Range queda en `n/a`. Fórmula sin cambios: `(VXN/100)/16 × open RTH`, congelado en la apertura. |
-| `table.new()` | No hay tablas | El dashboard se dibuja como texto anclado sobre el precio, a la derecha de la última vela (no queda fijo en una esquina). |
-| `alertcondition()` | Modelo de alertas distinto | No portado. Las alertas se configuran desde el propio Tradovate sobre los niveles. |
+| `request.security("CBOE:VXN")` | No hay símbolos externos | El Expected Range usa el parámetro `manualVxn`. Con `manualVxn = 0` queda en `n/a`. Fórmula sin cambios: `(VXN/100)/16 × open RTH`, congelado en la apertura. |
+| `table.new()` | No hay tablas | El dashboard son objetos `Text` globales anclados a una esquina del marco. |
+| `alertcondition()` | Modelo de alertas distinto | No portado. Las alertas se configuran desde Tradovate sobre los niveles. |
 | `timezone` como string IANA | Sin base de datos de zonas | Hora de Nueva York calculada con las reglas de DST de EE. UU. (2.º domingo de marzo → 1.er domingo de noviembre). Para otro huso: `autoNewYorkTime = false` + `manualUtcOffset`. |
 | Límite de 500 boxes | Sin ese límite | Se eliminó la reducción automática de sesiones visibles; `maxSessions` se respeta tal cual. |
-| Textos de etiqueta configurables | — | Fijos (`ONH`, `ONL`, `YEH`, `YEL`, `IBH`, `IBL`, `YPOC`, `PWH`, `PWL`, `P2WH`, `P2WL`, `OPEN`, `GAP`, `HALF GAP`) para no inflar el panel de parámetros. |
-| Transparencia 0–100 por color | `opacity` 0–1 por trazo | `histogramOpacity` (0.45 ≈ transparencia 58 del original) y `vaFadeOutside` en %. |
+| `input.color` | `ParamType` no tiene `COLOR` | Los colores son parámetros de **texto**: acepta hex (`#FF6B6B`) o nombre web (`red`). Si se deja vacío se usa el color por defecto. |
+| Textos de etiqueta configurables | — | Fijos (`ONH`, `ONL`, `YEH`, `YEL`, `IBH`, `IBL`, `YPOC`, `PWH`, `PWL`, `P2WH`, `P2WL`, `OPEN`, `GAP`, `HALF GAP`). |
+| Transparencia 0–100 por color | `opacity` 0–1 | `histogramOpacity` (0.45 ≈ transparencia 58 del original) y `vaFadeOutside` en %. |
 
 ### Detalle: fin de sesión y fin de semana
 Pine detecta la sesión con `time(session)`, que ya excluye días no hábiles. Aquí la
@@ -107,9 +127,33 @@ sesión dos veces. Hay tests que lo verifican.
 
 ---
 
-## 4. Parámetros
+## 5. Cómo se dibuja
 
-Agrupados por prefijo en el panel de Tradovate:
+El `Canvas` de los plotters personalizados solo expone `drawLine`, `drawPath` y
+`drawHeatmap` — no hay rectángulos ni texto. Por eso el indicador **no usa
+`predef.plotters.custom`**, sino la API declarativa `graphics` del retorno de
+`map()`, que sí tiene `Rectangle`, `Text` y `LineSegments`:
+
+```js
+map(d) {
+    return {
+        vwap: ...,                    // plots nativos
+        graphics: d.isLast() && {     // dibujo completo, una sola vez
+            items: [ /* DisplayObjects */ ]
+        }
+    }
+}
+```
+
+Coordenadas con `du()` (unidades de dominio: índice de vela en X, precio en Y),
+`px()` (píxeles) y `op()` para combinarlas. Todo el dibujo se emite en la última
+vela como objetos `global: true` con claves estables, y se agrupa por estilo: un
+solo `Shapes` por color reúne todos los rectángulos del histograma en vez de emitir
+un objeto por fila.
+
+---
+
+## 6. Parámetros
 
 - **Sesiones**: `showRth`, `rthStartHour/Minute`, `rthEndHour/Minute`,
   `showOvernight`, `ovnStartHour/Minute`, `ovnEndHour/Minute`,
@@ -117,44 +161,33 @@ Agrupados por prefijo en el panel de Tradovate:
 - **Perfil**: `numRows`, `volumeMode`, `valueAreaPct`, `vaFadeOutside`, `maxSessions`.
 - **Visualización**: `showDeveloping`, `showHistogram`, `showPoc`, `showVah`,
   `showVal`, `showProfileLabels`, `showProfileStats`, `extendRight`,
-  `profileSide`, `widthPercent`, `gapBars`, `profileLineWidth`, `histogramOpacity`.
-- **Colores**: `rth*` y `ovn*` (POC, VAH/VAL, up, down, total, value area),
-  `statsTextColor`, `deltaUpColor`, `deltaDownColor`.
+  `profileSide`, `widthPercent`, `gapBars`, `profileLineWidth`,
+  `histogramOpacity`, `fontSize`.
+- **Colores** (texto: hex o nombre web): `rth*` y `ovn*` (POC, VAH/VAL, up, down,
+  total, value area), `statsTextColor`, `deltaUpColor`, `deltaDownColor`.
 - **Key Levels**: `showKeyLevelLabels`, `labelOffset`, `showDashboard`,
-  `dashboardOffset`, y por grupo `showOvernightLevels`, `showPrevRth`,
-  `showIbLevels`, `showYpoc`, `showPrevWeek`, `showWeek2`, `showGapLevels`
-  con sus colores y anchos.
-- **VWAP**: `showVwap`, `vwapAnchor`, `vwapShowBand1/2`, `vwapMultiplier1/2`,
-  `vwapColor`, `vwapBandColor`, `vwapLineWidth`.
-- **Instrumento**: `tickSize`, `priceDecimals`.
+  `dashboardPosition`, `dashboardMarginX/Y`, y por grupo `showOvernightLevels`,
+  `showPrevRth`, `showIbLevels`, `showYpoc`, `showHistoricPocs`, `showPrevWeek`,
+  `showWeek2`, `showGapLevels` con sus colores y anchos.
+- **VWAP**: `showVwap`, `vwapAnchor`, `vwapShowBand1/2`, `vwapMultiplier1/2`
+  (colores y grosores en la sección de estilos del editor).
+- **Instrumento**: `tickSizeOverride` (0 = usar el tick del contrato).
 
 ---
 
-## 5. Notas de implementación
-
-La documentación pública de la API de Tradovate (`tradovate.github.io`) está
-bloqueada por la política de red del entorno donde se escribió este port, así que
-el dibujo se hizo **defensivo**: `makePainter()` detecta qué primitivas expone el
-canvas y degrada `drawRectangle` → `drawPolygon` → `drawLine`, y captura los
-errores de cada primitiva en `instance.drawErrors` en vez de romper el render
-completo. Si al cargarlo el histograma no aparece pero sí las líneas, es que esa
-build no expone `drawRectangle` ni `drawPolygon`.
-
-`module.exports._internals` existe solo para los tests del repositorio; Tradovate
-lo ignora.
-
----
-
-## 6. Tests
+## 7. Tests
 
 ```bash
 npm test                                              # toda la suite del repo
 npx vitest run tradovate/__tests__/dualSvpKeyLevels.test.js
 ```
 
-Los tests cargan el archivo real en un sandbox con `predef`/`meta` simulados y
-cubren: conversión horaria con DST, ventanas de sesión, reparto proporcional del
-volumen, POC/VAH/VAL, delta up/down, VWAP y sus bandas, Initial Balance,
-propagación de RTH previo/YPOC, niveles semanales, transiciones de probabilidad,
-idempotencia del recálculo por tick y el plotter (incluidos los caminos de
-degradación del canvas).
+58 tests cargan el archivo real en un sandbox con `predef`/`meta`/`graphics`
+simulados y cubren: conversión horaria con DST, ventanas de sesión, perfil real de
+`d.profile()` y los dos modos degradados, POC/VAH/VAL, delta up/down, VWAP y sus
+bandas, Initial Balance, propagación de RTH previo/YPOC, niveles semanales,
+transiciones de probabilidad, idempotencia del recálculo por tick, y el árbol
+`graphics` completo (tags válidos, claves únicas, coordenadas finitas, agrupación
+por estilo, anclaje del dashboard y respeto de las opciones de visualización).
+
+`module.exports._internals` existe solo para estos tests; Tradovate lo ignora.
