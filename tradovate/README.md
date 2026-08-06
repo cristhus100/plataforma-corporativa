@@ -132,7 +132,7 @@ sesión dos veces. Hay tests que lo verifican.
 El `Canvas` de los plotters personalizados solo expone `drawLine`, `drawPath` y
 `drawHeatmap` — no hay rectángulos ni texto. Por eso el indicador **no usa
 `predef.plotters.custom`**, sino la API declarativa `graphics` del retorno de
-`map()`, que sí tiene `Rectangle`, `Text` y `LineSegments`:
+`map()`, que sí tiene formas rellenas, `Text` y `LineSegments`:
 
 ```js
 map(d) {
@@ -148,8 +148,17 @@ map(d) {
 Coordenadas con `du()` (unidades de dominio: índice de vela en X, precio en Y),
 `px()` (píxeles) y `op()` para combinarlas. Todo el dibujo se emite en la última
 vela como objetos `global: true` con claves estables, y se agrupa por estilo: un
-solo `Shapes` por color reúne todos los rectángulos del histograma en vez de emitir
-un objeto por fila.
+solo `Shapes` por color reúne todas las barras del histograma en vez de emitir un
+objeto por fila.
+
+Dos detalles que se descubrieron probando contra la aplicación real:
+
+- Las barras del histograma se emiten como **`Polygon`** (cuatro puntos), no como
+  `Rectangle`. El primitivo `Rectangle` se define con `size`, y el renderer no
+  dibuja nada cuando ese tamaño va en unidades de dominio — los ejemplos de la API
+  solo lo usan en píxeles. Los puntos de un `Polygon` sí aceptan `du()`.
+- El dashboard se ancla con `cs: "grid"`, no `"frame"`: el marco incluye la escala
+  de precios, así que anclar a él deja el panel encima del eje y recortado.
 
 ---
 

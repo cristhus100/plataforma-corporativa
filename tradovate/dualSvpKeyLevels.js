@@ -1108,7 +1108,14 @@ function createGraphicsBuilder() {
     const lineOrder = [];
 
     return {
-        /** Rectangulo definido por dos esquinas; el objeto Rectangle se centra en `position`. */
+        /**
+         * Rectangulo definido por dos esquinas.
+         *
+         * Se emite como Polygon y no como Rectangle: el primitivo Rectangle se
+         * define con `size`, y el renderer no dibuja nada cuando ese tamano va en
+         * unidades de dominio (los ejemplos de la API solo lo usan en pixeles).
+         * Polygon toma puntos, que si aceptan du().
+         */
         rect: function (groupKey, style, x1, yTop, x2, yBottom) {
             const width = Math.abs(x2 - x1);
             const height = Math.abs(yTop - yBottom);
@@ -1126,9 +1133,13 @@ function createGraphicsBuilder() {
                 shapeOrder.push(groupKey);
             }
             shapeGroups[groupKey].primitives.push({
-                tag: "Rectangle",
-                position: { x: du((x1 + x2) / 2), y: du((yTop + yBottom) / 2) },
-                size: { width: du(width), height: du(height) }
+                tag: "Polygon",
+                points: [
+                    { x: du(x1), y: du(yTop) },
+                    { x: du(x2), y: du(yTop) },
+                    { x: du(x2), y: du(yBottom) },
+                    { x: du(x1), y: du(yBottom) }
+                ]
             });
         },
 
@@ -1178,13 +1189,18 @@ function createGraphicsBuilder() {
             });
         },
 
-        /** Texto anclado a una esquina del marco del grafico, en pixeles. */
+        /**
+         * Texto anclado a una esquina del area de dibujo, en pixeles.
+         *
+         * cs: "grid" y no "frame": el marco incluye la escala de precios, asi que
+         * anclar a el deja el texto encima del eje y recortado.
+         */
         frameText: function (key, corner, dx, dy, value, style) {
             items.push({
                 tag: "Text",
                 key: key,
                 global: true,
-                origin: { cs: "frame", h: corner.h, v: corner.v },
+                origin: { cs: "grid", h: corner.h, v: corner.v },
                 point: { x: px(dx), y: px(dy) },
                 text: value,
                 style: {

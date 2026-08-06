@@ -859,12 +859,18 @@ describe('graphics', () => {
       expect(group.fillStyle.opacity).toBeGreaterThan(0)
       expect(group.fillStyle.opacity).toBeLessThanOrEqual(1)
       for (const primitive of group.primitives) {
-        expect(primitive.tag).toBe('Rectangle')
-        // Coordenadas en unidades de dominio: indice de vela y precio.
-        expect(Number.isFinite(primitive.position.x.du)).toBe(true)
-        expect(Number.isFinite(primitive.position.y.du)).toBe(true)
-        expect(primitive.size.width.du).toBeGreaterThan(0)
-        expect(primitive.size.height.du).toBeGreaterThan(0)
+        // Polygon y no Rectangle: el renderer ignora `size` en unidades de dominio.
+        expect(primitive.tag).toBe('Polygon')
+        expect(primitive.points).toHaveLength(4)
+        for (const point of primitive.points) {
+          // Coordenadas en unidades de dominio: indice de vela y precio.
+          expect(Number.isFinite(point.x.du)).toBe(true)
+          expect(Number.isFinite(point.y.du)).toBe(true)
+        }
+        const xs = primitive.points.map((p) => p.x.du)
+        const ys = primitive.points.map((p) => p.y.du)
+        expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(0)
+        expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(0)
         rectangles += 1
       }
     }
@@ -918,7 +924,8 @@ describe('graphics', () => {
     const texts = collect(result.graphics.items, 'Text').filter((t) => t.key.startsWith('dash-'))
     expect(texts.length).toBeGreaterThanOrEqual(4)
     for (const item of texts) {
-      expect(item.origin).toEqual({ cs: 'frame', h: 'right', v: 'top' })
+      // grid y no frame: el marco incluye la escala de precios.
+      expect(item.origin).toEqual({ cs: 'grid', h: 'right', v: 'top' })
       expect(Number.isFinite(item.point.x.px)).toBe(true)
       expect(Number.isFinite(item.point.y.px)).toBe(true)
       expect(item.textAlignment).toBe('rightMiddle')
@@ -928,7 +935,7 @@ describe('graphics', () => {
     const bottomLeft = makeCalculator(indicator, { dashboardPosition: 'bottomLeft' })
     const blResult = runAndDraw(bottomLeft, bars)
     const blTexts = collect(blResult.graphics.items, 'Text').filter((t) => t.key.startsWith('dash-'))
-    expect(blTexts[0].origin).toEqual({ cs: 'frame', h: 'left', v: 'bottom' })
+    expect(blTexts[0].origin).toEqual({ cs: 'grid', h: 'left', v: 'bottom' })
     expect(blTexts[0].textAlignment).toBe('leftMiddle')
   })
 
@@ -976,8 +983,8 @@ describe('graphics', () => {
       for (const group of collect(items, 'Shapes')) {
         if (!group.key.startsWith('r0-')) continue
         for (const primitive of group.primitives) {
-          const half = primitive.size.width.du / 2
-          values.push(pick(primitive.position.x.du - half, primitive.position.x.du + half))
+          const xs = primitive.points.map((p) => p.x.du)
+          values.push(pick(Math.min(...xs), Math.max(...xs)))
         }
       }
       return values
