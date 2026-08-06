@@ -71,12 +71,17 @@ indicador de Tradovate.
 ### Etiquetas de nivel
 Dos modos, con `labelPlacement`:
 
-- **`axis`** (por defecto): pastilla de color con el texto dentro, pegada al eje de
-  precio y siguiendo al nivel verticalmente, al estilo NinjaTrader. La distancia
-  al borde se ajusta con `axisLabelMargin` (70 px). El color del texto se elige
-  solo, negro o blanco, según el contraste con el fondo de la pastilla.
-- **`chart`**: el texto sobre el gráfico, al final de la línea del nivel y
-  separado de ella `labelLift` píxeles hacia arriba.
+- **`badge`** (por defecto): pastilla de color con el texto dentro, al final de la
+  línea del nivel, al estilo NinjaTrader. El ancho se calcula en píxeles según la
+  longitud del texto y el color de la letra se elige solo, negro o blanco, según
+  el contraste con el fondo.
+- **`text`**: solo el texto, al final de la línea y separado de ella `labelLift`
+  píxeles hacia arriba.
+
+Las pastillas van en **coordenadas de velas**, no ancladas al marco. Anclar al
+marco un punto con la `y` en precio invalida el objeto y la aplicación **abandona
+el resto del dibujo** a partir de ahí — así se perdían las etiquetas y, con
+ellas, el dashboard. Por eso el dashboard se emite el primero de todos.
 
 Un indicador que ya esté colocado en un gráfico conserva sus parámetros
 guardados, así que **al añadir parámetros nuevos hay que abrir su configuración y

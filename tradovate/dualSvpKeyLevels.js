@@ -1293,17 +1293,17 @@ function createGraphicsBuilder() {
         },
 
         /**
-         * Etiqueta al estilo NinjaTrader: una pastilla de color pegada al eje de
-         * precio, con el texto dentro.
+         * Etiqueta al estilo NinjaTrader: pastilla de color con el texto dentro,
+         * al final de la linea del nivel.
          *
-         * La x va en pixeles desde el borde derecho del marco y la y en unidades
-         * de precio, asi que la etiqueta sigue al nivel verticalmente pero se
-         * queda fija en el borde. Anclar al marco es ademas lo unico que se ha
-         * visto dibujar fuera del rango de velas.
+         * Va en coordenadas de velas, no ancladas al marco: anclar al marco una
+         * `y` en precio invalida el objeto y la aplicacion abandona el resto del
+         * dibujo. El ancho si es en pixeles, combinando ambas unidades como en el
+         * ejemplo de Polygon de la documentacion: op(du(x), '+', px(n)).
          */
-        axisBadge: function (key, marginPx, widthPx, halfHeightPx, price, value, style) {
-            const near = marginPx;
-            const far = marginPx + widthPx;
+        priceBadge: function (key, x, widthPx, halfHeightPx, price, value, style) {
+            const left = du(x);
+            const right = op(du(x), "+", px(widthPx));
             const top = op(du(price), "-", px(halfHeightPx));
             const bottom = op(du(price), "+", px(halfHeightPx));
 
@@ -1311,15 +1311,14 @@ function createGraphicsBuilder() {
                 tag: "Shapes",
                 key: key + "-bg",
                 global: true,
-                origin: { cs: "frame", h: "right", v: "top" },
                 primitives: [
                     {
                         tag: "Polygon",
                         points: [
-                            { x: px(far), y: top },
-                            { x: px(near), y: top },
-                            { x: px(near), y: bottom },
-                            { x: px(far), y: bottom }
+                            { x: left, y: top },
+                            { x: right, y: top },
+                            { x: right, y: bottom },
+                            { x: left, y: bottom }
                         ]
                     }
                 ],
@@ -1330,8 +1329,7 @@ function createGraphicsBuilder() {
                 tag: "Text",
                 key: key + "-t",
                 global: true,
-                origin: { cs: "frame", h: "right", v: "top" },
-                point: { x: px(marginPx + widthPx / 2), y: du(price) },
+                point: { x: op(du(x), "+", px(widthPx / 2)), y: du(price) },
                 text: value,
                 style: {
                     fontFamily: FONT_FAMILY,
@@ -1588,11 +1586,11 @@ function addKeyLevel(builder, instance, id, options) {
         // Un indicador ya puesto en el grafico conserva sus parametros guardados,
         // asi que un parametro nuevo puede llegar vacio: solo "chart" desactiva
         // el modo del eje.
-        if (props.labelPlacement !== "chart") {
+        if (props.labelPlacement !== "text") {
             const size = props.fontSize;
-            builder.axisBadge(
+            builder.priceBadge(
                 id,
-                props.axisLabelMargin,
+                endX + 1,
                 Math.max(30, Math.round(text.length * size * 0.6) + 12),
                 Math.round(size * 0.5) + 3,
                 options.price,
@@ -1860,6 +1858,12 @@ function buildGraphics(instance) {
     const props = instance.props;
     const builder = createGraphicsBuilder();
 
+    // 0. Dashboard. Va el primero a proposito: si un objeto posterior resultara
+    // invalido, la aplicacion abandona el dibujo a partir de ahi.
+    if (props.showDashboard) {
+        addDashboard(builder, instance);
+    }
+
     // 1. Perfiles cerrados y en desarrollo.
     if (props.showRth) {
         for (let i = 0; i < instance.completedRth.length; i += 1) {
@@ -2045,12 +2049,7 @@ function buildGraphics(instance) {
         }
     }
 
-    // 4. Dashboard.
-    if (props.showDashboard) {
-        addDashboard(builder, instance);
-    }
-
-    // 5. Diagnostico opcional.
+    // 4. Diagnostico opcional.
     if (props.debugGraphics) {
         addDebugProbe(builder, instance);
     }
@@ -2181,10 +2180,9 @@ module.exports = {
         // --- Key Levels ---
         showKeyLevelLabels: boolSpec(true),
         labelPlacement: enumSpec(
-            { axis: "Price axis (NinjaTrader)", chart: "On chart" },
-            "axis"
+            { badge: "Badge (NinjaTrader)", text: "Text only" },
+            "badge"
         ),
-        axisLabelMargin: numberSpec(70, 5, 0),
         labelOffset: numberSpec(8, 1, 0),
         labelLift: numberSpec(10, 1, 0),
         showDashboard: boolSpec(true),

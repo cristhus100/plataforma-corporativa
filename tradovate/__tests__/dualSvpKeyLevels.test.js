@@ -903,8 +903,11 @@ describe('graphics', () => {
   })
 
   it('agrupa el histograma en objetos Shapes con rectangulos validos', () => {
-    // Las pastillas del eje tambien son Shapes, pero van ancladas al marco.
-    const shapes = collect(result.graphics.items, 'Shapes').filter((item) => !item.origin)
+    // Las pastillas de los niveles tambien son Shapes: el histograma son los
+    // grupos del perfil, con "-s-" en la clave.
+    const shapes = collect(result.graphics.items, 'Shapes').filter((item) =>
+      item.key.includes('-s-')
+    )
     expect(shapes.length).toBeGreaterThan(0)
 
     let rectangles = 0
@@ -1004,7 +1007,7 @@ describe('graphics', () => {
 
   it('separa la etiqueta de su linea en vertical, no en horizontal', () => {
     // Comportamiento del modo "chart", donde la etiqueta va sobre el grafico.
-    const onChart = makeCalculator(indicator, { labelPlacement: 'chart' })
+    const onChart = makeCalculator(indicator, { labelPlacement: 'text' })
     const chartItems = runAndDraw(onChart, bars).graphics.items
     const groups = collect(chartItems, 'LineSegments')
     const texts = collect(chartItems, 'Text')
@@ -1032,7 +1035,7 @@ describe('graphics', () => {
   it('mantiene las etiquetas de nivel dentro del alcance del dibujo', () => {
     // En modo "chart" todo texto se ancla como mucho una vela mas alla del
     // final de su linea, que es hasta donde llega el dibujo.
-    const onChart = makeCalculator(indicator, { labelPlacement: 'chart' })
+    const onChart = makeCalculator(indicator, { labelPlacement: 'text' })
     const chartItems = runAndDraw(onChart, bars).graphics.items
     const lineEnds = {}
     for (const group of collect(chartItems, 'LineSegments')) {
@@ -1067,28 +1070,37 @@ describe('graphics', () => {
     expect(bareTexts.some((t) => t.key.endsWith('-t-delta'))).toBe(false)
   })
 
-  it('dibuja las etiquetas de nivel como pastillas ancladas al eje de precio', () => {
+  it('dibuja las etiquetas de nivel como pastillas al final de su linea', () => {
     const items = result.graphics.items
     const badge = items.find((item) => item.key === 'kl-onh-bg')
     const text = items.find((item) => item.key === 'kl-onh-t')
+    const lineEnd = collect(items, 'LineSegments')
+      .find((g) => g.key === 'kl-onh')
+      .lines.map((line) => Math.max(line.a.x.du, line.b.x.du))[0]
 
-    // Ancladas al marco: la x va en pixeles desde el borde derecho...
-    expect(badge.origin).toEqual({ cs: 'frame', h: 'right', v: 'top' })
-    expect(text.origin).toEqual({ cs: 'frame', h: 'right', v: 'top' })
-    for (const point of badge.primitives[0].points) {
-      expect(Number.isFinite(point.x.px)).toBe(true)
-      expect(point.x.px).toBeGreaterThanOrEqual(instance.props.axisLabelMargin)
-    }
-    expect(text.point.x.px).toBeGreaterThan(instance.props.axisLabelMargin)
+    // En coordenadas de velas, no ancladas al marco: anclar al marco una `y` en
+    // precio invalida el objeto y la aplicacion abandona el resto del dibujo.
+    expect(badge.origin).toBeUndefined()
+    expect(text.origin).toBeUndefined()
 
-    // ...y la y sigue al precio del nivel.
-    expect(text.point.y.du).toBeCloseTo(instance.activeOvnHigh, 10)
-    const [base, operator, offset] = badge.primitives[0].points[0].y.op
-    expect(base.du).toBeCloseTo(instance.activeOvnHigh, 10)
-    expect(operator).toBe('-')
-    expect(offset.px).toBeGreaterThan(0)
+    // Arranca donde acaba la linea y su ancho va en pixeles.
+    const points = badge.primitives[0].points
+    expect(points[0].x.du).toBe(lineEnd + 1)
+    const [widthBase, widthOp, width] = points[1].x.op
+    expect(widthBase.du).toBe(lineEnd + 1)
+    expect(widthOp).toBe('+')
+    expect(width.px).toBeGreaterThan(0)
+
+    // El alto tambien: op(du(precio), '-', px(n)) arriba y '+' abajo.
+    const [topBase, topOp, topOffset] = points[0].y.op
+    expect(topBase.du).toBeCloseTo(instance.activeOvnHigh, 10)
+    expect(topOp).toBe('-')
+    expect(topOffset.px).toBeGreaterThan(0)
+    expect(points[3].y.op[1]).toBe('+')
 
     // El texto va centrado dentro de la pastilla y con color legible.
+    expect(text.point.y.du).toBeCloseTo(instance.activeOvnHigh, 10)
+    expect(text.point.x.op[2].px).toBeCloseTo(width.px / 2, 10)
     expect(text.textAlignment).toBe('centerMiddle')
     expect(text.text).toMatch(/^ONH( \d+%)?$/)
     expect(text.style.fill).toBe(internals.contrastingTextColor(badge.fillStyle.color))
@@ -1097,28 +1109,32 @@ describe('graphics', () => {
     expect(items.indexOf(badge)).toBeLessThan(items.indexOf(text))
   })
 
+  it('emite el dashboard antes que cualquier otro texto', () => {
+    // Si un objeto posterior resultara invalido, la aplicacion abandona el
+    // dibujo a partir de ahi: el dashboard va primero para no perderse.
+    const texts = collect(result.graphics.items, 'Text')
+    expect(texts[0].key.startsWith('dash-')).toBe(true)
+  })
+
   it('la pastilla es mas ancha cuanto mas largo es el texto', () => {
     const widthOf = (label) => {
-      const withProb = makeCalculator(indicator)
-      const items = runAndDraw(withProb, bars).graphics.items
-      const badge = items.find((item) => item.key === label + '-bg')
-      const xs = badge.primitives[0].points.map((p) => p.x.px)
-      return Math.max(...xs) - Math.min(...xs)
+      const badge = result.graphics.items.find((item) => item.key === label + '-bg')
+      return badge.primitives[0].points[1].x.op[2].px
     }
     // "YPOC 55%" ocupa mas que "ONH".
     expect(widthOf('kl-ypoc')).toBeGreaterThan(widthOf('kl-onh'))
   })
 
-  it('trata un labelPlacement ausente como modo eje', () => {
+  it('trata un labelPlacement ausente como pastilla', () => {
     // Un indicador ya colocado en el grafico puede no traer los parametros
-    // nuevos: el modo del eje tiene que seguir siendo el comportamiento base.
+    // nuevos: la pastilla tiene que seguir siendo el comportamiento base.
     const legacy = makeCalculator(indicator, { labelPlacement: undefined })
     const keys = runAndDraw(legacy, bars).graphics.items.map((item) => item.key)
     expect(keys).toContain('kl-onh-bg')
   })
 
-  it('permite volver a las etiquetas sobre el grafico', () => {
-    const onChart = makeCalculator(indicator, { labelPlacement: 'chart' })
+  it('permite volver a las etiquetas de solo texto', () => {
+    const onChart = makeCalculator(indicator, { labelPlacement: 'text' })
     const items = runAndDraw(onChart, bars).graphics.items
     const keys = items.map((item) => item.key)
 
