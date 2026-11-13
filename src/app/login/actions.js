@@ -20,9 +20,17 @@ export async function login(formData) {
 
   revalidatePath('/', 'layout')
 
-  // Redirigir a la ruta original si venía de un redirect del middleware
-  const redirectTo = formData.get('redirect') || '/'
-  redirect(redirectTo)
+  // Redirigir a la ruta original si venía de un redirect del middleware.
+  // Validar que sea una ruta relativa del mismo origen para evitar Open Redirect.
+  const redirectTo = formData.get('redirect')
+  const safeRedirect =
+    typeof redirectTo === 'string' &&
+    redirectTo.startsWith('/') &&
+    !redirectTo.startsWith('//') &&
+    !redirectTo.match(/^[a-zA-Z]+:/)
+      ? redirectTo
+      : '/'
+  redirect(safeRedirect)
 }
 
 export async function signup(formData) {

@@ -121,12 +121,15 @@ export function calcularPrestaciones(fechaIngreso, fechaCorte, salarioBase, auxi
   const corte = new Date(fechaCorte);
   const diasTrabajados = Math.max(0, Math.floor((corte - ingreso) / (1000 * 60 * 60 * 24)));
 
-  const basePrima = salarioBase + auxilioTransporte;
+  // Auxilio de transporte: solo aplica si el salario base no supera 2 SMMLV
+  const aux = salarioBase <= SMLV * 2 ? Number(auxilioTransporte) || 0 : 0;
+
+  const basePrima = salarioBase + aux;
   const baseCesantias = salarioBase;
 
   const prima = (basePrima * diasTrabajados) / 360;
   const cesantias = (baseCesantias * diasTrabajados) / 360;
-  const interesesCesantias = cesantias * PRESTACIONES.intereses_cesantias * (diasTrabajados / 360);
+  const interesesCesantias = (salarioBase * PRESTACIONES.intereses_cesantias * diasTrabajados) / 360;
   const vacaciones = (salarioBase * diasTrabajados) / 720;
 
   return {
@@ -150,7 +153,7 @@ export function calcularPrestaciones(fechaIngreso, fechaCorte, salarioBase, auxi
 export function liquidarNomina(trabajador, periodo, novedades = {}) {
   const salarioBase = Number(trabajador.salario) || SMLV;
   const diasLaborados = periodo.dias_laborados || 30;
-  const auxilioTransporte = trabajador.auxilio_transporte
+  const auxilioTransporte = trabajador.auxilio_transporte && salarioBase <= SMLV * 2
     ? Number(AUXILIO_TRANSPORTE)
     : 0;
 

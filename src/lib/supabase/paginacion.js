@@ -9,8 +9,7 @@
 export async function fetchPaginated(query, page, limit) {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
-  const { data, count, error } = await query
-    .range(from, to);
+  const { data, count, error } = await query.range(from, to, { count: 'exact', head: true });
 
   if (error) throw error;
   return { data: data || [], total: count || 0 };

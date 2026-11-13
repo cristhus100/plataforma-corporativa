@@ -14,7 +14,7 @@ export async function verificarAdmin() {
   const { data: perfil } = await supabase
     .from('perfiles')
     .select('rol')
-    .eq('id', user.id)
+    .eq('user_id', user.id)
     .single()
 
   if (!perfil || perfil.rol !== 'admin') throw new Error('Se requiere rol de administrador')

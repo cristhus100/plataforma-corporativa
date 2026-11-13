@@ -99,7 +99,8 @@ export async function generarNomina(periodoId) {
       throw new Error('No hay trabajadores activos con salario asignado')
     }
 
-    const diasLaborados = periodo.tipo === 'quincenal' ? 15 : 30
+    const DIAS_LABORADOS_POR_TIPO = { semanal: 7, decadual: 10, quincenal: 15, mensual: 30 }
+    const diasLaborados = DIAS_LABORADOS_POR_TIPO[periodo.tipo] ?? 30
 
     // Liquidar cada trabajador
     const nominasCreadas = []

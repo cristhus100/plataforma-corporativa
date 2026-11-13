@@ -78,7 +78,7 @@ export default function FacturacionDashboardPage() {
           .in('estado', ['pendiente', 'parcial']),
         supabase
           .from('facturas')
-          .select('total, saldo_pendiente')
+          .select('id, total')
           .in('estado', ['pendiente', 'parcial'])
           .lt('fecha_vencimiento', hoy),
         supabase
@@ -101,14 +101,29 @@ export default function FacturacionDashboardPage() {
         (sum, f) => sum + Number(f.total || 0), 0
       )
 
-      const vencidaTotal = (vencidasRes.data || []).reduce(
-        (sum, f) => sum + Number(f.saldo_pendiente || f.total || 0), 0
-      )
+      const vencidas = vencidasRes.data || []
+      const vencidasIds = vencidas.map((f) => f.id)
+      let carteraVencida = 0
+      if (vencidasIds.length > 0) {
+        const { data: recibos, error: errRecibos } = await supabase
+          .from('recibos_caja')
+          .select('factura_id, valor_aplicado')
+          .in('factura_id', vencidasIds)
+        if (errRecibos) throw errRecibos
+        const aplicadosPorFactura = (recibos || []).reduce((acc, r) => {
+          acc[r.factura_id] = (acc[r.factura_id] || 0) + Number(r.valor_aplicado || 0)
+          return acc
+        }, {})
+        carteraVencida = vencidas.reduce((s, f) => {
+          const saldo = Number(f.total || 0) - (aplicadosPorFactura[f.id] || 0)
+          return s + (saldo > 0 ? saldo : 0)
+        }, 0)
+      }
 
       setStats({
         totalFacturadoMes: totalMes,
         facturasPendientes: pendientesRes.count || 0,
-        carteraVencida: vencidaTotal,
+        carteraVencida,
         clientesActivos: clientesRes.count || 0,
       })
       setUltimasFacturas(ultimasRes.data || [])

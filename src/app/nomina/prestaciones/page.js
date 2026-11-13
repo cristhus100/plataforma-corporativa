@@ -105,7 +105,7 @@ export default function PrestacionesPage() {
           let calc = 0;
           if (tipo === 'prima' || tipo === 'cesantias') calc = (salario * dias) / 360;
           else if (tipo === 'vacaciones') calc = (salario * dias) / 720;
-          else if (tipo === 'intereses_cesantias') { const ces = (salario * dias) / 360; calc = ces * 0.12 * (dias / 360); }
+          else if (tipo === 'intereses_cesantias') { calc = (salario * 0.12 * dias) / 360; }
           else { calc = ((salario * dias) / 360) + ((salario * dias) / 360) + (((salario * dias) / 360) * 0.12 * (dias / 360)) + ((salario * dias) / 720); }
           updated.valor_calculado = Math.round(calc);
         }

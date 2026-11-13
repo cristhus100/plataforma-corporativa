@@ -43,13 +43,30 @@ export default function FacturasPage() {
 
       const [pendientesRes, vencidasRes, pagadasRes, tiposRes] = await Promise.all([
         supabase.from('facturas').select('total').in('estado', ['pendiente', 'parcial']),
-        supabase.from('facturas').select('total, saldo_pendiente').in('estado', ['pendiente', 'parcial']).lt('fecha_vencimiento', today),
+        supabase.from('facturas').select('id, total').in('estado', ['pendiente', 'parcial']).lt('fecha_vencimiento', today),
         supabase.from('facturas').select('id', { count: 'exact', head: true }).eq('estado', 'pagada'),
         supabase.from('tipo_documentos_factura').select('id, nombre, prefijo').eq('activo', true).order('nombre'),
       ])
 
       const totalPend = (pendientesRes.data || []).reduce((s, f) => s + Number(f.total || 0), 0)
-      const totalVenc = (vencidasRes.data || []).reduce((s, f) => s + Number(f.saldo_pendiente || f.total || 0), 0)
+      const vencidas = vencidasRes.data || []
+      const vencidasIds = vencidas.map((f) => f.id)
+      let totalVenc = 0
+      if (vencidasIds.length > 0) {
+        const { data: recibos, error: errRecibos } = await supabase
+          .from('recibos_caja')
+          .select('factura_id, valor_aplicado')
+          .in('factura_id', vencidasIds)
+        if (errRecibos) throw errRecibos
+        const aplicadosPorFactura = (recibos || []).reduce((acc, r) => {
+          acc[r.factura_id] = (acc[r.factura_id] || 0) + Number(r.valor_aplicado || 0)
+          return acc
+        }, {})
+        totalVenc = vencidas.reduce((s, f) => {
+          const saldo = Number(f.total || 0) - (aplicadosPorFactura[f.id] || 0)
+          return s + (saldo > 0 ? saldo : 0)
+        }, 0)
+      }
 
       setResumen({
         totalMes: totalPend,
