@@ -947,6 +947,17 @@
     background: var(--gray-200);
   }
 
+  .modal-error {
+    color: var(--gray-900);
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+    display: none;
+  }
+
+  #modalEnviada {
+    display: none;
+  }
+
   /* ═══════════════ PRINT ═══════════════ */
   @media print {
     .cover {
@@ -1476,7 +1487,7 @@
   <div class="cta-content">
     <h2>¿Listo para transformar tu gestión?</h2>
     <p>Una plataforma probada, estable y en producción. Contáctanos para una demo personalizada.</p>
-    <button class="cta-button">Solicitar demo</button>
+    <button class="cta-button" onclick="abrirModal('Profesional')">Solicitar demo</button>
     <div class="cta-info">
       <div><strong>Serviequipos Mantenimiento Ltda.</strong>Santa Rosa · Cauca</div>
       <div><strong>Contacto</strong>Cristhian Camilo Avellaneda</div>
@@ -1499,9 +1510,21 @@
     <input type="email" placeholder="Correo electrónico" id="modalEmail">
     <input type="tel" placeholder="Teléfono de contacto" id="modalTelefono">
     <textarea placeholder="Cuéntanos sobre tu empresa y qué necesitas..." id="modalMensaje"></textarea>
+    <div id="modalError" class="modal-error" role="alert"></div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
       <button class="btn-primary" onclick="enviarSolicitud()">Enviar solicitud</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalEnviada">
+  <div class="modal-box">
+    <h3>✅ Solicitud recibida</h3>
+    <p>Tu mensaje se ha preparado para enviar. Revisa tu cliente de correo y escríbenos a
+      <strong>cristhianavellaneda@gmail.com</strong>. Te contactaremos pronto.</p>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="cerrarSolicitud()">Cerrar</button>
     </div>
   </div>
 </div>
@@ -1531,15 +1554,20 @@
     const mensaje = document.getElementById('modalMensaje').value.trim();
 
     if (!nombre || !email) {
-      alert('Por favor ingresa tu nombre y correo electrónico.');
+      document.getElementById('modalError').textContent = 'Por favor ingresa tu nombre y correo electrónico.';
       return;
     }
 
     const cuerpo = `*Nueva solicitud - Plan ${planSeleccionado}*\n\nNombre: ${nombre}\nEmail: ${email}\nTeléfono: ${telefono || 'No indicado'}\nMensaje: ${mensaje || 'Sin mensaje'}`;
     window.location.href = `mailto:cristhianavellaneda@gmail.com?subject=${encodeURIComponent('Solicitud Plataforma Corporativa - Plan ' + planSeleccionado)}&body=${encodeURIComponent(cuerpo)}`;
 
+    document.getElementById('modalError').textContent = '';
     cerrarModal();
-    alert('✅ Solicitud enviada. Te contactaremos pronto.');
+    document.getElementById('modalEnviada').style.display = 'block';
+  }
+
+  function cerrarSolicitud() {
+    document.getElementById('modalEnviada').style.display = 'none';
   }
 
   document.getElementById('modalContacto').addEventListener('click', function (e) {

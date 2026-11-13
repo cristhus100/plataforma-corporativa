@@ -16,12 +16,17 @@
    - Se verificó: el archivo era UTF-8 válido (`auditoría` → bytes correctos).
 4. **Servidor local para verla**: `python -m http.server 8765 --directory "<ruta del proyecto>"` → abrir `http://localhost:8765/propuesta_artifact.html`. Servidor detenido después de usarlo.
 5. **Verificación previa**: `npm test` → 186 tests OK; `npm run build` → 47 rutas, 0 errores. ESLint OK. Servidor dev OK.
+6. **Commit + push hechos (2026-11-13, `788276f`)**: `docs/propuesta_comercial.html`, `propuesta_artifact.html` y este handoff ya están en `origin/main`.
+7. **Fix del modal de la propuesta (2026-11-13)**:
+   - `alert()` no funciona en el viewer de Artifacts → sustituido por error inline (`#modalError`) y modal de confirmación (`#modalEnviada`).
+   - El botón "Solicitar demo" de la CTA ahora abre el modal (antes no hacía nada).
+   - Sintaxis JS verificada con `node --check`.
 
 ---
 
 ## ❌ No se pudo hacer esta sesión
 
-- **Publicar la propuesta como Artifact en claude.ai**: la sesión estaba autenticando con `ANTHROPIC_AUTH_TOKEN`, por lo que el `Artifact publish` fue rechazado ("Artifacts need a claude.ai login...").
+- **Publicar la propuesta como Artifact en claude.ai**: la sesión está autenticando con `ANTHROPIC_AUTH_TOKEN`, por lo que el `Artifact publish` fue rechazado ("Artifacts need a claude.ai login..."). Se intentó de nuevo el 2026-11-13 y falló otra vez.
   - **Para reintentar:** ejecutar `/login` y seleccionar *"Claude account with subscription"*; o desactivar `ANTHROPIC_AUTH_TOKEN`.
 
 ---
@@ -41,10 +46,7 @@
 
 ### B. Validaciones / deuda técnica pendiente (no bloqueante)
 
-1. **Commit + push** de los cambios en working tree:
-   - `docs/propuesta_comercial.html` (title → "Propuesta Comercial")
-   - `propuesta_artifact.html` (nuevo, con charset)
-   - ⚠️ El `git commit && git push origin main` fue **bloqueado por el auto-mode classifier** — no reintentar por código ahora, hacerlo manualmente (o con permiso).
+1. **Commit + pendiente de push**: `propuesta_artifact.html` con los cambios del modal (error inline, modal de confirmación, CTA "Solicitar demo" conectado). Los demás cambios del paso A ya están en `788276f`.
 2. **Migraciones SQL**: aplicar contra BD real cuando haya credenciales (`src/lib/sql/`: `crear_perfiles.sql`, `vehiculos_recrear.sql`, `migracion_filtro_aire.sql`).
 3. **Validación en vivo**: `npm run dev` para probar rutas críticas (facturación, nómina, login, alertas).
 4. **Deploy a producción**: no hay Vercel/Netlify CLI ni tokens en este entorno. Conectar el repo a Vercel manualmente.
