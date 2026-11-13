@@ -547,7 +547,7 @@ export default function AlertasPage() {
               </div>
             )}
 
-            {!loadingAceite && alertasAceiteFiltradas.length > 0 && (
+            {!loading && alertasAceiteFiltradas.length > 0 && (
               <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-600">
                 Mostrando <span className="font-semibold">{alertasAceiteFiltradas.length}</span> de <span className="font-semibold">{(contextMaquinaria || []).length}</span> equipos
               </div>
