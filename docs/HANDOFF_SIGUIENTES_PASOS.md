@@ -48,7 +48,7 @@
 
 1. **Commit + pendiente de push**: `propuesta_artifact.html` con los cambios del modal (error inline, modal de confirmación, CTA "Solicitar demo" conectado). Los demás cambios del paso A ya están en `788276f`.
 2. **Migraciones SQL**: aplicar contra BD real cuando haya credenciales (`src/lib/sql/`: `crear_perfiles.sql`, `vehiculos_recrear.sql`, `migracion_filtro_aire.sql`).
-3. **Validación en vivo**: `npm run dev` para probar rutas críticas (facturación, nómina, login, alertas).
+3. **Validación en vivo**: `npm run dev` para probar rutas críticas (facturación, nómina, login, alertas). ✅ Hecho 2026-11-13: `/login` → 200, todas las rutas protegidas redirigen 307 a `/login?redirect=...`, sin 500s. Servidor detenido y puerto 3000 libre.
 4. **Deploy a producción**: no hay Vercel/Netlify CLI ni tokens en este entorno. Conectar el repo a Vercel manualmente.
 
 ### C. Cuando retome desarrollo nuevo (orden sugerido)
