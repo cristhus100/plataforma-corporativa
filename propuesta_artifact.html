@@ -1521,7 +1521,7 @@
 <div class="modal-overlay" id="modalEnviada">
   <div class="modal-box">
     <h3>✅ Solicitud recibida</h3>
-    <p>Tu mensaje se ha preparado para enviar. Revisa tu cliente de correo y escríbenos a
+    <p id="modalEnviadaDesc">Tu mensaje se ha preparado para enviar. Escríbenos a
       <strong>cristhianavellaneda@gmail.com</strong>. Te contactaremos pronto.</p>
     <div class="modal-actions">
       <button class="btn-primary" onclick="cerrarSolicitud()">Cerrar</button>
@@ -1559,7 +1559,7 @@
     }
 
     const cuerpo = `*Nueva solicitud - Plan ${planSeleccionado}*\n\nNombre: ${nombre}\nEmail: ${email}\nTeléfono: ${telefono || 'No indicado'}\nMensaje: ${mensaje || 'Sin mensaje'}`;
-    window.location.href = `mailto:cristhianavellaneda@gmail.com?subject=${encodeURIComponent('Solicitud Plataforma Corporativa - Plan ' + planSeleccionado)}&body=${encodeURIComponent(cuerpo)}`;
+    // El visor de Artifacts no navega de forma confiable con mailto; se muestra la confirmación en el modal.
 
     document.getElementById('modalError').textContent = '';
     cerrarModal();
