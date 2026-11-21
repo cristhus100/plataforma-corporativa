@@ -329,7 +329,6 @@ function TabGeneral({ maquinaria, tipo }) {
               : 'Sin asignar'
           } />
           <InfoRow label="Horómetro" value={maquinaria.horometro_actual ? `${maquinaria.horometro_actual} hrs` : null} />
-          <InfoRow label="Kilometraje" value={maquinaria.kilometraje ? `${maquinaria.kilometraje} km` : null} />
           <InfoRow label="Fecha de Compra" value={formatearFecha(maquinaria.fecha_compra)} />
           <InfoRow label="Valor de Compra" value={maquinaria.valor_compra ? formatearMoneda(maquinaria.valor_compra) : null} />
           <InfoRow 
