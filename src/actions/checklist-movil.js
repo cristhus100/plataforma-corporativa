@@ -47,7 +47,7 @@ export async function obtenerMaquinariaMovil(maquinariaId) {
 
     const { data, error } = await supabase
       .from('maquinaria')
-      .select('id, nombre, codigo_interno, horometro_actual, kilometraje, estado')
+      .select('id, nombre, codigo_interno, horometro_actual, estado')
       .eq('id', maquinariaId)
       .single()
 
@@ -92,7 +92,7 @@ export async function guardarChecklistMovil(datos) {
 
     const { data: maquina } = await supabase
       .from('maquinaria')
-      .select('horometro_actual, kilometraje')
+      .select('horometro_actual')
       .eq('id', maquinariaId)
       .single()
 
@@ -101,7 +101,7 @@ export async function guardarChecklistMovil(datos) {
       operador_nombre,
       fecha: hoy,
       horometro: maquina?.horometro_actual ?? null,
-      kilometraje: maquina?.kilometraje ?? null,
+      kilometraje: null,
       ...items,
       total_fallas: Object.values(items).filter((v) => v === 'mal').length,
       observaciones: observaciones || null,
