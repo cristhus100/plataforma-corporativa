@@ -29,7 +29,7 @@ export default function TabOperador({ maquinaria, onUpdate, isAdmin = false }) {
     try {
       const { data, error } = await supabase
         .from('trabajadores')
-        .select('id, cedula, primer_apellido, segundo_apellido, nombre, cargo_legacy, cargo:cargos(nombre)')
+        .select('id, cedula, primer_apellido, segundo_apellido, nombre, cargo:cargos(nombre)')
         .eq('id', operadorActual)
         .single();
 
@@ -40,22 +40,37 @@ export default function TabOperador({ maquinaria, onUpdate, isAdmin = false }) {
   };
 
   const buscarTrabajadores = async (termino) => {
-    if (!termino.trim()) {
-      setTrabajadores([]);
-      return;
-    }
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('trabajadores')
-        .select('id, cedula, primer_apellido, segundo_apellido, nombre, cargo_legacy, cargo:cargos(nombre)')
-        .or(`nombre.ilike.%${termino}%,primer_apellido.ilike.%${termino}%,segundo_apellido.ilike.%${termino}%,cedula.ilike.%${termino}%`)
+        .select('id, cedula, primer_apellido, segundo_apellido, nombre, cargo:cargos(nombre)')
         .eq('activo', true)
-        .limit(10);
+        .order('primer_apellido', { ascending: true })
+        .order('nombre', { ascending: true })
+        .limit(50);
 
-      if (!error) setTrabajadores(data || []);
+      if (termino && termino.trim()) {
+        query = query.or(`nombre.ilike.%${termino}%,primer_apellido.ilike.%${termino}%,segundo_apellido.ilike.%${termino}%,cedula.ilike.%${termino}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        addToast('Error al buscar trabajadores: ' + error.message, { type: 'error' });
+        setTrabajadores([]);
+        return;
+      }
+      setTrabajadores(data || []);
     } catch (e) {
-      // ignore
+      addToast('Error al buscar trabajadores: ' + e.message, { type: 'error' });
     }
+  };
+
+  const abrirSelector = () => {
+    setBuscando('');
+    setTrabajadores([]);
+    setShowSelector(true);
+    buscarTrabajadores('');
   };
 
   const asignarOperador = async (trabajadorId) => {
@@ -134,7 +149,7 @@ export default function TabOperador({ maquinaria, onUpdate, isAdmin = false }) {
             </div>
             {isAdmin && (
             <div className="flex gap-2">
-              <button onClick={() => setShowSelector(true)}
+              <button onClick={abrirSelector}
                 className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition">
                 Cambiar
               </button>
@@ -152,7 +167,7 @@ export default function TabOperador({ maquinaria, onUpdate, isAdmin = false }) {
           <p className="text-gray-500 font-medium">Sin operador asignado</p>
           <p className="text-sm text-gray-400 mt-1">Asigna un trabajador como operador de esta máquina</p>
           {isAdmin && (
-          <button onClick={() => setShowSelector(true)}
+          <button onClick={abrirSelector}
             className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">
             <UserCheck size={16} />
             Asignar Operador
@@ -190,11 +205,7 @@ export default function TabOperador({ maquinaria, onUpdate, isAdmin = false }) {
             </div>
 
             <div className="flex-1 overflow-y-auto p-2">
-              {buscando.trim() && trabajadores.length === 0 ? (
-                <p className="text-center py-8 text-sm text-gray-500">No se encontraron trabajadores</p>
-              ) : !buscando.trim() ? (
-                <p className="text-center py-8 text-sm text-gray-400">Escribe para buscar trabajadores activos</p>
-              ) : (
+              {trabajadores.length > 0 ? (
                 <div className="space-y-1">
                   {trabajadores.map((t) => (
                     <button
@@ -221,6 +232,12 @@ export default function TabOperador({ maquinaria, onUpdate, isAdmin = false }) {
                     </button>
                   ))}
                 </div>
+              ) : (
+                <p className="text-center py-8 text-sm text-gray-500">
+                  {buscando.trim()
+                    ? 'No se encontraron trabajadores activos que coincidan con la búsqueda'
+                    : 'No hay trabajadores activos registrados'}
+                </p>
               )}
             </div>
           </div>
