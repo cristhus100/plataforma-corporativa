@@ -38,7 +38,10 @@ export default function MainLayout({ children }) {
   }, []);
 
   // Login y formularios QR (sin sidebar ni header)
-  const esQR = pathname.startsWith('/mantenimiento/cambio-aceite/') || pathname.startsWith('/mantenimiento/vehiculo/')
+  const esQR =
+    pathname.startsWith('/mantenimiento/cambio-aceite/') ||
+    pathname.startsWith('/mantenimiento/vehiculo/') ||
+    pathname.startsWith('/mantenimiento/checklist/')
   if (pathname === '/login' || esQR) {
     return (
       <div className="min-h-screen">

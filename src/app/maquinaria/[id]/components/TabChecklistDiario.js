@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { formatearFecha } from '@/lib/utils/maquinaria';
 import { useToast } from '@/context/ToastContext';
+import { CHECKLIST_ITEMS, ESTADOS_CHECKLIST } from '@/lib/utils/checklist';
+import QRCode from 'qrcode';
 import {
   ClipboardCheck,
   AlertTriangle,
@@ -14,35 +16,17 @@ import {
   ChevronUp,
   Clock,
   Gauge,
+  QrCode,
+  Download,
+  Copy,
+  Check,
 } from 'lucide-react';
-
-const CHECKLIST_ITEMS = [
-  { key: 'aceite_motor', label: 'Nivel de Aceite Motor', icon: '🛢️' },
-  { key: 'liquido_hidraulico', label: 'Líquido Hidráulico', icon: '💧' },
-  { key: 'refrigerante', label: 'Refrigerante', icon: '🌡️' },
-  { key: 'filtro_aire', label: 'Filtro de Aire', icon: '💨' },
-  { key: 'llantas', label: 'Llantas / Neumáticos', icon: '⚙️' },
-  { key: 'luces', label: 'Luces', icon: '💡' },
-  { key: 'frenos', label: 'Frenos', icon: '🛑' },
-  { key: 'bocina', label: 'Bocina / Alarma', icon: '🔊' },
-  { key: 'espejos', label: 'Espejos', icon: '🔍' },
-  { key: 'cinturon', label: 'Cinturón de Seguridad', icon: '🔗' },
-  { key: 'extintor', label: 'Extintor', icon: '🧯' },
-  { key: 'botiquin', label: 'Botiquín', icon: '💊' },
-  { key: 'limpieza', label: 'Limpieza General', icon: '🧹' },
-  { key: 'fugas', label: 'Fugas de Fluidos', icon: '🔧' },
-  { key: 'estado_general', label: 'Estado General', icon: '✅' },
-];
-
-const ESTADOS_CHECKLIST = [
-  { value: 'bien', label: 'Bien', color: 'bg-green-100 text-green-700 border-green-200' },
-  { value: 'regular', label: 'Regular', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  { value: 'mal', label: 'Mal', color: 'bg-red-100 text-red-700 border-red-200' },
-];
 
 export default function TabChecklistDiario({ maquinariaId, maquinaria, onUpdate, isAdmin = false }) {
   const supabase = createClient();
   const { addToast } = useToast();
+  const canvasRef = useRef(null);
+  const [copiado, setCopiado] = useState(false);
   const [historial, setHistorial] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -50,6 +34,10 @@ export default function TabChecklistDiario({ maquinariaId, maquinaria, onUpdate,
   const [guardando, setGuardando] = useState(false);
   const [checklistOk, setChecklistOk] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
+
+  const qrUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/mantenimiento/checklist/${maquinariaId}`
+    : '';
 
   // Form state
   const [operador, setOperador] = useState('');
@@ -83,6 +71,41 @@ export default function TabChecklistDiario({ maquinariaId, maquinaria, onUpdate,
   useEffect(() => {
     cargarHistorial();
   }, [cargarHistorial]);
+
+  useEffect(() => {
+    if (canvasRef.current && qrUrl) {
+      QRCode.toCanvas(canvasRef.current, qrUrl, {
+        width: 200,
+        margin: 2,
+        color: { dark: '#111827', light: '#ffffff' },
+      });
+    }
+  }, [qrUrl]);
+
+  const handleDownloadQR = () => {
+    if (!canvasRef.current) return;
+    const link = document.createElement('a');
+    link.download = `QR-Checklist-${maquinaria.codigo_interno || maquinariaId}.png`;
+    link.href = canvasRef.current.toDataURL('image/png');
+    link.click();
+  };
+
+  const handleCopiarURL = async () => {
+    try {
+      await navigator.clipboard.writeText(qrUrl);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = qrUrl;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    }
+  };
 
   // Check if already done today
   const hoy = new Date().toISOString().split('T')[0];
@@ -214,6 +237,44 @@ export default function TabChecklistDiario({ maquinariaId, maquinaria, onUpdate,
               Realizar Checklist
             </button>
           )}
+        </div>
+      </div>
+
+      {/* QR Code para el operador (cabina): Checklist y Tanqueos */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <QrCode className="w-4 h-4" /> Código QR para Checklist y Tanqueos
+        </h3>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:justify-center">
+          <div className="bg-white p-3 rounded-lg border border-gray-200">
+            <canvas ref={canvasRef} />
+          </div>
+          <div className="flex-1 flex flex-col sm:flex-row items-center justify-center gap-2 text-center sm:text-left">
+            <p className="text-sm text-gray-500">
+              Escanea desde la cabina para registrar checklist diario y tanqueos sin iniciar sesión.
+            </p>
+            <button
+              onClick={handleDownloadQR}
+              className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" /> Descargar QR
+            </button>
+            <button
+              onClick={handleCopiarURL}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition flex items-center gap-2"
+            >
+              {copiado ? (
+                <>
+                  <Check className="w-4 h-4 text-green-600" />
+                  <span className="text-green-600">Copiado</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" /> Copiar URL
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 

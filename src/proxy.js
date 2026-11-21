@@ -34,6 +34,7 @@ export async function proxy(request) {
   const qrPaths = [
     '/mantenimiento/cambio-aceite/',
     '/mantenimiento/vehiculo/',
+    '/mantenimiento/checklist/',
   ]
 
   const pathname = request.nextUrl.pathname
