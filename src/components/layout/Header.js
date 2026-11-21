@@ -11,7 +11,6 @@ import { useTheme } from '@/context/ThemeContext'
 
 export default function Header({ onToggleSidebar }) {
   const router = useRouter()
-  const supabase = createClient()
   const { perfil, user, isAdmin, loading: roleLoading } = useRole()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotif, setShowNotif] = useState(false)
@@ -20,8 +19,17 @@ export default function Header({ onToggleSidebar }) {
   const notificaciones = todasNotifs.slice(0, 10)
   const { darkMode, toggleTheme } = useTheme()
 
+  // Crear el cliente de forma perezosa: solo en cliente, y solo en useEffect.
+  // Nunca durante el render, para que la prerenderización estática (páginas como
+  // /_not-found) no falle por falta de variables de entorno de Supabase.
+  const supabaseRef = useRef(null)
+
   useEffect(() => {
-    // Cerrar notificaciones al hacer click fuera
+    supabaseRef.current = createClient()
+  }, [])
+
+  // Cerrar notificaciones al hacer click fuera
+  useEffect(() => {
     function handleClick(e) {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
         setShowNotif(false)
@@ -32,6 +40,8 @@ export default function Header({ onToggleSidebar }) {
   }, [])
 
   async function handleLogout() {
+    const supabase = supabaseRef.current
+    if (!supabase) return
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()

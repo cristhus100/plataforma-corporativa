@@ -1,13 +1,13 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { crearAnuncio, actualizarAnuncio, eliminarAnuncio } from '@/actions'
 import { useRole } from '@/context/RoleContext'
 import { useToast } from '@/context/ToastContext'
 import { Megaphone, Plus, Pencil, Trash2, X, Loader2 } from 'lucide-react'
+
+export const dynamic = 'force-dynamic'
 
 const PRIORIDADES = {
   alta: { label: 'Alta', class: 'bg-red-100 text-red-700 border-red-200' },
@@ -32,7 +32,6 @@ function anuncioVacio() {
 
 export default function AnunciosPage() {
   const { addToast } = useToast();
-  const supabase = createClient()
   const { isAdmin } = useRole()
   const [anuncios, setAnuncios] = useState([])
   const [loading, setLoading] = useState(true)
@@ -42,11 +41,19 @@ export default function AnunciosPage() {
   const [form, setForm] = useState(anuncioVacio())
   const [error, setError] = useState(null)
 
+  // Crear el cliente de forma perezosa: solo en cliente, y solo en useEffect.
+  // Nunca durante el render, para que la prerenderización estática no falle
+  // por falta de variables de entorno de Supabase.
+  const supabaseRef = useRef(null)
+
   useEffect(() => {
+    supabaseRef.current = createClient()
     cargarAnuncios()
   }, [])
 
   async function cargarAnuncios() {
+    const supabase = supabaseRef.current
+    if (!supabase) return
     try {
       setLoading(true)
       const { data, error } = await supabase

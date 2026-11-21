@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const RoleContext = createContext({
@@ -20,10 +20,14 @@ export function RoleProvider({ children }) {
     isAdmin: false,
   })
 
-  const supabase = createClient()
+  // Crear el cliente de forma perezosa: solo en cliente, y solo en useEffect.
+  // Nunca durante el render, para que la prerenderización estática (páginas como
+  // /_not-found) no falle por falta de variables de entorno de Supabase.
+  const supabaseRef = useRef(null)
 
   const fetchPerfil = useCallback(async (user) => {
-    if (!user) {
+    const supabase = supabaseRef.current
+    if (!user || !supabase) {
       setState({ user: null, perfil: null, rol: null, loading: false, isAdmin: false })
       return
     }
@@ -47,11 +51,13 @@ export function RoleProvider({ children }) {
       loading: false,
       isAdmin: data?.rol === 'admin',
     })
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
+    supabaseRef.current = createClient()
+
     // Verificar sesión inicial
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabaseRef.current.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         fetchPerfil(session.user)
       } else {
@@ -60,7 +66,7 @@ export function RoleProvider({ children }) {
     })
 
     // Escuchar cambios de sesión (login, logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabaseRef.current.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         fetchPerfil(session.user)
       } else {
