@@ -56,7 +56,6 @@ export default function NuevaMaquinariaPage() {
     ubicacion_actual: '',
     frente_trabajo_id: '',
     horometro_actual: '',
-    kilometraje_actual: '',
     fecha_adquisicion: '',
     valor_adquisicion: '',
     proveedor: '',
@@ -165,7 +164,6 @@ export default function NuevaMaquinariaPage() {
         tipo_maquinaria_id: parseInt(formData.tipo_maquinaria_id),
         anio: formData.anio ? parseInt(formData.anio) : null,
         horometro_actual: formData.horometro_actual ? parseFloat(formData.horometro_actual) : null,
-        kilometraje_actual: formData.kilometraje_actual ? parseFloat(formData.kilometraje_actual) : null,
         valor_adquisicion: formData.valor_adquisicion ? parseFloat(formData.valor_adquisicion) : null,
         fecha_adquisicion: formData.fecha_adquisicion || null,
       })
@@ -360,15 +358,6 @@ export default function NuevaMaquinariaPage() {
               value={formData.horometro_actual}
               onChange={handleChange}
               placeholder="Horas"
-            />
-            <FormField
-              label="Kilometraje Actual"
-              name="kilometraje_actual"
-              type="number"
-              step="0.01"
-              value={formData.kilometraje_actual}
-              onChange={handleChange}
-              placeholder="Km"
             />
           </div>
         </CollapsibleSection>

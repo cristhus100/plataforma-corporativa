@@ -101,7 +101,6 @@ export async function guardarChecklistMovil(datos) {
       operador_nombre,
       fecha: hoy,
       horometro: maquina?.horometro_actual ?? null,
-      kilometraje: null,
       ...items,
       total_fallas: Object.values(items).filter((v) => v === 'mal').length,
       observaciones: observaciones || null,

@@ -47,7 +47,6 @@ export default function EditarMaquinariaPage() {
     ubicacion_actual: '',
     frente_trabajo_id: '',
     horometro_actual: '',
-    kilometraje_actual: '',
     fecha_adquisicion: '',
     valor_adquisicion: '',
     proveedor: '',
@@ -107,7 +106,6 @@ export default function EditarMaquinariaPage() {
         ubicacion_actual: m.ubicacion_actual || '',
         frente_trabajo_id: m.frente_trabajo_id || '',
         horometro_actual: m.horometro_actual || m.horometro || '',
-        kilometraje_actual: m.kilometraje_actual || m.kilometraje || '',
         fecha_adquisicion: m.fecha_adquisicion || m.fecha_compra || '',
         valor_adquisicion: m.valor_adquisicion || m.valor_compra || '',
         proveedor: m.proveedor || '',
@@ -142,7 +140,6 @@ export default function EditarMaquinariaPage() {
         tipo_maquinaria_id: formData.tipo_maquinaria_id ? parseInt(formData.tipo_maquinaria_id) : null,
         anio: formData.anio ? parseInt(formData.anio) : null,
         horometro_actual: formData.horometro_actual ? parseFloat(formData.horometro_actual) : null,
-        kilometraje_actual: formData.kilometraje_actual ? parseFloat(formData.kilometraje_actual) : null,
         valor_adquisicion: formData.valor_adquisicion ? parseFloat(formData.valor_adquisicion) : null,
         fecha_adquisicion: formData.fecha_adquisicion || null,
       }
@@ -297,15 +294,6 @@ export default function EditarMaquinariaPage() {
               value={formData.horometro_actual}
               onChange={handleChange}
               placeholder="Horas"
-            />
-            <FormField
-              label="Kilometraje Actual"
-              name="kilometraje_actual"
-              type="number"
-              step="0.01"
-              value={formData.kilometraje_actual}
-              onChange={handleChange}
-              placeholder="Km"
             />
           </div>
         </CollapsibleSection>

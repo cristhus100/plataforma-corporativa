@@ -24,7 +24,6 @@ export const maquinariaSchema = z.object({
   ubicacion_actual: optionalString,
   frente_trabajo_id: z.coerce.number().int().positive().optional().nullable(),
   horometro_actual: z.coerce.number().nonnegative().optional().nullable(),
-  kilometraje_actual: z.coerce.number().nonnegative().optional().nullable(),
   fecha_adquisicion: fechaColombiaSchema,
   valor_adquisicion: montoSchema,
   proveedor: optionalString,
